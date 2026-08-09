@@ -228,7 +228,7 @@ export default function CleanerAgenda() {
 
   return (
     <div className="space-y-5">
-      <header className="rounded-2xl bg-primary px-5 py-6 text-primary-foreground">
+      <header className="glass-accent rounded-2xl px-5 py-6">
         <p className="text-xs uppercase tracking-widest opacity-70">Sua agenda</p>
         <p className="mt-1 text-2xl font-extrabold">
           {tasks.filter((t) => t.checkout_date === today).length} limpeza(s) hoje
@@ -251,7 +251,7 @@ export default function CleanerAgenda() {
       )}
 
       {grouped.length === 0 && (
-        <div className="rounded-2xl border bg-background p-8 text-center">
+        <div className="rounded-2xl glass-card p-8 text-center">
           <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
           <p className="mt-3 font-semibold">Nada por enquanto</p>
           <p className="text-sm text-muted-foreground mt-1">
@@ -275,7 +275,7 @@ export default function CleanerAgenda() {
             {dayTasks.map((task) => {
               const sameDay = task.next_checkin_date === task.checkout_date;
               return (
-                <article key={task.id} className="rounded-2xl border bg-background p-5">
+                <article key={task.id} className="rounded-2xl glass-card p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold leading-tight">
@@ -336,7 +336,7 @@ export default function CleanerAgenda() {
             {fees.map((fee) => (
               <article
                 key={fee.id}
-                className="rounded-xl border bg-background px-4 py-3"
+                className="rounded-xl glass-card px-4 py-3"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="font-semibold">{brl(fee.amount)}</span>

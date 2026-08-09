@@ -199,7 +199,7 @@ export default function Financeiro() {
         </div>
       ) : (
         <>
-          <section className="rounded-2xl bg-primary px-5 py-6 text-primary-foreground">
+          <section className="glass-accent rounded-2xl px-5 py-6">
             <p className="text-xs uppercase tracking-widest opacity-70">Total do mês</p>
             <p className="mt-1 text-3xl font-extrabold tabular-nums">{brl(total)}</p>
             <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
@@ -228,7 +228,7 @@ export default function Financeiro() {
                 {pending.map((fee) => (
                   <article
                     key={fee.id}
-                    className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4 dark:bg-amber-950/20"
+                    className="rounded-2xl border border-warning/35 bg-warning/[0.08] p-4 backdrop-blur-sm"
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-lg font-extrabold tabular-nums">{brl(fee.amount)}</span>
@@ -285,7 +285,7 @@ export default function Financeiro() {
           {summary.length > 0 && (
             <section>
               <h2 className="mb-2 text-sm font-bold text-muted-foreground">Por diarista</h2>
-              <div className="overflow-hidden rounded-2xl border">
+              <div className="glass overflow-hidden rounded-2xl">
                 {summary.map((row, i) => (
                   <div
                     key={row.cleaner_id ?? `sem-${i}`}
@@ -313,7 +313,7 @@ export default function Financeiro() {
               <h2 className="mb-2 text-sm font-bold text-muted-foreground">
                 Limpezas concluídas
               </h2>
-              <div className="overflow-hidden rounded-2xl border">
+              <div className="glass overflow-hidden rounded-2xl">
                 {tasks.map((task, i) => (
                   <div
                     key={task.id}
@@ -354,7 +354,7 @@ export default function Financeiro() {
           {decided.length > 0 && (
             <section>
               <h2 className="mb-2 text-sm font-bold text-muted-foreground">Compras decididas</h2>
-              <div className="overflow-hidden rounded-2xl border">
+              <div className="glass overflow-hidden rounded-2xl">
                 {decided.map((fee, i) => (
                   <div
                     key={fee.id}
@@ -389,7 +389,7 @@ export default function Financeiro() {
           )}
 
           {total === 0 && pending.length === 0 && (
-            <div className="rounded-2xl border bg-background p-8 text-center">
+            <div className="rounded-2xl glass-card p-8 text-center">
               <Sparkles className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-3 font-semibold">Nada fechado em {monthLabel(month)}</p>
               <p className="mt-1 text-sm text-muted-foreground">

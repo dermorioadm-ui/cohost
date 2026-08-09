@@ -188,7 +188,7 @@ export default function Portaria() {
         <h2 className="text-sm font-semibold text-muted-foreground">Imóveis</h2>
 
         {properties.length === 0 && (
-          <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl glass-card px-4 py-6 text-center text-sm text-muted-foreground">
             Nenhum imóvel cadastrado ainda.
           </p>
         )}
@@ -198,7 +198,7 @@ export default function Portaria() {
           const avisa = p.condo_notify && !!p.condo_email;
 
           return (
-            <article key={p.id} className="rounded-xl border border-border bg-card p-4">
+            <article key={p.id} className="rounded-xl glass-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{p.name}</p>
@@ -250,7 +250,7 @@ export default function Portaria() {
         <h2 className="text-sm font-semibold text-muted-foreground">Próximas entradas</h2>
 
         {reservations.length === 0 ? (
-          <p className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl glass-card px-4 py-6 text-center text-sm text-muted-foreground">
             Nenhuma entrada pela frente.
           </p>
         ) : (
@@ -259,7 +259,7 @@ export default function Portaria() {
             const desligado = prop && (!prop.condo_notify || !prop.condo_email);
 
             return (
-              <article key={r.id} className="rounded-xl border border-border bg-card p-4">
+              <article key={r.id} className="rounded-xl glass-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{prop?.name ?? "Imóvel"}</p>
@@ -312,7 +312,7 @@ export default function Portaria() {
           {porter.map((row) => (
             <article
               key={row.id}
-              className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-4"
+              className="flex items-start justify-between gap-3 rounded-xl glass-card p-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{people[row.person_id] ?? "Hóspede"}</p>

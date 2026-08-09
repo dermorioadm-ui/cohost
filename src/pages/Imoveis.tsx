@@ -66,7 +66,7 @@ export default function Imoveis() {
       </header>
 
       {properties.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card px-4 py-10 text-center">
+        <div className="rounded-xl glass-card px-4 py-10 text-center">
           <Home className="mx-auto h-8 w-8 text-muted-foreground/40" />
           <p className="mt-3 text-sm font-medium">Nenhum imóvel ainda</p>
           <Button asChild size="sm" className="mt-4">
@@ -79,7 +79,7 @@ export default function Imoveis() {
             <Link
               key={p.id}
               to={`/imoveis/${p.id}`}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent"
+              className="flex items-center justify-between gap-3 rounded-xl glass-card p-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{p.name}</p>

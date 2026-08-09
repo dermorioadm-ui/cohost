@@ -138,7 +138,7 @@ export default function Conversas() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl glass-card px-4 py-8 text-center text-sm text-muted-foreground">
             Este hóspede abriu o chat mas não perguntou nada.
           </p>
         ) : (
@@ -153,7 +153,7 @@ export default function Conversas() {
                     "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
                     m.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "border border-border bg-card",
+                      : "glass-card",
                   )}
                 >
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
@@ -188,7 +188,7 @@ export default function Conversas() {
       </header>
 
       {ordered.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card px-4 py-10 text-center">
+        <div className="rounded-xl glass-card px-4 py-10 text-center">
           <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground/40" />
           <p className="mt-3 text-sm font-medium">Nenhuma conversa ainda</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -201,7 +201,7 @@ export default function Conversas() {
             <button
               key={s.id}
               onClick={() => setOpen(s)}
-              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
+              className="w-full rounded-xl glass-card p-4 text-left"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

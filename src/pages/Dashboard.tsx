@@ -138,7 +138,7 @@ export default function Dashboard() {
       )}
 
       {blocked.length > 0 && (
-        <div className="rounded-2xl border bg-background p-4 space-y-3">
+        <div className="rounded-2xl glass-card p-4 space-y-3">
           <p className="text-sm font-semibold">Falta pouco para o automático</p>
           {blocked.map((b) => (
             <Link
@@ -164,7 +164,7 @@ export default function Dashboard() {
           { value: pending, label: "Limpezas pendentes", icon: Clock },
           { value: activation.filter((a) => a.blocked_at === "ativo").length, label: "Imóveis ativos", icon: Sparkles },
         ].map((s) => (
-          <div key={s.label} className="rounded-2xl border bg-background p-4">
+          <div key={s.label} className="rounded-2xl glass-card p-4">
             <s.icon className="h-4 w-4 text-muted-foreground" />
             <p className="mt-2 text-2xl font-extrabold tabular-nums">{s.value}</p>
             <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{s.label}</p>
@@ -176,7 +176,7 @@ export default function Dashboard() {
         <h2 className="text-sm font-semibold text-muted-foreground">Próximas saídas</h2>
 
         {grouped.length === 0 && (
-          <div className="rounded-2xl border bg-background p-8 text-center">
+          <div className="rounded-2xl glass-card p-8 text-center">
             <CalendarCheck className="h-8 w-8 text-muted-foreground/40 mx-auto" />
             <p className="mt-3 text-sm font-medium">Nenhuma saída neste mês</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -203,7 +203,7 @@ export default function Dashboard() {
 
             <div className="space-y-2">
               {dayTasks.map((t) => (
-                <div key={t.id} className="rounded-2xl border bg-background p-4">
+                <div key={t.id} className="rounded-2xl glass-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-sm truncate">

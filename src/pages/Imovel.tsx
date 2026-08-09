@@ -306,7 +306,7 @@ export default function Imovel() {
       </header>
 
       {/* ---------------------------------------------------- Identificação */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <h2 className="font-semibold">Identificação</h2>
 
         <div className="space-y-1.5">
@@ -365,7 +365,7 @@ export default function Imovel() {
       </section>
 
       {/* -------------------------------------------------------- Calendário */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold">Calendário</h2>
@@ -426,7 +426,7 @@ export default function Imovel() {
       </section>
 
       {/* --------------------------------------------------------- Operação */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold">Operação</h2>
@@ -468,7 +468,7 @@ export default function Imovel() {
       </section>
 
       {/* --------------------------------------------------------- Diarista */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold">Quem faz a limpeza</h2>
@@ -609,7 +609,7 @@ export default function Imovel() {
       </section>
 
       {/* ------------------------------------------------------- Condomínio */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <h2 className="font-semibold">Condomínio</h2>
 
         <div className="space-y-1.5">
@@ -644,7 +644,7 @@ export default function Imovel() {
       </section>
 
       {/* ----------------------------------------------- Mensagem automática */}
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-3 rounded-xl glass-card p-5">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold">Mensagem automática</h2>
@@ -690,7 +690,7 @@ export default function Imovel() {
       </section>
 
       {/* ------------------------------------------------------- Assistente */}
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-xl glass-card p-5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-muted-foreground" />
           <h2 className="font-semibold">O que a assistente sabe</h2>

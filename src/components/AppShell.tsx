@@ -41,9 +41,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <div className="min-h-screen bg-background">
+    // mesh-gradient posiciona os borrões de cor em `fixed`, atrás de tudo. É o
+    // que dá o que refratar: vidro sobre fundo chapado não parece vidro.
+    <div className="mesh-gradient min-h-screen">
+      <div className="mesh-blob-3 animate-blob" aria-hidden />
+
       {/* Menu lateral — só no desktop */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 flex-col border-r border-border bg-card">
+      <aside className="glass-sidebar hidden md:flex fixed inset-y-0 left-0 w-56 flex-col">
         <div className="px-6 py-6">
           <span className="text-sm font-extrabold tracking-[0.2em] text-primary">HOSPEDEPAY</span>
         </div>
@@ -76,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Cabeçalho — só no celular, onde não há menu lateral */}
-      <header className="md:hidden sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+      <header className="glass-nav md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3">
         <span className="text-sm font-extrabold tracking-[0.2em] text-primary">HOSPEDEPAY</span>
         <button
           onClick={signOut}
@@ -95,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Barra inferior — só no celular */}
       {items.length > 1 && (
         <nav
-          className="md:hidden fixed inset-x-0 bottom-0 z-20 grid border-t border-border bg-card/95 backdrop-blur"
+          className="glass-nav md:hidden fixed inset-x-0 bottom-0 z-20 grid"
           style={{
             gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
             paddingBottom: "env(safe-area-inset-bottom)",

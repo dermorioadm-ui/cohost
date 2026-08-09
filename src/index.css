@@ -180,6 +180,21 @@
   transform: translateY(-2px);
 }
 
+/**
+ * Vidro tingido de coral, para o bloco de destaque de cada tela.
+ *
+ * Existe como classe, e não como `bg-primary/20` no JSX, porque as regras de
+ * vidro vêm depois de `@tailwind utilities` neste arquivo: uma utilitária de
+ * background perderia para o `background` do `.glass` e o tom sumiria.
+ */
+.glass-accent {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.30), hsl(var(--primary) / 0.08));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid hsl(var(--primary) / 0.35);
+  box-shadow: 0 8px 32px hsl(var(--primary) / 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 .glass-card {
   background: rgba(255, 255, 255, 0.035);
   backdrop-filter: blur(16px) saturate(160%);
