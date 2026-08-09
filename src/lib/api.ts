@@ -100,7 +100,16 @@ export const api = {
   },
 
   ical: {
-    validate: (body: { url: string; property_id?: string; save?: boolean }) =>
+    // `provider` vai explícito: o backend sabe adivinhar pela URL, mas quem
+    // colou o link na caixa do Booking já disse qual é, e um link encurtado
+    // ou de domínio próprio seria arquivado como "other" — criando uma
+    // segunda fonte em vez de atualizar a que existe.
+    validate: (body: {
+      url: string;
+      property_id?: string;
+      save?: boolean;
+      provider?: "airbnb" | "booking" | "vrbo" | "other";
+    }) =>
       request<{
         ok: boolean;
         reason?: string;

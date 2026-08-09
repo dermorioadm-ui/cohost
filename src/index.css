@@ -49,6 +49,11 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+
+    /* Cor por canal de venda, usada nas faixas do calendário. O coral do
+       Airbnb é o --primary; o Booking tem o azul da própria marca. */
+    --booking: 217 72% 54%;
+    --vrbo: 265 60% 60%;
   }
 
   .dark {

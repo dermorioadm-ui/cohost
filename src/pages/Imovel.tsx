@@ -64,6 +64,38 @@ interface IcalSource {
   events_last_sync: number | null;
 }
 
+/**
+ * Canais oferecidos na tela.
+ *
+ * O enum do banco também tem `vrbo` e `other`, e o backend continua aceitando
+ * os dois quando adivinha pela URL. Aqui ficam só os que este cliente usa —
+ * quatro caixas vazias fariam a tela parecer trabalho pendente.
+ */
+interface IcalChannel {
+  provider: "airbnb" | "booking";
+  label: string;
+  placeholder: string;
+  hint: string;
+  swatch: string;
+}
+
+const ICAL_CHANNELS: IcalChannel[] = [
+  {
+    provider: "airbnb",
+    label: "Airbnb",
+    placeholder: "https://www.airbnb.com.br/calendar/ical/...",
+    hint: "Calendário → Disponibilidade → Sincronizar calendários → Exportar calendário.",
+    swatch: "bg-primary/70",
+  },
+  {
+    provider: "booking",
+    label: "Booking.com",
+    placeholder: "https://ical.booking.com/v1/export?t=...",
+    hint: "Extranet → Tarifas e Disponibilidade → Sincronizar calendários → Exportar.",
+    swatch: "bg-[hsl(var(--booking))]",
+  },
+];
+
 interface ConnectedProfile {
   user_id: string;
   full_name: string | null;
@@ -95,10 +127,11 @@ export default function Imovel() {
   const [inviting, setInviting] = useState(false);
   const [waLink, setWaLink] = useState<string | null>(null);
 
-  // Calendário
-  const [ical, setIcal] = useState<IcalSource | null>(null);
-  const [icalUrl, setIcalUrl] = useState("");
-  const [checkingIcal, setCheckingIcal] = useState(false);
+  // Calendário — uma fonte por canal. O banco já tratava assim desde a 0004
+  // (UNIQUE property_id, provider); era a tela que só enxergava uma.
+  const [icals, setIcals] = useState<IcalSource[]>([]);
+  const [icalUrl, setIcalUrl] = useState<Record<string, string>>({});
+  const [checkingIcal, setCheckingIcal] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
 
@@ -122,8 +155,7 @@ export default function Imovel() {
           .from("property_ical_sources")
           .select("id, provider, url, last_success_at, consecutive_fails, events_last_sync")
           .eq("property_id", id)
-          .eq("active", true)
-          .maybeSingle(),
+          .eq("active", true),
       ]);
 
       if (!prop.data) {
@@ -137,7 +169,7 @@ export default function Imovel() {
       setAi((row.ai_config ?? {}) as Record<string, string>);
       setCleaners((conn.data ?? []) as ConnectedProfile[]);
       setPending((inv.data ?? []) as PendingInvite[]);
-      setIcal((src.data ?? null) as IcalSource | null);
+      setIcals((src.data ?? []) as IcalSource[]);
       setLoading(false);
     })();
   }, [user, id, navigate]);
@@ -145,31 +177,30 @@ export default function Imovel() {
   const set = <K extends keyof PropertyRow>(key: K, value: PropertyRow[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
 
-  const saveIcal = async () => {
-    const url = icalUrl.trim();
+  const saveIcal = async (provider: IcalChannel["provider"]) => {
+    const url = (icalUrl[provider] ?? "").trim();
     if (!/^https?:\/\//i.test(url)) return toast.error("Cole o link do calendário (começa com http)");
 
-    setCheckingIcal(true);
+    setCheckingIcal(provider);
     try {
-      const res = await api.ical.validate({ url, property_id: form!.id, save: true });
+      const res = await api.ical.validate({ url, property_id: form!.id, save: true, provider });
       if (!res.ok) return toast.error(res.message);
 
       toast.success(
         res.events ? `${res.events} reserva(s) encontradas. Calendário conectado.` : res.message,
       );
-      setIcalUrl("");
+      setIcalUrl((u) => ({ ...u, [provider]: "" }));
 
       const { data } = await supabase
         .from("property_ical_sources")
         .select("id, provider, url, last_success_at, consecutive_fails, events_last_sync")
         .eq("property_id", form!.id)
-        .eq("active", true)
-        .maybeSingle();
-      setIcal((data ?? null) as IcalSource | null);
+        .eq("active", true);
+      setIcals((data ?? []) as IcalSource[]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não consegui ler esse link");
     } finally {
-      setCheckingIcal(false);
+      setCheckingIcal(null);
     }
   };
 
@@ -371,58 +402,84 @@ export default function Imovel() {
           <h2 className="font-semibold">Calendário</h2>
         </div>
 
-        {ical ? (
-          <div
-            className={cn(
-              "rounded-xl p-3 text-xs leading-relaxed",
-              ical.consecutive_fails > 0
-                ? "bg-destructive/10 text-destructive"
-                : "bg-success/10 text-success",
-            )}
-          >
-            {ical.consecutive_fails > 0 ? (
-              <>
-                Falhando há {ical.consecutive_fails} tentativa(s). Reserva nova não está virando
-                limpeza. Normalmente o link foi regerado na plataforma — gere outro e cole abaixo.
-              </>
-            ) : (
-              <>
-                Conectado ({ical.provider})
-                {ical.events_last_sync !== null && ` · ${ical.events_last_sync} reserva(s) na última leitura`}
-              </>
-            )}
-          </div>
-        ) : (
+        {icals.length === 0 && (
           <p className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-warning">
             Sem calendário conectado. Enquanto não colar o link, nenhuma reserva entra sozinha e a
             agenda da diarista fica vazia.
           </p>
         )}
 
-        <div className="space-y-1.5">
-          <Label>{ical ? "Trocar o link" : "Link do calendário (iCal)"}</Label>
-          <Input
-            value={icalUrl}
-            onChange={(e) => setIcalUrl(e.target.value)}
-            placeholder="https://www.airbnb.com.br/calendar/ical/..."
-            inputMode="url"
-          />
-          <p className="text-xs text-muted-foreground">
-            No Airbnb: Calendário → Disponibilidade → Sincronizar calendários → Exportar.
-          </p>
-        </div>
+        {ICAL_CHANNELS.map((channel) => {
+          const source = icals.find((s) => s.provider === channel.provider);
+          const busy = checkingIcal === channel.provider;
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={saveIcal}
-          disabled={checkingIcal}
-        >
-          {checkingIcal && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Validar e salvar calendário
-        </Button>
+          return (
+            <div
+              key={channel.provider}
+              className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+            >
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2.5 w-2.5 rounded-full", channel.swatch)} aria-hidden />
+                <h3 className="text-sm font-semibold">{channel.label}</h3>
+              </div>
+
+              {source && (
+                <div
+                  className={cn(
+                    "rounded-lg p-2.5 text-xs leading-relaxed",
+                    source.consecutive_fails > 0
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-success/10 text-success",
+                  )}
+                >
+                  {source.consecutive_fails > 0 ? (
+                    <>
+                      Falhando há {source.consecutive_fails} tentativa(s). Reserva nova não está
+                      virando limpeza. Normalmente o link foi regerado na plataforma — gere outro e
+                      cole abaixo.
+                    </>
+                  ) : (
+                    <>
+                      Conectado
+                      {source.events_last_sync !== null &&
+                        ` · ${source.events_last_sync} reserva(s) na última leitura`}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>{source ? "Trocar o link" : "Link do calendário (iCal)"}</Label>
+                <Input
+                  value={icalUrl[channel.provider] ?? ""}
+                  onChange={(e) =>
+                    setIcalUrl((u) => ({ ...u, [channel.provider]: e.target.value }))
+                  }
+                  placeholder={channel.placeholder}
+                  inputMode="url"
+                />
+                <p className="text-xs text-muted-foreground">No {channel.label}: {channel.hint}</p>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => saveIcal(channel.provider)}
+                disabled={busy}
+              >
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Validar e salvar
+              </Button>
+            </div>
+          );
+        })}
+
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Dá para conectar os dois ao mesmo tempo. Cada canal sincroniza sozinho a cada 15 minutos,
+          e no calendário as reservas aparecem com a cor do canal de origem.
+        </p>
       </section>
 
       {/* --------------------------------------------------------- Operação */}
