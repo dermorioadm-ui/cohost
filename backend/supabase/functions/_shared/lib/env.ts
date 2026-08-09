@@ -31,7 +31,7 @@ export const env = {
   serviceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
   anonKey: () => optional("SUPABASE_ANON_KEY"),
 
-  appBaseUrl: () => optional("APP_BASE_URL", "https://page-muse-glow-5b98.vercel.app"),
+  appBaseUrl: () => optional("APP_BASE_URL", "https://cohost-ten.vercel.app"),
   timezone: () => optional("APP_TIMEZONE", "America/Sao_Paulo"),
   defaultLocale: () => optional("APP_DEFAULT_LOCALE", "pt"),
   isProduction: () => optional("APP_ENV", "production") === "production",

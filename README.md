@@ -1,7 +1,17 @@
 # HospedePay — App
 
-Frontend do app novo. Independente do `src/` na raiz (que é o app atual) e
-consome o backend em `../backend`.
+Frontend do produto, em `src/`. Consome o backend em `backend/`.
+
+Este repositório tem **um app e um backend, só**. Se você veio do
+`page-muse-glow`, esqueça aquela árvore: lá conviviam dois apps e dois projetos
+Supabase, e foi isso que fez o deploy servir o build errado. Aqui:
+
+| O quê | Onde | Destino |
+|---|---|---|
+| App | `src/` | Vercel, projeto `cohost` → `cohost-ten.vercel.app` |
+| Backend | `backend/` | Supabase `hukjxwpwnrsepgneopqd` |
+
+Não existe segundo app nem segundo banco. Se aparecer um, é engano.
 
 ## Rodar
 

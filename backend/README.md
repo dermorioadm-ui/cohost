@@ -1,10 +1,9 @@
 # HospedePay — Backend
 
-Backend completo e independente, construído em paralelo ao app atual. **Nada
-aqui toca no `src/` nem no `supabase/` da raiz do repositório** — é outro
-projeto Supabase, outro banco, outro deploy.
+Backend do produto, servindo o app em `src/`. Projeto Supabase
+`hukjxwpwnrsepgneopqd` — o único deste repositório.
 
-Mesma lógica de negócio do produto atual, reescrita com as falhas corrigidas e
+Mesma lógica de negócio do produto antigo (`page-muse-glow`), reescrita com as falhas corrigidas e
 com as três peças que faltavam para o pitch ser verdadeiro: sincronização
 automática, aviso à portaria por reserva, e relatório mensal.
 
@@ -156,8 +155,7 @@ prioriza latência), prompt do imóvel em cache e fallback server-side ligado.
 
 ## Estado atual
 
-**Escrito e revisado:** 17 migrations, a biblioteca compartilhada e **18 edge
-functions** — o backend está funcionalmente completo.
+**Escrito:** 20 migrations, a biblioteca compartilhada e **19 edge functions**.
 
 | Grupo | Funções |
 |---|---|
@@ -174,26 +172,25 @@ conta de um terceiro, com pouco ganho sobre o que `admin-metrics ?view=subscribe
 já mostra. Se você quiser mesmo, dá para fazer com sessão curta e auditada, mas
 preferi não incluir sem você decidir.
 
-> ### ⚠️ Nada disto foi executado
+> ### Estado em produção
 >
-> O ambiente onde este código foi escrito não tem Deno nem Postgres. **Nenhuma
-> linha foi compilada e nenhuma migration foi aplicada.**
+> As migrations `0001` → `0020` **estão aplicadas** em `hukjxwpwnrsepgneopqd`,
+> com dados de cliente real. Os 7 jobs do `pg_cron` estão ativos.
 >
-> Espere ajustes pequenos de sintaxe na primeira aplicação — de desenho, não.
-> O caminho é `supabase db push` num projeto **novo** (nunca no atual, ver
-> abaixo) e corrigir o que o Postgres reclamar.
-
-## Aviso sobre o projeto Supabase de destino
-
-**Não aplique estas migrations no projeto que roda seu app hoje.**
-
-O schema aqui cria `profiles`, `properties`, `user_roles`, `cleaning_tasks` e
-`connections` — tabelas que **já existem** no projeto atual, com outro formato.
-A aplicação vai falhar no meio, e se for forçada com `DROP CASCADE` apaga os
-dados dos seus clientes reais.
-
-Isto é uma operação paralela: **projeto Supabase novo**, dados migrados depois,
-frontend apontado por último.
+> Nem todas as edge functions estão publicadas. Confira antes de assumir que
+> um endpoint existe — um job agendado chamando uma function ausente devolve
+> 404 silenciosamente, e o cron continua marcando "succeeded":
+>
+> ```sql
+> -- o que está no ar
+> select slug, version from edge_functions;   -- ou: supabase functions list
+>
+> -- o que os jobs receberam de resposta de verdade
+> select status_code, count(*)
+>   from net._http_response
+>  where created > now() - interval '3 hours'
+>  group by status_code;
+> ```
 
 ---
 
