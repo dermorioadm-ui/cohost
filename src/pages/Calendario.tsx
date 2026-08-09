@@ -56,6 +56,16 @@ interface Bar {
   openRight: boolean;
 }
 
+/**
+ * Rótulos que as plataformas mandam quando NÃO revelam quem é o hóspede.
+ *
+ * O Booking exporta toda estadia como "CLOSED - Not available" e o Airbnb como
+ * "Reserved" — nenhum dos dois diz nada ao dono, e "CLOSED - Not available"
+ * atravessando a faixa ainda parece defeito. Nesses casos mostramos o nome do
+ * canal, que é a informação que sobra e que ele realmente usa.
+ */
+const OPAQUE_LABEL = /^(closed|reserved|not available|unavailable|blocked|busy|bloqueado)\b/i;
+
 /** Cada canal com sua cor — é assim que o dono distingue Airbnb de Booking. */
 const PROVIDER_STYLE: Record<Provider, { bar: string; dot: string; label: string }> = {
   airbnb: {
@@ -113,6 +123,13 @@ const MAX_BAR_ROWS = 2;
 const CELL_GAP = "0.25rem";
 const CELL_W = `((100% - 6 * ${CELL_GAP}) / 7)`;
 const middleOfDay = (i: number) => `calc(${i} * (${CELL_W} + ${CELL_GAP}) + ${CELL_W} / 2)`;
+
+/** Nome do hóspede quando a plataforma manda; senão, o canal. */
+function guestLabel(r: Reservation): string {
+  const raw = r.guest_label?.trim() ?? "";
+  if (raw && !OPAQUE_LABEL.test(raw)) return raw;
+  return PROVIDER_STYLE[r.provider ?? "other"].label;
+}
 
 const BAR_TOP = "1.75rem";
 const BAR_HEIGHT = "1.05rem";
@@ -260,7 +277,7 @@ export default function Calendario() {
           startDay,
           endDay,
           row,
-          label: r.guest_label?.trim() || properties[r.property_id] || "Reserva",
+          label: guestLabel(r),
           provider: r.provider ?? "other",
           openLeft,
           openRight,
@@ -505,9 +522,7 @@ export default function Calendario() {
                 <article key={r.id} className="glass-card rounded-2xl p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">
-                        {r.guest_label?.trim() || "Reserva"}
-                      </p>
+                      <p className="truncate font-semibold">{guestLabel(r)}</p>
                       <p className="text-sm text-muted-foreground">
                         {properties[r.property_id] ?? "Imóvel"} ·{" "}
                         {PROVIDER_STYLE[r.provider ?? "other"].label}
