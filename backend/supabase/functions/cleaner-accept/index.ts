@@ -114,6 +114,12 @@ export default handler(async (req) => {
       user_metadata: {
         full_name: invite.cleaner_name,
         whatsapp: invite.cleaner_phone_e164,
+        // `role` é a chave que tg_handle_new_user lê para decidir o papel.
+        // Isto aqui já dizia só `account_type`, e o gatilho, procurando `role`,
+        // caía no ELSE e criava toda diarista como PROPRIETÁRIA — com o painel
+        // do dono e permissão de cadastrar imóvel. A 0023 passou a aceitar as
+        // duas chaves; mandamos as duas para não depender de qual está no ar.
+        role: "cleaner",
         account_type: "cleaner",
       },
     });
