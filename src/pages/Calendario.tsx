@@ -144,6 +144,7 @@ export default function Calendario() {
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("all");
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -189,11 +190,29 @@ export default function Calendario() {
     })();
   }, [user, year, month]);
 
+  const propertyList = useMemo(() => Object.entries(properties), [properties]);
+
+  /**
+   * Com dez imóveis, tudo na mesma grade vira sopa. O filtro é a saída, e ele
+   * também troca o rótulo da faixa: quando se olha a carteira inteira, saber
+   * QUAL apartamento está ocupado importa mais do que o nome do hóspede.
+   */
+  const showPropertyOnBar = filter === "all" && propertyList.length > 1;
+
+  const visibleTasks = useMemo(
+    () => (filter === "all" ? tasks : tasks.filter((t) => t.property_id === filter)),
+    [tasks, filter],
+  );
+  const visibleReservations = useMemo(
+    () => (filter === "all" ? reservations : reservations.filter((r) => r.property_id === filter)),
+    [reservations, filter],
+  );
+
   const byDate = useMemo(() => {
     const map: Record<string, Task[]> = {};
-    for (const t of tasks) (map[t.checkout_date] ??= []).push(t);
+    for (const t of visibleTasks) (map[t.checkout_date] ??= []).push(t);
     return map;
-  }, [tasks]);
+  }, [visibleTasks]);
 
   // Começa no domingo da semana do dia 1 e vai até fechar a última semana.
   const weeks = useMemo(() => {
@@ -232,7 +251,7 @@ export default function Calendario() {
       const weekStart = iso(week[0]);
       const weekEnd = iso(week[6]);
 
-      const inWeek = reservations
+      const inWeek = visibleReservations
         .filter((r) => r.checkin_date <= weekEnd && r.checkout_date >= weekStart)
         .sort(
           (a, b) =>
@@ -277,7 +296,7 @@ export default function Calendario() {
           startDay,
           endDay,
           row,
-          label: guestLabel(r),
+          label: showPropertyOnBar ? (properties[r.property_id] ?? guestLabel(r)) : guestLabel(r),
           provider: r.provider ?? "other",
           openLeft,
           openRight,
@@ -286,14 +305,14 @@ export default function Calendario() {
 
       return { bars, overflow };
     });
-  }, [weeks, reservations, properties]);
+  }, [weeks, visibleReservations, properties, showPropertyOnBar]);
 
   const today = iso(new Date());
   const selectedTasks = selected ? (byDate[selected] ?? []) : [];
   const selectedReservations = selected
-    ? reservations.filter((r) => r.checkin_date <= selected && r.checkout_date >= selected)
+    ? visibleReservations.filter((r) => r.checkin_date <= selected && r.checkout_date >= selected)
     : [];
-  const monthTotal = tasks.reduce((sum, t) => sum + Number(t.turnover_price ?? 0), 0);
+  const monthTotal = visibleTasks.reduce((sum, t) => sum + Number(t.turnover_price ?? 0), 0);
 
   const step = (delta: number) => {
     setSelected(null);
@@ -352,9 +371,9 @@ export default function Calendario() {
             {MONTHS[month]} {year}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {tasks.length === 0
+            {visibleTasks.length === 0
               ? "Nenhuma saída"
-              : `${tasks.length} ${tasks.length === 1 ? "saída" : "saídas"} · R$ ${monthTotal.toFixed(2).replace(".", ",")}`}
+              : `${visibleTasks.length} ${visibleTasks.length === 1 ? "saída" : "saídas"} · R$ ${monthTotal.toFixed(2).replace(".", ",")}`}
           </p>
         </div>
 
@@ -366,6 +385,25 @@ export default function Calendario() {
           <ChevronRight className="h-5 w-5" />
         </button>
       </header>
+
+      {propertyList.length > 1 && (
+        <select
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setSelected(null);
+          }}
+          aria-label="Filtrar por imóvel"
+          className="glass h-12 w-full rounded-2xl px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="all">Todos os imóveis ({propertyList.length})</option>
+          {propertyList.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="glass rounded-2xl p-3">
         <div className="mb-2 grid grid-cols-7">
@@ -487,9 +525,9 @@ export default function Calendario() {
         )}
 
         {/* Legenda — só os canais que realmente aparecem no mês. */}
-        {!loading && reservations.length > 0 && (
+        {!loading && visibleReservations.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/[0.06] pt-3">
-            {[...new Set(reservations.map((r) => r.provider ?? "other"))].map((p) => (
+            {[...new Set(visibleReservations.map((r) => r.provider ?? "other"))].map((p) => (
               <span key={p} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span
                   className={cn("h-2.5 w-5 rounded-full border", PROVIDER_STYLE[p].bar)}

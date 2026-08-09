@@ -126,7 +126,10 @@ export default function CleanerAgenda() {
           .neq("status", "cancelled")
           .order("checkout_date")
           .order("checkout_time"),
-        supabase.from("properties").select("id, name, neighborhood, owner_id"),
+        // Não lê `properties` direto: a tabela guarda código de fechadura e
+        // senha de Wi-Fi na mesma linha, e RLS filtra linha, não coluna. A
+        // função devolve só as colunas de trabalho (migration 0022).
+        supabase.rpc("my_cleaning_properties"),
       ]);
 
       setTasks((tsk.data ?? []) as Task[]);
