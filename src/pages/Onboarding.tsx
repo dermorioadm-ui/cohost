@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AI_FIELDS } from "@/lib/propertyFields";
+import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 
 /**
  * Onboarding guiado — a tela que decide se o cliente ativa ou cancela.
@@ -39,7 +40,10 @@ export default function Onboarding() {
     condo_email: "", turnover_price: "120",
   });
   const [icalUrl, setIcalUrl] = useState("");
+  const [icalProvider, setIcalProvider] = useState<IcalChannel["provider"]>("airbnb");
+  const [icalDone, setIcalDone] = useState<IcalChannel["provider"][]>([]);
   const [icalResult, setIcalResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const icalChannel = ICAL_CHANNELS.find((c) => c.provider === icalProvider)!;
   const [cleaner, setCleaner] = useState({ name: "", phone: "" });
   const [waLink, setWaLink] = useState<string | null>(null);
   const [selfClean, setSelfClean] = useState(false);
@@ -79,11 +83,16 @@ export default function Onboarding() {
         url: icalUrl.trim(),
         property_id: propertyId!,
         save: true,
+        provider: icalProvider,
       });
       setIcalResult({ ok: res.ok, message: res.message });
       if (res.ok) {
         toast.success("Calendário conectado!");
-        setTimeout(() => setStep(3), 1400);
+        setIcalDone((d) => (d.includes(icalProvider) ? d : [...d, icalProvider]));
+        setIcalUrl("");
+        // Não avança sozinho: quem anuncia nos dois canais precisa da chance de
+        // colar o segundo link aqui. Pular agora e descobrir depois que faltou
+        // metade das reservas é pior do que um toque a mais.
       }
     } catch (e) {
       setIcalResult({
@@ -283,27 +292,55 @@ export default function Onboarding() {
               </p>
             </div>
 
+            {/* Um canal por vez: o passo continua sendo colar UM link, que é o
+                que entrega o "achei 7 reservas". Quem anuncia nos dois volta
+                aqui pelo atalho embaixo do resultado. */}
+            <div className="grid grid-cols-2 gap-2">
+              {ICAL_CHANNELS.map((c) => {
+                const active = c.provider === icalProvider;
+                const done = icalDone.includes(c.provider);
+                return (
+                  <button
+                    key={c.provider}
+                    type="button"
+                    onClick={() => {
+                      setIcalProvider(c.provider);
+                      setIcalResult(null);
+                    }}
+                    className={cn(
+                      "flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <span className={cn("h-2.5 w-2.5 rounded-full", c.swatch)} aria-hidden />
+                    {c.label}
+                    {done && <Check className="h-4 w-4 text-emerald-500" />}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="rounded-xl bg-muted/60 p-4 text-sm space-y-2">
-              <p className="font-semibold">No app do Airbnb:</p>
-              <p className="text-muted-foreground leading-relaxed">
-                Calendário → Disponibilidade → Conectar a outro site → Copiar link
-              </p>
+              <p className="font-semibold">No {icalChannel.label}:</p>
+              <p className="text-muted-foreground leading-relaxed">{icalChannel.hint}</p>
               <a
-                href="https://www.airbnb.com.br/help/article/99"
+                href={icalChannel.helpUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-primary text-xs font-medium hover:underline"
               >
-                Ver no site do Airbnb <ExternalLink className="h-3 w-3" />
+                Ver no site do {icalChannel.label} <ExternalLink className="h-3 w-3" />
               </a>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Link do calendário</Label>
+              <Label>Link do calendário do {icalChannel.label}</Label>
               <Input
                 value={icalUrl}
                 onChange={(e) => setIcalUrl(e.target.value)}
-                placeholder="https://www.airbnb.com/calendar/ical/…"
+                placeholder={icalChannel.placeholder}
                 inputMode="url"
                 autoCapitalize="off"
               />
@@ -329,15 +366,35 @@ export default function Onboarding() {
 
             <Button onClick={validateIcal} disabled={busy} className="w-full h-11">
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Conectar calendário
+              Conectar {icalChannel.label}
             </Button>
 
-            <button
-              onClick={() => setStep(3)}
-              className="w-full text-xs text-muted-foreground hover:text-foreground"
-            >
-              Fazer isso depois
-            </button>
+            {icalDone.length > 0 ? (
+              <div className="space-y-2">
+                <Button onClick={() => setStep(3)} variant="outline" className="w-full h-11">
+                  Continuar
+                </Button>
+                {ICAL_CHANNELS.filter((c) => !icalDone.includes(c.provider)).map((c) => (
+                  <button
+                    key={c.provider}
+                    onClick={() => {
+                      setIcalProvider(c.provider);
+                      setIcalResult(null);
+                    }}
+                    className="w-full text-xs font-medium text-primary hover:underline"
+                  >
+                    Anuncio também no {c.label} — conectar agora
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button
+                onClick={() => setStep(3)}
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+              >
+                Fazer isso depois
+              </button>
+            )}
           </section>
         )}
 

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase, api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { AI_FIELDS } from "@/lib/propertyFields";
+import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 import { cn, getAppBaseUrl } from "@/lib/utils";
 
 /**
@@ -64,37 +65,6 @@ interface IcalSource {
   events_last_sync: number | null;
 }
 
-/**
- * Canais oferecidos na tela.
- *
- * O enum do banco também tem `vrbo` e `other`, e o backend continua aceitando
- * os dois quando adivinha pela URL. Aqui ficam só os que este cliente usa —
- * quatro caixas vazias fariam a tela parecer trabalho pendente.
- */
-interface IcalChannel {
-  provider: "airbnb" | "booking";
-  label: string;
-  placeholder: string;
-  hint: string;
-  swatch: string;
-}
-
-const ICAL_CHANNELS: IcalChannel[] = [
-  {
-    provider: "airbnb",
-    label: "Airbnb",
-    placeholder: "https://www.airbnb.com.br/calendar/ical/...",
-    hint: "Calendário → Disponibilidade → Sincronizar calendários → Exportar calendário.",
-    swatch: "bg-primary/70",
-  },
-  {
-    provider: "booking",
-    label: "Booking.com",
-    placeholder: "https://ical.booking.com/v1/export?t=...",
-    hint: "Extranet → Tarifas e Disponibilidade → Sincronizar calendários → Exportar.",
-    swatch: "bg-[hsl(var(--booking))]",
-  },
-];
 
 interface ConnectedProfile {
   user_id: string;
