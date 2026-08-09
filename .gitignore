@@ -1,0 +1,8 @@
+.env
+.env.local
+.env.*.local
+node_modules
+dist
+
+# Cache incremental do tsc — artefato de build, não versionado.
+*.tsbuildinfo

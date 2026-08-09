@@ -1,0 +1,78 @@
+project_id = "SEU_PROJETO"
+
+# =============================================================================
+# Edge Functions
+#
+# verify_jwt = true  -> exige JWT válido do Supabase Auth (usuário logado)
+# verify_jwt = false -> endpoint público. TODA function pública abaixo faz a
+#                       própria autorização (token de sessão, assinatura de
+#                       webhook ou CRON_SECRET). Nenhuma confia só na obscuridade.
+# =============================================================================
+
+# ---------- Autenticadas (dono / diarista / admin) ----------
+[functions.property-upsert]
+verify_jwt = true
+
+[functions.cleaner-invite]
+verify_jwt = true
+
+[functions.ical-validate]
+verify_jwt = true
+
+[functions.billing-checkout]
+verify_jwt = true
+
+[functions.billing-portal]
+verify_jwt = true
+
+[functions.admin-metrics]
+verify_jwt = true
+
+[functions.admin-users]
+verify_jwt = true
+
+[functions.admin-impersonate]
+verify_jwt = true
+
+# ---------- Públicas com autorização própria ----------
+
+# Hóspede anônimo. Autoriza por property_id + rate limit; devolve session_token.
+[functions.guest-register]
+verify_jwt = false
+
+# Hóspede anônimo. Exige o session_token devolvido pelo guest-register.
+[functions.guest-chat]
+verify_jwt = false
+
+# Diarista entrando pelo link mágico. Autoriza pelo token do convite.
+[functions.cleaner-accept]
+verify_jwt = false
+
+# ---------- Webhooks (validam assinatura) ----------
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.email-webhook]
+verify_jwt = false
+
+# ---------- Jobs (exigem header x-cron-secret) ----------
+[functions.job-sync-ical]
+verify_jwt = false
+
+[functions.job-notify-condo]
+verify_jwt = false
+
+[functions.job-process-outbox]
+verify_jwt = false
+
+[functions.job-monthly-report]
+verify_jwt = false
+
+[functions.job-subscription-sweep]
+verify_jwt = false
+
+[functions.job-porter-sync]
+verify_jwt = false
