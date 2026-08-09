@@ -18,6 +18,7 @@ const Conversas = lazy(() => import("@/pages/Conversas"));
 const GuestChat = lazy(() => import("@/pages/GuestChat"));
 const CleanerAccept = lazy(() => import("@/pages/CleanerAccept"));
 const CleanerAgenda = lazy(() => import("@/pages/CleanerAgenda"));
+const Financeiro = lazy(() => import("@/pages/Financeiro"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,6 +140,14 @@ export default function App() {
                         element={
                           <Protected allow={["owner"]}>
                             <Conversas />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/financeiro"
+                        element={
+                          <Protected allow={["owner"]}>
+                            <Financeiro />
                           </Protected>
                         }
                       />

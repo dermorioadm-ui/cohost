@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, CalendarCheck, DoorOpen, Home, LogOut, MessageSquare } from "lucide-react";
+import { CalendarDays, CalendarCheck, DoorOpen, Home, LogOut, MessageSquare, Wallet } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ const NAV: Record<Exclude<AppRole, "admin">, NavItem[]> = {
     { label: "Imóveis", short: "Imóveis", icon: Home, path: "/imoveis" },
     { label: "Portaria", short: "Portaria", icon: DoorOpen, path: "/portaria" },
     { label: "Conversas", short: "Conversas", icon: MessageSquare, path: "/conversas" },
+    { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
   ],
   cleaner: [
     { label: "Minha agenda", short: "Agenda", icon: CalendarCheck, path: "/agenda" },

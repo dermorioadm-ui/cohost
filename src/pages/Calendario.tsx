@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,7 @@ export default function Calendario() {
   const [properties, setProperties] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -110,6 +113,42 @@ export default function Calendario() {
   const step = (delta: number) => {
     setSelected(null);
     setCursor(new Date(year, month + delta, 1));
+  };
+
+  /**
+   * Concluir a limpeza pelo lado do dono.
+   *
+   * Existe porque a agenda da diarista só enxerga tarefa com `cleaner_id` igual
+   * a ela: imóvel sem diarista vinculada, ou imóvel que o próprio dono limpa,
+   * ficaria sem ninguém capaz de fechar a tarefa — e o mês fecharia em zero
+   * para sempre.
+   *
+   * O gatilho `tg_cleaning_tasks_guard` só carimba `completed_at` quando quem
+   * atualiza é a diarista; pelo caminho do dono ele devolve a linha como veio,
+   * então a marcação de tempo vai explícita daqui.
+   */
+  const setCompleted = async (task: Task, done: boolean) => {
+    if (!user) return;
+    setSaving(task.id);
+
+    const { error } = await supabase
+      .from("cleaning_tasks")
+      .update(
+        done
+          ? { status: "completed", completed_at: new Date().toISOString(), completed_by: user.id }
+          : { status: "pending", completed_at: null, completed_by: null },
+      )
+      .eq("id", task.id);
+
+    if (error) {
+      toast.error("Não consegui salvar. Tente de novo.");
+    } else {
+      setTasks((list) =>
+        list.map((t) => (t.id === task.id ? { ...t, status: done ? "completed" : "pending" } : t)),
+      );
+      toast.success(done ? "Limpeza concluída." : "Limpeza reaberta.");
+    }
+    setSaving(null);
   };
 
   return (
@@ -236,6 +275,23 @@ export default function Calendario() {
                     Entrada no mesmo dia — a limpeza precisa ficar pronta antes.
                   </p>
                 )}
+
+                <Button
+                  variant={t.status === "completed" ? "ghost" : "outline"}
+                  size="sm"
+                  disabled={saving === t.id}
+                  onClick={() => setCompleted(t, t.status !== "completed")}
+                  className="mt-3 w-full"
+                >
+                  {saving === t.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : t.status === "completed" ? (
+                    <Undo2 className="mr-2 h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  {t.status === "completed" ? "Reabrir limpeza" : "Marcar como concluída"}
+                </Button>
               </article>
             ))
           )}

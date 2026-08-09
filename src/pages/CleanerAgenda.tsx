@@ -1,10 +1,39 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, Check, CheckCircle2, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Camera,
+  Check,
+  CheckCircle2,
+  ImageUp,
+  Loader2,
+  Receipt,
+  ShoppingBasket,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import {
+  brl,
+  currentMonth,
+  FEE_CATEGORIES,
+  type FeeCategory,
+  type FeeStatus,
+  FEE_STATUS_LABEL,
+  monthLabel,
+  parseAmount,
+  shiftMonth,
+} from "@/lib/fees";
 
 interface Task {
   id: string;
@@ -17,6 +46,25 @@ interface Task {
   photo_path: string | null;
 }
 
+interface Property {
+  id: string;
+  name: string;
+  neighborhood: string | null;
+  owner_id: string;
+}
+
+interface Fee {
+  id: string;
+  amount: number;
+  status: FeeStatus;
+  categories: string[];
+  description: string | null;
+  property_id: string | null;
+  decision_note: string | null;
+}
+
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // igual ao limite do bucket (0014)
+
 /**
  * Agenda da diarista.
  *
@@ -25,20 +73,48 @@ interface Task {
  *
  * O "entrada no mesmo dia" é a informação que ela mais precisa e que ninguém
  * dava antes — é o que define se ela tem quatro horas ou quarenta minutos.
+ *
+ * A foto e o lançamento de compra são deliberadamente secundários: ficam em
+ * botão discreto, para não disputar atenção com "concluir", que é o que ela
+ * abriu o app para fazer.
  */
 export default function CleanerAgenda() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [properties, setProperties] = useState<Record<string, string>>({});
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [fees, setFees] = useState<Fee[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [feeOpen, setFeeOpen] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+  const month = currentMonth();
+
+  const propertyById = useMemo(
+    () => Object.fromEntries(properties.map((p) => [p.id, p])),
+    [properties],
+  );
+
+  const propertyLabel = (id: string | null) => {
+    if (!id) return "Sem imóvel";
+    const p = propertyById[id];
+    return p ? [p.name, p.neighborhood].filter(Boolean).join(" · ") : "Imóvel";
+  };
+
+  const loadFees = async () => {
+    const { data } = await supabase
+      .from("cleaner_fees")
+      .select("id, amount, status, categories, description, property_id, decision_note")
+      .eq("reference_month", month)
+      .order("created_at", { ascending: false });
+    setFees((data ?? []) as Fee[]);
+  };
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+      const monthEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
         .toISOString().slice(0, 10);
 
       const [tsk, props] = await Promise.all([
@@ -46,22 +122,19 @@ export default function CleanerAgenda() {
           .from("cleaning_tasks")
           .select("id, property_id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, photo_path")
           .gte("checkout_date", today)
-          .lte("checkout_date", monthEnd)
+          .lte("checkout_date", monthEndDate)
           .neq("status", "cancelled")
           .order("checkout_date")
           .order("checkout_time"),
-        supabase.from("properties").select("id, name, address, neighborhood"),
+        supabase.from("properties").select("id, name, neighborhood, owner_id"),
       ]);
 
       setTasks((tsk.data ?? []) as Task[]);
-      setProperties(
-        Object.fromEntries(
-          ((props.data ?? []) as Array<{ id: string; name: string; address: string | null; neighborhood: string | null }>)
-            .map((p) => [p.id, [p.name, p.neighborhood].filter(Boolean).join(" · ")]),
-        ),
-      );
+      setProperties((props.data ?? []) as Property[]);
+      await loadFees();
       setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, today]);
 
   const complete = async (id: string) => {
@@ -80,6 +153,46 @@ export default function CleanerAgenda() {
       toast.success("Limpeza concluída! O cliente foi avisado.");
     }
     setSaving(null);
+  };
+
+  /**
+   * A foto vai para `cleaning-photos/<task_id>/<arquivo>`. O primeiro segmento
+   * do caminho não é enfeite: a policy do bucket confere que ele é o id de uma
+   * tarefa atribuída a quem está enviando.
+   */
+  const sendPhoto = async (task: Task, file: File) => {
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error("Essa foto é muito grande. Tente tirar outra.");
+      return;
+    }
+
+    setUploading(task.id);
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+    const path = `${task.id}/${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("cleaning-photos")
+      .upload(path, file, { contentType: file.type || undefined });
+
+    if (uploadError) {
+      toast.error("Não consegui enviar a foto. Tente de novo.");
+      setUploading(null);
+      return;
+    }
+
+    // photo_taken_at é carimbado pelo gatilho quando photo_path muda.
+    const { error } = await supabase
+      .from("cleaning_tasks")
+      .update({ photo_path: path })
+      .eq("id", task.id);
+
+    if (error) {
+      toast.error("A foto subiu, mas não consegui salvar. Tente de novo.");
+    } else {
+      setTasks((t) => t.map((x) => (x.id === task.id ? { ...x, photo_path: path } : x)));
+      toast.success("Foto enviada.");
+    }
+    setUploading(null);
   };
 
   const grouped = useMemo(() => {
@@ -101,6 +214,10 @@ export default function CleanerAgenda() {
     .filter((t) => t.status === "completed")
     .reduce((s, t) => s + Number(t.turnover_price), 0);
 
+  const feesApproved = fees
+    .filter((f) => f.status === "approved")
+    .reduce((s, f) => s + Number(f.amount), 0);
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -117,9 +234,21 @@ export default function CleanerAgenda() {
           {tasks.filter((t) => t.checkout_date === today).length} limpeza(s) hoje
         </p>
         <p className="text-sm opacity-80 mt-1">
-          R$ {monthTotal.toFixed(2).replace(".", ",")} concluído neste mês
+          {brl(monthTotal)} concluído neste mês
+          {feesApproved > 0 && ` · ${brl(feesApproved)} em compras aprovadas`}
         </p>
       </header>
+
+      {properties.length > 0 && (
+        <Button
+          variant="outline"
+          onClick={() => setFeeOpen(true)}
+          className="w-full h-12 justify-start gap-3 font-semibold"
+        >
+          <ShoppingBasket className="h-5 w-5 shrink-0 text-primary" />
+          Comprei alguma coisa para o apartamento
+        </Button>
+      )}
 
       {grouped.length === 0 && (
         <div className="rounded-2xl border bg-background p-8 text-center">
@@ -150,7 +279,7 @@ export default function CleanerAgenda() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold leading-tight">
-                        {properties[task.property_id] ?? "Imóvel"}
+                        {propertyLabel(task.property_id)}
                       </p>
                       <p className="mt-2 text-2xl font-extrabold tabular-nums">
                         {task.checkout_time?.slice(0, 5) ?? "--:--"}
@@ -185,12 +314,348 @@ export default function CleanerAgenda() {
                       Marcar como concluída
                     </Button>
                   ) : null}
+
+                  <PhotoButton
+                    task={task}
+                    busy={uploading === task.id}
+                    onPick={(file) => sendPhoto(task, file)}
+                  />
                 </article>
               );
             })}
           </div>
         </section>
       ))}
+
+      {fees.length > 0 && (
+        <section>
+          <h2 className="text-sm font-bold text-muted-foreground mb-2">
+            Suas compras de {monthLabel(month)}
+          </h2>
+          <div className="space-y-2">
+            {fees.map((fee) => (
+              <article
+                key={fee.id}
+                className="rounded-xl border bg-background px-4 py-3"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold">{brl(fee.amount)}</span>
+                  <span
+                    className={cn(
+                      "text-xs font-semibold",
+                      fee.status === "approved" && "text-emerald-600",
+                      fee.status === "rejected" && "text-destructive",
+                      fee.status === "pending" && "text-amber-600",
+                    )}
+                  >
+                    {FEE_STATUS_LABEL[fee.status]}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {propertyLabel(fee.property_id)}
+                  {fee.description ? ` · ${fee.description}` : ""}
+                </p>
+                {fee.status === "rejected" && fee.decision_note && (
+                  <p className="mt-1 text-xs text-destructive">{fee.decision_note}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <FeeDialog
+        open={feeOpen}
+        onOpenChange={setFeeOpen}
+        properties={properties}
+        defaultPropertyId={
+          tasks.find((t) => t.checkout_date === today)?.property_id ?? properties[0]?.id ?? ""
+        }
+        cleanerId={user?.id ?? ""}
+        onSaved={loadFees}
+      />
     </div>
+  );
+}
+
+/** Botão de foto — discreto, e some do caminho quando já existe uma. */
+function PhotoButton({
+  task,
+  busy,
+  onPick,
+}: {
+  task: Task;
+  busy: boolean;
+  onPick: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          // Zera o valor para permitir reenviar o mesmo arquivo depois de um erro.
+          e.target.value = "";
+          if (file) onPick(file);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className={cn(
+          "mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-medium transition-colors",
+          task.photo_path
+            ? "border-emerald-300 text-emerald-700 dark:text-emerald-400"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          busy && "opacity-60",
+        )}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : task.photo_path ? (
+          <ImageUp className="h-4 w-4" />
+        ) : (
+          <Camera className="h-4 w-4" />
+        )}
+        {busy ? "Enviando…" : task.photo_path ? "Foto enviada — trocar" : "Enviar foto do imóvel"}
+      </button>
+    </>
+  );
+}
+
+/**
+ * Lançamento de compra.
+ *
+ * A competência é escolhida na mão porque comprar dia 31 e lançar dia 1 é o
+ * caso normal, não a exceção — e foi somar tudo no mês errado que quebrou o
+ * fechamento financeiro do produto antigo.
+ */
+function FeeDialog({
+  open,
+  onOpenChange,
+  properties,
+  defaultPropertyId,
+  cleanerId,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  properties: Property[];
+  defaultPropertyId: string;
+  cleanerId: string;
+  onSaved: () => Promise<void>;
+}) {
+  const thisMonth = currentMonth();
+  const lastMonth = shiftMonth(thisMonth, -1);
+
+  const [propertyId, setPropertyId] = useState(defaultPropertyId);
+  const [reference, setReference] = useState(thisMonth);
+  const [categories, setCategories] = useState<FeeCategory[]>([]);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setPropertyId(defaultPropertyId);
+      setReference(thisMonth);
+      setCategories([]);
+      setAmount("");
+      setDescription("");
+      setReceipt(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultPropertyId]);
+
+  const toggle = (value: FeeCategory) =>
+    setCategories((c) => (c.includes(value) ? c.filter((x) => x !== value) : [...c, value]));
+
+  const save = async () => {
+    const value = parseAmount(amount);
+    if (value === null) {
+      toast.error("Digite quanto você gastou, por exemplo 18,50.");
+      return;
+    }
+    // Espelha o CHECK fee_has_content: sem categoria e sem descrição o banco
+    // recusaria, e a diarista veria um erro que não explica nada.
+    if (categories.length === 0 && description.trim() === "") {
+      toast.error("Marque o que você comprou ou escreva no campo abaixo.");
+      return;
+    }
+    const property = properties.find((p) => p.id === propertyId);
+    if (!property) {
+      toast.error("Escolha o apartamento.");
+      return;
+    }
+
+    setSaving(true);
+    const { data: created, error } = await supabase
+      .from("cleaner_fees")
+      .insert({
+        owner_id: property.owner_id,
+        cleaner_id: cleanerId,
+        property_id: property.id,
+        reference_month: reference,
+        categories,
+        description: description.trim() || null,
+        amount: value,
+      })
+      .select("id")
+      .single();
+
+    if (error || !created) {
+      toast.error("Não consegui lançar. Tente de novo.");
+      setSaving(false);
+      return;
+    }
+
+    // O comprovante só pode subir depois do lançamento existir: o caminho no
+    // bucket é <fee_id>/<arquivo>, e a policy confere esse id.
+    if (receipt) {
+      const ext = (receipt.name.split(".").pop() ?? "jpg").toLowerCase();
+      const path = `${created.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fee-receipts")
+        .upload(path, receipt, { contentType: receipt.type || undefined });
+
+      if (upErr) {
+        toast.warning("Lancei a compra, mas o comprovante não subiu.");
+      } else {
+        await supabase.from("cleaner_fees").update({ receipt_path: path }).eq("id", created.id);
+      }
+    }
+
+    await onSaved();
+    setSaving(false);
+    onOpenChange(false);
+    toast.success("Lançado! O cliente vai aprovar.");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>O que você comprou?</DialogTitle>
+          <DialogDescription>
+            O cliente aprova e o valor entra no fechamento do mês.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {properties.length > 1 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="fee-property">Apartamento</Label>
+              <select
+                id="fee-property"
+                value={propertyId}
+                onChange={(e) => setPropertyId(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {[p.name, p.neighborhood].filter(Boolean).join(" · ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="fee-amount">Quanto foi</Label>
+            <Input
+              id="fee-amount"
+              inputMode="decimal"
+              placeholder="18,50"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-12 text-lg font-semibold"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>O que era</Label>
+            <div className="flex flex-wrap gap-2">
+              {FEE_CATEGORIES.map((c) => {
+                const on = categories.includes(c.value);
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => toggle(c.value)}
+                    className={cn(
+                      "rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+                      on
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="fee-note">Detalhe (opcional)</Label>
+            <Textarea
+              id="fee-note"
+              rows={2}
+              placeholder="2 sabonetes e 1 detergente"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Mês da compra</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[thisMonth, lastMonth].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setReference(m)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-sm font-medium capitalize transition-colors",
+                    reference === m
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )}
+                >
+                  {monthLabel(m)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="fee-receipt" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              Foto do comprovante (opcional)
+            </Label>
+            <Input
+              id="fee-receipt"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              className="h-11 py-2 file:mr-3 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-sm"
+            />
+          </div>
+        </div>
+
+        <Button onClick={save} disabled={saving} className="h-14 w-full text-base font-bold">
+          {saving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          Lançar compra
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }
