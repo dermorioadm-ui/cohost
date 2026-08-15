@@ -97,6 +97,10 @@ export interface PorterCredentials {
   porter_user_context_id: string;
   porter_user_partner_context_id: string;
   porter_condo_person_context_id: string;
+  // Vêm da captura do login (resposta de /auth/activate). Sem o segredo do
+  // TOTP a Kiper recusa o cadastro desde ago/2026 — é o que liga a integração.
+  porter_totp_secret?: string;
+  porter_app_device_id?: string;
 }
 
 export interface PorterState {

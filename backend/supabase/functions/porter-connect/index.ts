@@ -44,6 +44,10 @@ interface Body {
   porter_condo_person_context_id?: string;
   porter_condominium_gmt?: string;
   porter_profile_id?: number;
+  /** Semente do TOTP (campo `keyHash` da resposta de /auth/activate no login). */
+  porter_totp_secret?: string;
+  /** `appdeviceid` que o app registrou no activate; a Kiper confere junto. */
+  porter_app_device_id?: string;
 }
 
 /** Os seis headers que o app da Kiper manda em toda chamada autenticada. */
@@ -305,6 +309,13 @@ export default handler(async (req) => {
     }
   }
 
+  // O segredo do TOTP e o device id vêm da captura do login (opcionais no
+  // corpo para não quebrar quem só recola os seis headers). Sem o segredo, o
+  // job não consegue gerar o `otp` e a Kiper recusa — por isso ele é o que de
+  // fato liga a integração hoje.
+  const totpSecret = (body.porter_totp_secret ?? "").trim();
+  const appDeviceId = (body.porter_app_device_id ?? "").trim();
+
   const { error } = await db.from("porter_accounts").upsert(
     {
       property_id: property.id,
@@ -312,6 +323,8 @@ export default handler(async (req) => {
       ...credentials,
       porter_condominium_gmt: gmt,
       porter_profile_id: body.porter_profile_id ?? 16,
+      ...(totpSecret ? { porter_totp_secret: totpSecret } : {}),
+      ...(appDeviceId ? { porter_app_device_id: appDeviceId } : {}),
       active: true,
       last_error: null,
       last_ok_at: tested?.ok ? new Date().toISOString() : null,

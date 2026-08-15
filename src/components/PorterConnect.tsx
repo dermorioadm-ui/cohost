@@ -74,6 +74,22 @@ const FIELDS: Array<{
   },
 ];
 
+// Estes dois não saem dos headers do dia a dia: vêm da captura do LOGIN
+// (resposta de /auth/activate). Ficam num bloco à parte no formulário porque
+// o passo de captura é outro — mas sem o `keyHash` a Kiper recusa o cadastro.
+const LOGIN_FIELDS: Array<{ key: keyof PorterCredentials; label: string; hint: string }> = [
+  {
+    key: "porter_totp_secret",
+    label: "Código de acesso (keyHash)",
+    hint: "campo keyHash na resposta do login (/auth/activate)",
+  },
+  {
+    key: "porter_app_device_id",
+    label: "ID do aparelho",
+    hint: "header appdeviceid, ou o campo do mesmo nome no login",
+  },
+];
+
 const EMPTY: PorterCredentials = {
   porter_token: "",
   porter_application_key: "",
@@ -81,6 +97,8 @@ const EMPTY: PorterCredentials = {
   porter_user_context_id: "",
   porter_user_partner_context_id: "",
   porter_condo_person_context_id: "",
+  porter_totp_secret: "",
+  porter_app_device_id: "",
 };
 
 const fmtWhen = (iso: string) =>
@@ -114,7 +132,7 @@ export function PorterConnect({ propertyId }: { propertyId: string }) {
   const set = (key: keyof PorterCredentials, value: string) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const filled = FIELDS.every((f) => form[f.key].trim());
+  const filled = FIELDS.every((f) => (form[f.key] ?? "").trim());
 
   const test = async () => {
     setBusy("test");
@@ -262,9 +280,29 @@ export function PorterConnect({ propertyId }: { propertyId: string }) {
               <Label htmlFor={field.key}>{field.label}</Label>
               <Input
                 id={field.key}
-                value={form[field.key]}
+                value={form[field.key] ?? ""}
                 onChange={(e) => set(field.key, e.target.value)}
                 placeholder={field.placeholder}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="font-mono text-[11px] text-muted-foreground">{field.hint}</p>
+            </div>
+          ))}
+
+          <div className="rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            Os dois campos abaixo vêm da captura do <strong>login</strong> do app
+            (a resposta de <code>/auth/activate</code>), não dos headers do dia a
+            dia. Sem o código de acesso a portaria recusa o cadastro.
+          </div>
+
+          {LOGIN_FIELDS.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <Label htmlFor={field.key}>{field.label}</Label>
+              <Input
+                id={field.key}
+                value={form[field.key] ?? ""}
+                onChange={(e) => set(field.key, e.target.value)}
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -307,7 +345,7 @@ export function PorterConnect({ propertyId }: { propertyId: string }) {
               size="sm"
               className="flex-1"
               onClick={() => save()}
-              disabled={!filled || busy !== null}
+              disabled={!filled || !(form.porter_totp_secret ?? "").trim() || busy !== null}
             >
               {busy === "save" ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

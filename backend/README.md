@@ -74,7 +74,7 @@ segredo, e nenhum dos dois pode ficar no código.
 |---|---|---|
 | `property-upsert` | owner | Cria/atualiza imóvel. Aceita preenchimento parcial — é a entrada do funil conversacional. Devolve o que ainda falta. |
 | `ical-validate` | owner | Valida o link do calendário e devolve *"achei 7 reservas, próxima saída dia 14"*. Salva se `save: true`. |
-| `porter-connect` | owner | Conecta o imóvel à portaria digital: testa as credenciais na Kiper, grava em `porter_accounts` e enfileira quem já estava cadastrado. Nunca devolve credencial. |
+| `porter-connect` | owner | Conecta o imóvel à portaria digital: testa as credenciais na Kiper, grava em `porter_accounts` (inclusive a semente do código de acesso) e enfileira quem já estava cadastrado. Nunca devolve credencial. |
 | `cleaner-invite` | owner | Gera o convite da diarista e devolve um link `wa.me` com a mensagem pronta. |
 | `admin-metrics` | admin | Painel: KPIs, assinantes, funil de ativação, saúde do sistema. |
 
@@ -156,7 +156,16 @@ prioriza latência), prompt do imóvel em cache e fallback server-side ligado.
 
 ## Estado atual
 
-**Escrito:** 24 migrations, a biblioteca compartilhada e **20 edge functions**.
+**Escrito:** 25 migrations, a biblioteca compartilhada e **20 edge functions**.
+
+> **Portaria digital (Kiper): código de acesso (TOTP).** Desde ~ago/2026 a
+> Kiper exige, no cadastro de morador, um `otp` de 6 dígitos que troca a cada
+> 30 s (TOTP, RFC 6238 — HMAC-SHA1, semente = o `keyHash` da resposta do login
+> `/auth/activate`). O `job-porter-sync` gera esse código pela função
+> `public.porter_totp`, a partir de `porter_accounts.porter_totp_secret`, e
+> envia junto os headers de identidade do app (`appname`, `appdeviceid`, etc.),
+> com `datetime` em **UTC** — hora local faz a Kiper responder "verifique a
+> hora do aparelho". Sem a semente, o cadastro é recusado com "token inválido".
 
 | Grupo | Funções |
 |---|---|
