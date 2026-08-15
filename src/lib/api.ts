@@ -89,6 +89,36 @@ export interface ActivationState {
   blocked_at: string;
 }
 
+export interface HermesCredential {
+  property_id: string;
+  platform: "airbnb" | "booking";
+  login: string;
+  status: "pendente" | "ativo" | "falhou" | "revogado";
+  last_verified_at: string | null;
+  last_error: string | null;
+  last_access_at: string | null;
+  access_count: number;
+  term_accepted_at: string;
+}
+
+export interface HermesStatus {
+  properties: Array<{
+    id: string;
+    name: string;
+    airbnb_listing_id: string | null;
+    hermes_enabled: boolean;
+  }>;
+  credentials: HermesCredential[];
+  term: { id: string; title: string; body: string; version: string } | null;
+  keys: Array<{
+    id: string;
+    name: string;
+    key_prefix: string;
+    created_at: string;
+    last_used_at: string | null;
+  }>;
+}
+
 export const api = {
   property: {
     upsert: (body: Record<string, unknown>) =>
@@ -156,6 +186,31 @@ export const api = {
     checkout: (body: { tier: string; cycle: string; trial?: boolean }) =>
       request<{ url: string }>("billing-checkout", { body }),
     portal: () => request<{ url: string }>("billing-portal", {}),
+  },
+
+  // Atendimento automático 24h. Repare que não existe `get` da senha: ela vai
+  // para o cofre e não volta. O `status` devolve só o estado — conectado,
+  // falhou, quando o agente usou pela última vez.
+  hermes: {
+    status: () => request<HermesStatus>("hermes-credentials", { body: { action: "status" } }),
+
+    save: (body: {
+      property_id: string;
+      login: string;
+      password: string;
+      totp_secret?: string;
+      platform?: "airbnb" | "booking";
+      accept_term: boolean;
+    }) => request<{ ok: boolean }>("hermes-credentials", { body: { action: "save", ...body } }),
+
+    revoke: (property_id: string) =>
+      request<{ ok: boolean }>("hermes-credentials", { body: { action: "revoke", property_id } }),
+
+    createKey: (key_name?: string) =>
+      request<{ key: string }>("hermes-credentials", { body: { action: "key-create", key_name } }),
+
+    revokeKey: (key_id: string) =>
+      request<{ ok: boolean }>("hermes-credentials", { body: { action: "key-revoke", key_id } }),
   },
 
   admin: {
