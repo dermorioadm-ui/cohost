@@ -17,7 +17,7 @@ import { admin, requireRole } from "../_shared/lib/db.ts";
  */
 
 interface Body {
-  action?: "status" | "save" | "revoke" | "key-create" | "key-revoke";
+  action?: "status" | "save" | "enable" | "revoke" | "key-create" | "key-revoke";
   property_id?: string;
   platform?: "airbnb" | "booking";
   login?: string;
@@ -26,6 +26,8 @@ interface Body {
   accept_term?: boolean;
   key_id?: string;
   key_name?: string;
+  /** "imovel" desliga um apartamento; "conta" apaga a credencial inteira. */
+  scope?: "imovel" | "conta";
 }
 
 /** IP real do cliente atrás do proxy do Supabase. */
@@ -51,16 +53,13 @@ export default handler(async (req) => {
       .is("archived_at", null)
       .order("created_at");
 
-    const ids = (props ?? []).map((p) => p.id);
-
-    const { data: creds } = ids.length
-      ? await db
-          .from("hermes_credentials")
-          .select(
-            "property_id, platform, login, status, last_verified_at, last_error, last_access_at, access_count, term_accepted_at",
-          )
-          .in("property_id", ids)
-      : { data: [] };
+    // Uma credencial por conta e por canal — não mais uma por imóvel.
+    const { data: creds } = await db
+      .from("hermes_credentials")
+      .select(
+        "platform, login, status, last_verified_at, last_error, last_access_at, access_count, term_accepted_at",
+      )
+      .eq("owner_id", user.id);
 
     const { data: term } = await db
       .from("term_versions")
@@ -119,8 +118,9 @@ export default handler(async (req) => {
       );
     }
 
+    // A credencial é da CONTA (uma conta do Airbnb hospeda todos os anúncios
+    // dela). `_enable_property_id` não é chave: é só qual imóvel ligar agora.
     const { error } = await db.rpc("hermes_save_credentials", {
-      _property_id: property_id,
       _owner_id: user.id,
       _platform: platform,
       _login: login.trim(),
@@ -128,6 +128,7 @@ export default handler(async (req) => {
       _otp_secret: body.totp_secret?.trim() ?? "",
       _ip: clientIp(req),
       _user_agent: req.headers.get("user-agent") ?? "",
+      _enable_property_id: property_id,
     });
 
     if (error) {
@@ -144,32 +145,91 @@ export default handler(async (req) => {
     return json({ ok: true });
   }
 
-  // ---- revogar --------------------------------------------------------------
-  if (action === "revoke") {
+  // ---- ligar um imóvel numa conta já conectada -------------------------------
+  // Sem isto, o dono de cinco apartamentos redigitaria a senha cinco vezes —
+  // o próprio problema que a credencial por conta existe para resolver.
+  if (action === "enable") {
     if (!body.property_id) throw errors.invalid("Escolha o imóvel.");
+
+    const { data: cred } = await db
+      .from("hermes_credentials")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("platform", "airbnb")
+      .maybeSingle();
+
+    if (!cred) throw errors.invalid("Nenhuma conta conectada. Informe login e senha primeiro.");
 
     const { data: prop } = await db
       .from("properties")
-      .select("id")
+      .select("id, airbnb_listing_id")
       .eq("id", body.property_id)
       .eq("owner_id", user.id)
+      .is("archived_at", null)
       .maybeSingle();
 
     if (!prop) throw errors.notFound("Imóvel não encontrado.");
+    if (!prop.airbnb_listing_id) {
+      throw errors.invalid(
+        "Conecte primeiro o calendário do Airbnb neste imóvel — é dele que sai o número do anúncio.",
+      );
+    }
 
-    // O DELETE dispara o gatilho que apaga o segredo do Vault e desliga
-    // hermes_enabled. Revogar de verdade é apagar, não marcar uma coluna.
     const { error } = await db
-      .from("hermes_credentials")
-      .delete()
-      .eq("property_id", body.property_id);
+      .from("properties")
+      .update({ hermes_enabled: true })
+      .eq("id", body.property_id)
+      .eq("owner_id", user.id);
+
+    if (error) throw errors.upstream("Não foi possível ligar. Tente de novo.");
+    return json({ ok: true });
+  }
+
+  // ---- revogar --------------------------------------------------------------
+  // Duas intenções diferentes, e confundi-las custa caro nos dois sentidos:
+  // desligar UM apartamento de cinco não pode apagar a senha da conta, e
+  // encerrar a conta não pode deixar senha guardada.
+  if (action === "revoke") {
+    const scope = body.scope ?? "imovel";
+
+    if (scope === "imovel") {
+      if (!body.property_id) throw errors.invalid("Escolha o imóvel.");
+
+      const { error } = await db
+        .from("properties")
+        .update({ hermes_enabled: false })
+        .eq("id", body.property_id)
+        .eq("owner_id", user.id);
+
+      if (error) throw errors.upstream("Não foi possível desligar. Tente de novo.");
+
+      // Nenhum imóvel ligado significa senha guardada sem finalidade — e o
+      // termo promete que revogar apaga a credencial. Apaga.
+      const { count } = await db
+        .from("properties")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", user.id)
+        .is("archived_at", null)
+        .eq("hermes_enabled", true);
+
+      if ((count ?? 0) === 0) {
+        await db.from("hermes_credentials").delete().eq("owner_id", user.id);
+        return json({ ok: true, credencial_apagada: true });
+      }
+
+      return json({ ok: true, credencial_apagada: false });
+    }
+
+    // O DELETE dispara o gatilho que apaga os segredos do Vault e desliga
+    // hermes_enabled em todos os imóveis do dono.
+    const { error } = await db.from("hermes_credentials").delete().eq("owner_id", user.id);
 
     if (error) {
       console.error("Falha ao revogar:", error.message);
       throw errors.upstream("Não foi possível desligar. Tente de novo.");
     }
 
-    return json({ ok: true });
+    return json({ ok: true, credencial_apagada: true });
   }
 
   // ---- chave do agente ------------------------------------------------------

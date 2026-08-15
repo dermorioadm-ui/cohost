@@ -90,7 +90,8 @@ export interface ActivationState {
 }
 
 export interface HermesCredential {
-  property_id: string;
+  // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
+  // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
   platform: "airbnb" | "booking";
   login: string;
   status: "pendente" | "ativo" | "falhou" | "revogado";
@@ -203,8 +204,16 @@ export const api = {
       accept_term: boolean;
     }) => request<{ ok: boolean }>("hermes-credentials", { body: { action: "save", ...body } }),
 
-    revoke: (property_id: string) =>
-      request<{ ok: boolean }>("hermes-credentials", { body: { action: "revoke", property_id } }),
+    /** Liga um imóvel numa conta já conectada — sem redigitar a senha. */
+    enable: (property_id: string) =>
+      request<{ ok: boolean }>("hermes-credentials", {
+        body: { action: "enable", property_id },
+      }),
+
+    revoke: (property_id: string, scope: "imovel" | "conta" = "imovel") =>
+      request<{ ok: boolean; credencial_apagada: boolean }>("hermes-credentials", {
+        body: { action: "revoke", property_id, scope },
+      }),
 
     createKey: (key_name?: string) =>
       request<{ key: string }>("hermes-credentials", { body: { action: "key-create", key_name } }),

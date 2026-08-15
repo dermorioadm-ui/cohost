@@ -79,8 +79,15 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
   }, []);
 
   const prop = state?.properties.find((p) => p.id === propertyId);
-  const cred = state?.credentials.find((c) => c.property_id === propertyId);
   const semAnuncio = prop && !prop.airbnb_listing_id;
+
+  // A credencial é da conta. O que diz se ESTE imóvel está sendo atendido é
+  // `hermes_enabled` — separar os dois é o que permite desligar um apartamento
+  // de cinco sem apagar a senha usada pelos outros quatro.
+  const contaConectada = state?.credentials.find((c) => c.platform === "airbnb");
+  const cred = prop?.hermes_enabled ? contaConectada : undefined;
+  const outrosLigados =
+    (state?.properties.filter((p) => p.hermes_enabled && p.id !== propertyId).length) ?? 0;
 
   function limpar() {
     setLogin("");
@@ -115,11 +122,31 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
     }
   }
 
+  async function ligarNesteImovel() {
+    setSaving(true);
+    try {
+      await api.hermes.enable(propertyId);
+      toast.success("Atendimento ligado neste imóvel.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Não foi possível ligar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function desligar() {
     setSaving(true);
     try {
-      await api.hermes.revoke(propertyId);
-      toast.success("Desligado. Troque a senha no Airbnb também.");
+      const { credencial_apagada } = await api.hermes.revoke(propertyId, "imovel");
+      // O aviso de trocar a senha só faz sentido quando a credencial saiu de
+      // fato. Dá-lo ao desligar 1 de 5 imóveis assustaria à toa, e o dono
+      // trocaria uma senha que os outros quatro ainda usam.
+      toast.success(
+        credencial_apagada
+          ? "Desligado e credencial apagada. Troque a senha no Airbnb também."
+          : "Este imóvel não é mais atendido. Os outros continuam.",
+      );
       setConfirmOff(false);
       await load();
     } catch (e) {
@@ -223,7 +250,28 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
             </p>
           )}
 
-          {!form && (
+          {/* Conta já conectada por outro imóvel: um clique, sem redigitar. */}
+          {!form && contaConectada ? (
+            <>
+              <p className="rounded-xl bg-success/10 p-3 text-xs leading-relaxed text-success">
+                Sua conta {contaConectada.login} já está conectada e atende{" "}
+                {outrosLigados === 1 ? "outro imóvel" : `outros ${outrosLigados} imóveis`}. Não
+                precisa digitar a senha de novo.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                disabled={semAnuncio || saving}
+                onClick={ligarNesteImovel}
+              >
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Atender também este imóvel
+              </Button>
+            </>
+          ) : null}
+
+          {!form && !contaConectada && (
             <Button
               type="button"
               size="sm"
@@ -417,14 +465,24 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
             <DialogTitle className="text-base">Desligar o atendimento 24h?</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm leading-relaxed">
-            <p>
-              Suas credenciais são apagadas do cofre e o agente para de responder os hóspedes deste
-              imóvel imediatamente.
-            </p>
-            <p className="rounded-xl bg-warning/10 p-3 text-xs text-warning">
-              Troque também a senha no Airbnb e encerre as sessões ativas. É a única forma de ter
-              certeza de que nenhum acesso continua de pé.
-            </p>
+            {outrosLigados > 0 ? (
+              <p>
+                O agente para de responder os hóspedes deste imóvel imediatamente. Sua conta do
+                Airbnb continua conectada, porque{" "}
+                {outrosLigados === 1 ? "outro imóvel ainda é atendido" : `outros ${outrosLigados} imóveis ainda são atendidos`}.
+              </p>
+            ) : (
+              <>
+                <p>
+                  Este é o último imóvel atendido, então suas credenciais também são apagadas do
+                  cofre.
+                </p>
+                <p className="rounded-xl bg-warning/10 p-3 text-xs text-warning">
+                  Troque também a senha no Airbnb e encerre as sessões ativas. É a única forma de
+                  ter certeza de que nenhum acesso continua de pé.
+                </p>
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <Button
