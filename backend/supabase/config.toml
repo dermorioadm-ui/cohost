@@ -19,6 +19,9 @@ verify_jwt = true
 [functions.ical-validate]
 verify_jwt = true
 
+[functions.porter-connect]
+verify_jwt = true
+
 [functions.billing-checkout]
 verify_jwt = true
 

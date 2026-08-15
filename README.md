@@ -58,6 +58,14 @@ quatro horas ou quarenta minutos.
 
 **O token do hóspede fica no localStorage.** A estadia dura dias; a aba não.
 
+**As credenciais da portaria entram, mas não saem.** A tela do imóvel conecta o
+prédio à Kiper e, a partir daí, quem preenche o cadastro em `/c/:slug` já
+aparece liberado na portaria — é o passo que o dono fazia à mão, hóspede por
+hóspede. O formulário sempre abre vazio: `porter_accounts` não tem policy de
+SELECT, nem para o dono, então não existe o que carregar de volta. Trocar uma
+credencial é recolar as seis, e isso acontece quando o token do prédio vence —
+não toda semana.
+
 ## Falta
 
 - Painel admin (o backend já serve os dados em `admin-metrics`)

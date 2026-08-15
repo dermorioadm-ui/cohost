@@ -89,6 +89,27 @@ export interface ActivationState {
   blocked_at: string;
 }
 
+/** Os seis headers que o app do prédio manda em toda chamada à Kiper. */
+export interface PorterCredentials {
+  porter_token: string;
+  porter_application_key: string;
+  porter_account_local_id: string;
+  porter_user_context_id: string;
+  porter_user_partner_context_id: string;
+  porter_condo_person_context_id: string;
+}
+
+export interface PorterState {
+  ok: boolean;
+  connected: boolean;
+  active?: boolean;
+  last_ok_at?: string | null;
+  last_error?: string | null;
+  updated_at?: string | null;
+  reason?: string;
+  message?: string;
+}
+
 export const api = {
   property: {
     upsert: (body: Record<string, unknown>) =>
@@ -118,6 +139,33 @@ export const api = {
         next_checkout?: string | null;
         saved?: boolean;
       }>("ical-validate", { body }),
+  },
+
+  // Portaria digital. As credenciais só viajam daqui para o backend — a
+  // tabela não tem policy de SELECT, então nunca voltam. Por isso o formulário
+  // não "carrega o que está salvo": não existe carregar.
+  porter: {
+    status: (property_id: string) =>
+      request<PorterState>("porter-connect", { body: { action: "status", property_id } }),
+
+    test: (body: PorterCredentials & { property_id: string }) =>
+      request<{ ok: boolean; status: number | null; message: string }>("porter-connect", {
+        body: { action: "test", ...body },
+      }),
+
+    save: (body: PorterCredentials & { property_id: string; skip_test?: boolean }) =>
+      request<{
+        ok: boolean;
+        saved?: boolean;
+        reason?: string;
+        queued?: number;
+        message: string;
+      }>("porter-connect", { body: { action: "save", ...body } }),
+
+    disconnect: (property_id: string) =>
+      request<{ ok: boolean; connected: boolean; message: string }>("porter-connect", {
+        body: { action: "disconnect", property_id },
+      }),
   },
 
   cleaner: {
