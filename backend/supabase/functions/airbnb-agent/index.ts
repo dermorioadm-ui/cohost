@@ -1,142 +1,184 @@
 // =============================================================================
 // airbnb-agent — endpoint único do agente (worker no PC do operador)
-// Contrato: header x-agent-key identifica o DONO (não o imóvel).
-// Body: { action: 'credentials'|'next-jobs'|'finish-job'|'context'|'log'|'failure', ... }
-// Erro estável: { error: { code, message } }
+//
+// Contrato externo (o worker depende disto, não mude sem avisar):
+//   header  x-agent-key   identifica o DONO, não o imóvel
+//   body    { action: 'credentials'|'next-jobs'|'finish-job'|'context'|'log'|'failure', ... }
+//   erro    { error: { code, message } }
+//
+// Esta é a reescrita da versão da PR #1, que não rodava contra o schema real:
+//
+//   * next-jobs fazia SELECT sem RESERVAR o job. Duas leituras seguidas — ou
+//     duas janelas do worker — devolviam o mesmo job, e o hóspede receberia a
+//     mesma mensagem duas vezes. Agora passa por hermes_next_jobs, que reserva
+//     com FOR UPDATE SKIP LOCKED e devolve à fila o que ficou preso.
+//   * log inseria o listing_id (texto) na coluna property_id, que é uuid —
+//     erro de tipo em toda chamada.
+//   * finish-job marcava 'falhou' direto. Falha agora volta para 'pendente';
+//     quem desiste é o contador de tentativas, senão o Airbnb fora do ar às 3h
+//     queima um lembrete de check-out para sempre.
+//
+// Nada aqui escreve senha ou prompt em log. O prompt do imóvel carrega código
+// de fechadura e senha de Wi-Fi: trate com o cuidado da senha da conta.
 // =============================================================================
 
-import { handler, json, readJson, errors } from "../_shared/lib/http.ts";
-import { admin } from "../_shared/lib/db.ts";
+import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
+import { admin, appToday } from "../_shared/lib/db.ts";
 
 const AGENT_KEY_HEADER = "x-agent-key";
+
+interface Body {
+  action?: string;
+  listing_id?: string;
+  job_id?: string;
+  status?: string;
+  error?: string;
+  limit?: number;
+  guest_message?: string;
+  agent_reply?: string;
+}
 
 async function resolveOwner(req: Request): Promise<string> {
   const key = req.headers.get(AGENT_KEY_HEADER);
   if (!key) throw errors.unauthorized("Cabeçalho x-agent-key ausente");
 
-  const { data, error } = await admin().rpc("resolve_owner_by_agent_key", {
-    p_key: key,
-  });
+  const { data, error } = await admin().rpc("resolve_owner_by_agent_key", { p_key: key });
   if (error) throw errors.upstream(`Falha ao resolver owner: ${error.message}`);
   if (!data) throw errors.forbidden("Chave de agente inválida");
   return data as string;
 }
 
 export default handler(async (req: Request) => {
-  const ownerId = await resolveOwner(req);
-  const body = await readJson(req);
-  const action = body.action;
+  if (req.method !== "POST") throw errors.invalid("Use POST");
 
-  switch (action) {
-    // 1. credentials — retorna login/senha/totp em memória; nunca em log/disco.
+  const ownerId = await resolveOwner(req);
+  const body = await readJson<Body>(req);
+  const db = admin();
+
+  switch (body.action) {
+    // ---- 1. credenciais ------------------------------------------------------
+    // Só em memória do worker. A função já registra a leitura em audit_log.
     case "credentials": {
-      const { data, error } = await admin().rpc("get_credentials_for_owner", {
-        p_owner: ownerId,
-      });
+      const { data, error } = await db.rpc("get_credentials_for_owner", { p_owner: ownerId });
       if (error) throw errors.upstream(`Falha ao ler credencial: ${error.message}`);
       if (!data) throw errors.notFound("Nenhuma credencial cadastrada para este dono");
-      // data já vem descriptografado pela function (e já logou em audit_log).
       return json({ credentials: data });
     }
 
-    // 2. next-jobs — fila pull: jobs pendentes do dono.
+    // ---- 2. fila -------------------------------------------------------------
     case "next-jobs": {
-      const { data, error } = await admin()
-        .from("hermes_jobs")
-        .select("*")
-        .eq("owner_id", ownerId)
-        .eq("status", "pendente")
-        .order("created_at", { ascending: true })
-        .limit(10);
+      const { data, error } = await db.rpc("hermes_next_jobs", {
+        p_owner: ownerId,
+        p_limit: body.limit ?? 10,
+      });
       if (error) throw errors.upstream(`Falha ao ler fila: ${error.message}`);
       return json({ jobs: data ?? [] });
     }
 
-    // 3. finish-job — marca processado/falhou.
     case "finish-job": {
-      const jobId = body.job_id;
-      const status = body.status === "falhou" ? "falhou" : "processado";
-      if (!jobId) throw errors.invalid("job_id obrigatório");
-      const { error } = await admin()
-        .from("hermes_jobs")
-        .update({ status, processed_at: new Date().toISOString() })
-        .eq("id", jobId)
-        .eq("owner_id", ownerId);
+      if (!body.job_id) throw errors.invalid("job_id obrigatório");
+
+      const { data, error } = await db.rpc("hermes_finish_job", {
+        p_owner: ownerId,
+        p_job: body.job_id,
+        p_ok: body.status !== "falhou",
+        p_error: body.error?.slice(0, 500) ?? null,
+      });
       if (error) throw errors.upstream(`Falha ao concluir job: ${error.message}`);
+      // `false` é job de outro dono ou id inexistente. O worker precisa
+      // distinguir isso de erro de servidor para não reprocessar em laço.
+      if (!data) throw errors.notFound("Job não encontrado");
       return json({ ok: true });
     }
 
-    // 4. context — prompt do imóvel + reserva atual + horários. EXIGE listing_id.
+    // ---- 3. contexto do imóvel ----------------------------------------------
     case "context": {
-      const listingId = body.listing_id;
+      const listingId = body.listing_id?.trim();
       if (!listingId) throw errors.invalid("listing_id obrigatório nesta ação");
 
-      const { data: src, error: srcErr } = await admin()
+      // O join com properties prende o anúncio ao DONO da chave. Sem ele, uma
+      // chave válida leria o contexto de qualquer imóvel da base sabendo o
+      // número do anúncio — que é público na URL do Airbnb.
+      const { data: src, error: srcErr } = await db
         .from("property_ical_sources")
-        .select("property_id")
+        .select("property_id, properties!inner(owner_id)")
         .eq("listing_id", listingId)
+        .eq("properties.owner_id", ownerId)
         .limit(1);
+
       if (srcErr) throw errors.upstream(`Falha ao achar imóvel: ${srcErr.message}`);
-      if (!src || src.length === 0) throw errors.notFound("listing_id não encontrado");
+      if (!src?.length) throw errors.notFound("listing_id não encontrado");
+
       const propertyId = src[0].property_id;
 
-      const { data: prop, error: propErr } = await admin()
+      const { data: prop, error: propErr } = await db
         .from("properties")
-        .select("name, ai_prompt, ai_config, ai_enabled, checkin_time, checkout_time")
+        .select("name, neighborhood, ai_prompt, ai_config, ai_enabled, checkin_time, checkout_time")
         .eq("id", propertyId)
         .single();
       if (propErr) throw errors.upstream(`Falha ao ler imóvel: ${propErr.message}`);
 
-      // Reserva atual (mais próxima, confirmada)
-      const { data: res, error: resErr } = await admin()
+      const { data: res, error: resErr } = await db
         .from("reservations")
         .select("checkin_date, checkout_date, guest_label, status")
         .eq("property_id", propertyId)
         .eq("status", "confirmed")
-        .gte("checkout_date", new Date().toISOString().slice(0, 10))
+        .gte("checkout_date", appToday())
         .order("checkin_date", { ascending: true })
         .limit(1);
       if (resErr) throw errors.upstream(`Falha ao ler reserva: ${resErr.message}`);
 
-      // ATENÇÃO: ai_prompt pode conter lock/wifi. Tratar com cuidado de senha:
-      // não logar, não expor em logs de servidor (acima não logamos).
       return json({
         property: prop,
-        current_reservation: res && res.length ? res[0] : null,
+        current_reservation: res?.length ? res[0] : null,
       });
     }
 
-    // 5. log — grava guest_message + agent_reply em hermes_messages.
+    // ---- 4. registro da conversa --------------------------------------------
     case "log": {
       const { guest_message, agent_reply, listing_id } = body;
-      if (!guest_message || !agent_reply) {
-        throw errors.invalid("guest_message e agent_reply obrigatórios");
+      if (!guest_message && !agent_reply) {
+        throw errors.invalid("informe guest_message e/ou agent_reply");
       }
-      const { error } = await admin()
-        .from("hermes_messages")
-        .insert({
-          owner_id: ownerId,
-          property_id: listing_id ?? null,
-          guest_message,
-          agent_reply,
-          channel: "airbnb",
-        });
+
+      // listing_id vai na coluna de texto. property_id é uuid e continua
+      // preenchido quando dá para resolver — é ele que a tela Conversas usa.
+      let propertyUuid: string | null = null;
+      if (listing_id) {
+        const { data: src } = await db
+          .from("property_ical_sources")
+          .select("property_id, properties!inner(owner_id)")
+          .eq("listing_id", listing_id)
+          .eq("properties.owner_id", ownerId)
+          .limit(1);
+        propertyUuid = src?.[0]?.property_id ?? null;
+      }
+
+      const { error } = await db.from("hermes_messages").insert({
+        owner_id: ownerId,
+        property_id: propertyUuid,
+        listing_id: listing_id ?? null,
+        guest_message: guest_message ?? null,
+        agent_reply: agent_reply ?? null,
+        channel: "airbnb",
+      });
       if (error) throw errors.upstream(`Falha ao gravar log: ${error.message}`);
       return json({ ok: true });
     }
 
-    // 6. failure — login quebrou ou caiu em verificação de identidade.
+    // ---- 5. o login quebrou --------------------------------------------------
     case "failure": {
-      const { error } = await admin()
-        .from("credentials")
-        .update({ status: "falhou", updated_at: new Date().toISOString() })
-        .eq("owner_id", ownerId);
+      const { error } = await db.rpc("hermes_mark_failure", {
+        p_owner: ownerId,
+        p_error: body.error?.slice(0, 500) ?? "erro não informado",
+      });
       if (error) throw errors.upstream(`Falha ao marcar falha: ${error.message}`);
-      // O worker decide se para; aqui só registramos. E-mail ao dono é outro job.
+      // O worker deve PARAR aqui se caiu em verificação de identidade:
+      // insistir transforma verificação em bloqueio da conta.
       return json({ ok: true, status: "falhou" });
     }
 
     default:
-      throw errors.invalid(`Ação desconhecida: ${String(action)}`);
+      throw errors.invalid(`Ação desconhecida: ${String(body.action)}`);
   }
 });

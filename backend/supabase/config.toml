@@ -43,7 +43,7 @@ verify_jwt = true
 # Agente rodando em VPS. Não há usuário logado do outro lado: autoriza pelo
 # header x-agent-key, cujo hash está em agent_api_keys. verify_jwt = true aqui
 # barraria o único cliente que esta function tem.
-[functions.hermes-agent]
+[functions.airbnb-agent]
 verify_jwt = false
 
 # Hóspede anônimo. Autoriza por property_id + rate limit; devolve session_token.
