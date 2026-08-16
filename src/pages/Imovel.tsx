@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  CalendarDays, Check, ChevronLeft, Clock, Copy, Link as LinkIcon, Loader2,
-  MessageCircle, ShoppingBasket, Sparkles, Trash2, UserPlus, Users,
+  CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Copy, DoorOpen, Home,
+  Link as LinkIcon, Loader2, MessageCircle, ShoppingBasket, Sparkles, Trash2,
+  UserPlus, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, api } from "@/lib/api";
@@ -26,10 +27,19 @@ import { cn, getAppBaseUrl } from "@/lib/utils";
  * começa com `propertyId = null` e por isso só cria. Sem esta página, trocar a
  * diarista de um imóvel exigia cadastrar o imóvel de novo.
  *
- * O bloco da diarista é o motivo desta tela existir, então ele explica o
- * estado em vez de só oferecer um campo: quem já aceitou aparece para escolher,
- * quem foi convidada e não respondeu aparece como pendente — que é o caso em
- * que o dono acha que atribuiu e não atribuiu.
+ * A tela nasceu como uma página só, com todas as seções empilhadas — e virou
+ * uma rolagem sem fim: quem entrava para mudar o horário de saída passava por
+ * calendário, diarista, insumos, portaria e assistente antes de achar o campo.
+ * Agora é o mesmo trilho do onboarding, com uma diferença que importa: aqui
+ * NÃO é um trilho. As etapas são atalhos — dá para tocar em qualquer uma, em
+ * qualquer ordem, porque quem já cadastrou o imóvel vem consertar UMA coisa.
+ *
+ * As seis etapas espelham as quatro automatizações da lista de imóveis, para
+ * que "Insumos desligado" lá tenha um lugar óbvio para ser ligado aqui.
+ *
+ * O formulário continua sendo um só: `save()` grava tudo de uma vez, e por
+ * isso o botão de salvar aparece em toda etapa — trocar de etapa não perde o
+ * que foi digitado, mas sair da página perderia.
  */
 
 interface PropertyRow {
@@ -78,7 +88,6 @@ interface IcalSource {
   events_last_sync: number | null;
 }
 
-
 interface ConnectedProfile {
   user_id: string;
   full_name: string | null;
@@ -91,6 +100,17 @@ interface PendingInvite {
   cleaner_phone_e164: string | null;
 }
 
+type StepKey = "imovel" | "calendario" | "limpeza" | "insumos" | "atendimento" | "portaria";
+
+const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
+  { key: "imovel", label: "Imóvel", icon: Home },
+  { key: "calendario", label: "Calendário", icon: CalendarDays },
+  { key: "limpeza", label: "Limpeza", icon: Users },
+  { key: "insumos", label: "Insumos", icon: ShoppingBasket },
+  { key: "atendimento", label: "Atendimento", icon: MessageCircle },
+  { key: "portaria", label: "Portaria", icon: DoorOpen },
+];
+
 const hhmm = (t: string | null | undefined) => (t ?? "").slice(0, 5);
 
 export default function Imovel() {
@@ -102,8 +122,11 @@ export default function Imovel() {
   const [ai, setAi] = useState<Record<string, string>>({});
   const [cleaners, setCleaners] = useState<ConnectedProfile[]>([]);
   const [pending, setPending] = useState<PendingInvite[]>([]);
+  const [porterActive, setPorterActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [step, setStep] = useState<StepKey>("imovel");
 
   // Convite de uma diarista nova, a partir desta tela
   const [invite, setInvite] = useState({ name: "", phone: "" });
@@ -134,11 +157,16 @@ export default function Imovel() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Retrato do que está gravado. Com as seções separadas em etapas, dá para
+  // digitar na primeira e sair pela sexta sem passar por um botão de salvar —
+  // e o aviso de alteração pendente é o que impede isso de virar perda.
+  const saved = useRef("");
+
   useEffect(() => {
     if (!user || !id) return;
 
     (async () => {
-      const [prop, conn, inv, src] = await Promise.all([
+      const [prop, conn, inv, src, porter] = await Promise.all([
         supabase.from("properties").select("*").eq("id", id).maybeSingle(),
         supabase.rpc("connected_profiles"),
         supabase
@@ -150,6 +178,7 @@ export default function Imovel() {
           .select("id, provider, url, last_success_at, consecutive_fails, events_last_sync")
           .eq("property_id", id)
           .eq("active", true),
+        supabase.from("porter_status").select("active").eq("property_id", id).maybeSingle(),
       ]);
 
       if (!prop.data) {
@@ -168,6 +197,7 @@ export default function Imovel() {
 
       setForm(row);
       setAi((row.ai_config ?? {}) as Record<string, string>);
+      saved.current = snapshot(row, (row.ai_config ?? {}) as Record<string, string>);
       setCleaners(connected);
       setPending(
         ((inv.data ?? []) as PendingInvite[]).filter(
@@ -175,6 +205,7 @@ export default function Imovel() {
         ),
       );
       setIcals((src.data ?? []) as IcalSource[]);
+      setPorterActive(Boolean((porter.data as { active: boolean } | null)?.active));
       setLoading(false);
     })();
   }, [user, id, navigate]);
@@ -182,8 +213,40 @@ export default function Imovel() {
   const set = <K extends keyof PropertyRow>(key: K, value: PropertyRow[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
 
-  const cleanerName = (id: string) =>
-    cleaners.find((c) => c.user_id === id)?.full_name?.split(" ")[0] ?? "ela";
+  const cleanerName = (cid: string) =>
+    cleaners.find((c) => c.user_id === cid)?.full_name?.split(" ")[0] ?? "ela";
+
+  const dirty = useMemo(
+    () => Boolean(form) && snapshot(form!, ai) !== saved.current,
+    [form, ai],
+  );
+
+  const goTo = (key: StepKey) => {
+    setStep(key);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const stepIndex = STEPS.findIndex((s) => s.key === step);
+
+  // Bolinha verde na etapa = a automação daquela etapa está no ar. É a mesma
+  // leitura da lista de imóveis, para "Insumos desligado" lá ter um destino aqui.
+  const stepDone = (key: StepKey): boolean => {
+    if (!form) return false;
+    switch (key) {
+      case "imovel":
+        return Boolean(form.name.trim() && form.address?.trim() && form.city?.trim());
+      case "calendario":
+        return icals.length > 0;
+      case "limpeza":
+        return form.self_clean || Boolean(form.cleaner_id);
+      case "insumos":
+        return form.supplies_enabled;
+      case "atendimento":
+        return Boolean(form.auto_message_confirmed_at) && form.ai_enabled;
+      case "portaria":
+        return porterActive;
+    }
+  };
 
   const saveIcal = async (provider: IcalChannel["provider"]) => {
     const url = (icalUrl[provider] ?? "").trim();
@@ -255,7 +318,10 @@ export default function Imovel() {
 
   const save = async () => {
     if (!form) return;
-    if (form.name.trim().length < 2) return toast.error("O imóvel precisa de um nome");
+    if (form.name.trim().length < 2) {
+      goTo("imovel");
+      return toast.error("O imóvel precisa de um nome");
+    }
 
     setSaving(true);
     try {
@@ -286,6 +352,7 @@ export default function Imovel() {
         supplies_items: form.supplies_items ?? [],
         supplies_notes: form.supplies_notes ?? "",
       });
+      saved.current = snapshot(form, ai);
       toast.success("Imóvel atualizado.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não consegui salvar");
@@ -352,12 +419,52 @@ export default function Imovel() {
     );
   }
 
+  /**
+   * Botão de salvar + navegação, repetido no rodapé de cada etapa.
+   *
+   * É um elemento, não um componente: declarado como função dentro do render,
+   * cada digitação criaria um tipo novo e o React remontaria o rodapé inteiro.
+   */
+  const stepFooter = (
+    <div className="space-y-2">
+      <Button onClick={save} disabled={saving} className="h-12 w-full text-base font-bold">
+        {saving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+        Salvar alterações
+      </Button>
+
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="flex-1"
+          disabled={stepIndex === 0}
+          onClick={() => goTo(STEPS[stepIndex - 1].key)}
+        >
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          {stepIndex === 0 ? "Início" : STEPS[stepIndex - 1].label}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="flex-1"
+          disabled={stepIndex === STEPS.length - 1}
+          onClick={() => goTo(STEPS[stepIndex + 1].key)}
+        >
+          {stepIndex === STEPS.length - 1 ? "Fim" : STEPS[stepIndex + 1].label}
+          <ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-5 pb-4">
+    <div className="space-y-4 pb-4">
       <header className="flex items-center gap-3">
         <Link
           to="/imoveis"
-          aria-label="Voltar"
+          aria-label="Voltar para a lista"
           className="-ml-2 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -365,714 +472,811 @@ export default function Imovel() {
         <h1 className="min-w-0 truncate text-lg font-bold">{form.name}</h1>
       </header>
 
-      {/* ---------------------------------------------------- Identificação */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <h2 className="font-semibold">Identificação</h2>
-
-        <div className="space-y-1.5">
-          <Label>Nome do imóvel</Label>
-          <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Bairro</Label>
-            <Input
-              value={form.neighborhood ?? ""}
-              onChange={(e) => set("neighborhood", e.target.value)}
-              placeholder="Icaraí"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Cidade</Label>
-            <Input
-              value={form.city ?? ""}
-              onChange={(e) => set("city", e.target.value)}
-              placeholder="Niterói"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Endereço</Label>
-          <Input
-            value={form.address ?? ""}
-            onChange={(e) => set("address", e.target.value)}
-            placeholder="Rua Ator Paulo Gustavo"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label>Número</Label>
-            <Input
-              value={form.street_number ?? ""}
-              onChange={(e) => set("street_number", e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Apto</Label>
-            <Input
-              value={form.apt_number ?? ""}
-              onChange={(e) => set("apt_number", e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Bloco</Label>
-            <Input value={form.block ?? ""} onChange={(e) => set("block", e.target.value)} />
-          </div>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- Calendário */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Calendário</h2>
-        </div>
-
-        {icals.length === 0 && (
-          <p className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-warning">
-            Sem calendário conectado. Enquanto não colar o link, nenhuma reserva entra sozinha e a
-            agenda da diarista fica vazia.
-          </p>
-        )}
-
-        {ICAL_CHANNELS.map((channel) => {
-          const source = icals.find((s) => s.provider === channel.provider);
-          const busy = checkingIcal === channel.provider;
-
+      {/* Etapas — atalhos, não trilho. Rolam na horizontal no celular porque
+          seis rótulos legíveis não cabem em 375px de largura. */}
+      <nav
+        aria-label="Etapas da configuração"
+        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {STEPS.map((s) => {
+          const active = s.key === step;
+          const done = stepDone(s.key);
           return (
-            <div
-              key={channel.provider}
-              className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
-            >
-              <div className="flex items-center gap-2">
-                <span className={cn("h-2.5 w-2.5 rounded-full", channel.swatch)} aria-hidden />
-                <h3 className="text-sm font-semibold">{channel.label}</h3>
-              </div>
-
-              {source && (
-                <div
-                  className={cn(
-                    "rounded-lg p-2.5 text-xs leading-relaxed",
-                    source.consecutive_fails > 0
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-success/10 text-success",
-                  )}
-                >
-                  {source.consecutive_fails > 0 ? (
-                    <>
-                      Falhando há {source.consecutive_fails} tentativa(s). Reserva nova não está
-                      virando limpeza. Normalmente o link foi regerado na plataforma — gere outro e
-                      cole abaixo.
-                    </>
-                  ) : (
-                    <>
-                      Conectado
-                      {source.events_last_sync !== null &&
-                        ` · ${source.events_last_sync} reserva(s) na última leitura`}
-                    </>
-                  )}
-                </div>
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => goTo(s.key)}
+              aria-current={active ? "step" : undefined}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-white/[0.07] text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
-
-              <div className="space-y-1.5">
-                <Label>{source ? "Trocar o link" : "Link do calendário (iCal)"}</Label>
-                <Input
-                  value={icalUrl[channel.provider] ?? ""}
-                  onChange={(e) =>
-                    setIcalUrl((u) => ({ ...u, [channel.provider]: e.target.value }))
-                  }
-                  placeholder={channel.placeholder}
-                  inputMode="url"
-                />
-                <p className="text-xs text-muted-foreground">No {channel.label}: {channel.hint}</p>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => saveIcal(channel.provider)}
-                disabled={busy}
-              >
-                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Validar e salvar
-              </Button>
-            </div>
+            >
+              <s.icon className="h-4 w-4 shrink-0" />
+              {s.label}
+              <span
+                aria-hidden
+                className={cn(
+                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                  done ? "bg-success" : "bg-muted-foreground/30",
+                )}
+              />
+            </button>
           );
         })}
+      </nav>
 
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Dá para conectar os dois ao mesmo tempo. Cada canal sincroniza sozinho a cada 15 minutos,
-          e no calendário as reservas aparecem com a cor do canal de origem.
+      {dirty && (
+        <p className="rounded-xl bg-warning/10 px-3 py-2 text-xs leading-relaxed text-warning">
+          Você mudou algo e ainda não salvou. Trocar de etapa não perde nada — sair da página, sim.
         </p>
-      </section>
+      )}
 
-      {/* --------------------------------------------------------- Operação */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Operação</h2>
-        </div>
+      {/* ---------------------------------------------------------- Imóvel */}
+      {step === "imovel" && (
+        <>
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <h2 className="font-semibold">Identificação</h2>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Entrada</Label>
-            <Input
-              type="time"
-              value={hhmm(form.checkin_time)}
-              onChange={(e) => set("checkin_time", e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Saída</Label>
-            <Input
-              type="time"
-              value={hhmm(form.checkout_time)}
-              onChange={(e) => set("checkout_time", e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Valor pago por limpeza (R$)</Label>
-          <Input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
-            value={String(form.turnover_price)}
-            onChange={(e) => set("turnover_price", Number(e.target.value))}
-          />
-          <p className="text-xs text-muted-foreground">
-            É o que aparece na agenda da diarista e no total do mês.
-          </p>
-        </div>
-      </section>
-
-      {/* --------------------------------------------------------- Diarista */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Quem faz a limpeza</h2>
-        </div>
-
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">
-          <Checkbox
-            checked={form.self_clean}
-            onCheckedChange={(v) => {
-              set("self_clean", Boolean(v));
-              if (v) set("cleaner_id", null);
-            }}
-            className="mt-0.5"
-          />
-          <span className="text-sm">
-            <span className="font-medium">Eu mesmo limpo</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              As tarefas aparecem na sua própria agenda.
-            </span>
-          </span>
-        </label>
-
-        {!form.self_clean && (
-          <>
-            {cleaners.length > 0 && (
-              <div className="space-y-2">
-                <Label>Diarista deste imóvel</Label>
-                {cleaners.map((c) => (
-                  <button
-                    key={c.user_id}
-                    type="button"
-                    onClick={() => set("cleaner_id", c.user_id)}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors",
-                      form.cleaner_id === c.user_id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-accent",
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium">
-                        {c.full_name ?? "Diarista"}
-                      </span>
-                      {c.phone_e164 && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {c.phone_e164}
-                        </span>
-                      )}
-                    </span>
-                    {form.cleaner_id === c.user_id && (
-                      <span className="shrink-0 text-xs font-medium text-primary">Vinculada</span>
-                    )}
-                  </button>
-                ))}
-
-                {form.cleaner_id && (
-                  <button
-                    type="button"
-                    onClick={() => set("cleaner_id", null)}
-                    className="text-xs text-muted-foreground hover:underline"
-                  >
-                    Desvincular
-                  </button>
-                )}
-
-                {/* Link do painel dela. Some quando ninguém está vinculado,
-                    porque sem vínculo não há agenda para o link abrir. */}
-                {form.cleaner_id && (
-                  <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
-                    <div className="flex items-center gap-2">
-                      <LinkIcon className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium">Link do painel dela</p>
-                    </div>
-
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      É por ele que {cleanerName(form.cleaner_id)} entra na agenda, vê as saídas do
-                      dia e marca a limpeza como feita. Ela digita só o telefone — senha não existe.
-                      O link é permanente: vale para salvar na tela inicial do celular dela.
-                    </p>
-
-                    {panelLink?.cleaner_id === form.cleaner_id ? (
-                      <div className="space-y-2">
-                        <p className="break-all rounded-lg bg-muted p-2.5 font-mono text-[11px] leading-relaxed">
-                          {panelLink.access_url}
-                        </p>
-
-                        {panelLink.replaced_previous && (
-                          <p className="text-xs leading-relaxed text-warning">
-                            O link anterior deixou de valer. Se ela já tinha um salvo, mande este.
-                          </p>
-                        )}
-
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => {
-                              navigator.clipboard.writeText(panelLink.access_url);
-                              setLinkCopied(true);
-                              setTimeout(() => setLinkCopied(false), 2000);
-                            }}
-                          >
-                            {linkCopied ? (
-                              <Check className="mr-2 h-4 w-4" />
-                            ) : (
-                              <Copy className="mr-2 h-4 w-4" />
-                            )}
-                            {linkCopied ? "Copiado" : "Copiar"}
-                          </Button>
-
-                          {panelLink.whatsapp_link && (
-                            <Button asChild size="sm" className="flex-1">
-                              <a href={panelLink.whatsapp_link} target="_blank" rel="noreferrer">
-                                Enviar no WhatsApp
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => generatePanelLink(form.cleaner_id!)}
-                          disabled={linking}
-                        >
-                          {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Mostrar o link
-                        </Button>
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                          O link fica guardado embaralhado, então não dá para lê-lo de volta —
-                          mostrar gera um novo e derruba o anterior.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {pending.length > 0 && (
-              <div className="rounded-xl bg-warning/10 p-3">
-                <p className="text-xs font-medium text-warning">Convite ainda não aceito</p>
-                <ul className="mt-1 space-y-0.5">
-                  {/* O número aparece porque o mesmo nome pode ter sido
-                      convidado duas vezes em números diferentes — e aí o aviso
-                      parece contradizer a diarista que já está vinculada logo
-                      acima. Com o telefone à vista, dá para ver qual é qual. */}
-                  {pending.map((p) => (
-                    <li key={p.id} className="text-xs text-muted-foreground">
-                      {p.cleaner_name}
-                      {p.cleaner_phone_e164 && ` · ${p.cleaner_phone_e164}`}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Esse convite foi enviado mas o link não foi aberto. Enquanto não aceitarem, não
-                  dá para vincular a nenhum imóvel — o vínculo só existe depois do aceite.
-                </p>
-              </div>
-            )}
-
-            {cleaners.length === 0 && pending.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma diarista vinculada ainda. Convide abaixo.
-              </p>
-            )}
-
-            {/* Convidar (ou reenviar para quem não aceitou) */}
-            <div className="space-y-3 rounded-xl border border-dashed border-border p-3">
-              <div className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Convidar diarista</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Nome dela</Label>
-                <Input
-                  value={invite.name}
-                  onChange={(e) => setInvite({ ...invite, name: e.target.value })}
-                  placeholder="Aline"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>WhatsApp dela</Label>
-                <Input
-                  value={invite.phone}
-                  onChange={(e) => setInvite({ ...invite, phone: e.target.value })}
-                  placeholder="(21) 99999-8888"
-                  inputMode="tel"
-                />
-              </div>
-
-              {waLink && (
-                <div className="space-y-2 rounded-lg bg-success/10 p-3">
-                  <p className="text-xs leading-relaxed text-success">
-                    Convite gerado. Envie pelo seu WhatsApp — chegando do seu número, ela clica
-                    sem desconfiar.
-                  </p>
-                  <Button asChild size="sm" className="w-full">
-                    <a href={waLink} target="_blank" rel="noreferrer">
-                      Enviar no WhatsApp
-                    </a>
-                  </Button>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={sendInvite}
-                disabled={inviting}
-              >
-                {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Gerar convite
-              </Button>
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* -------------------------------------------- Reposição de itens */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <ShoppingBasket className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Reposição de itens</h2>
-        </div>
-
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Um valor fixo por mês para a diarista repor o que acaba — papel,
-          café, sabão, pilha. Ela vê a lista na agenda dela; você vê o valor
-          no Financeiro como despesa do mês.
-        </p>
-
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">
-          <Checkbox
-            checked={form.supplies_enabled}
-            onCheckedChange={(v) => {
-              const on = Boolean(v);
-              set("supplies_enabled", on);
-              // Ligar com a lista vazia deixaria a diarista sem saber o que
-              // repor — o combinado começa preenchido e o dono tira o que não usa.
-              if (on && (form.supplies_items ?? []).length === 0) {
-                set("supplies_items", SUPPLIES_SUGERIDOS);
-              }
-            }}
-            className="mt-0.5"
-          />
-          <span className="text-sm">
-            <span className="font-medium">Combinar reposição com a diarista</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Desligado, nada disso aparece para ela.
-            </span>
-          </span>
-        </label>
-
-        {form.supplies_enabled && (
-          <>
             <div className="space-y-1.5">
-              <Label>Valor fixo por mês (R$)</Label>
+              <Label>Nome do imóvel</Label>
+              <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Bairro</Label>
+                <Input
+                  value={form.neighborhood ?? ""}
+                  onChange={(e) => set("neighborhood", e.target.value)}
+                  placeholder="Icaraí"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cidade</Label>
+                <Input
+                  value={form.city ?? ""}
+                  onChange={(e) => set("city", e.target.value)}
+                  placeholder="Niterói"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Endereço</Label>
+              <Input
+                value={form.address ?? ""}
+                onChange={(e) => set("address", e.target.value)}
+                placeholder="Rua Ator Paulo Gustavo"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Número</Label>
+                <Input
+                  value={form.street_number ?? ""}
+                  onChange={(e) => set("street_number", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Apto</Label>
+                <Input
+                  value={form.apt_number ?? ""}
+                  onChange={(e) => set("apt_number", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Bloco</Label>
+                <Input value={form.block ?? ""} onChange={(e) => set("block", e.target.value)} />
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Operação</h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Entrada</Label>
+                <Input
+                  type="time"
+                  value={hhmm(form.checkin_time)}
+                  onChange={(e) => set("checkin_time", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Saída</Label>
+                <Input
+                  type="time"
+                  value={hhmm(form.checkout_time)}
+                  onChange={(e) => set("checkout_time", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Valor pago por limpeza (R$)</Label>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
-                step="10"
-                value={String(form.supplies_monthly_price ?? 0)}
-                onChange={(e) => set("supplies_monthly_price", Number(e.target.value))}
+                step="0.01"
+                value={String(form.turnover_price)}
+                onChange={(e) => set("turnover_price", Number(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">
-                O que você paga a ela por mês, além das diárias de limpeza.
+                É o que aparece na agenda da diarista e no total do mês.
               </p>
             </div>
+          </section>
 
-            <div className="space-y-2">
-              <Label>O que ela repõe</Label>
-              <div className="flex flex-wrap gap-2">
-                {(form.supplies_items ?? []).map((item) => (
-                  <span
-                    key={item}
-                    className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs"
+          {stepFooter}
+
+          {/* Zona de perigo fica na etapa da identidade do imóvel, e depois do
+              rodapé: quem veio ajustar um horário não esbarra nela. */}
+          <section className="space-y-3 rounded-xl border border-destructive/30 p-5">
+            <div className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-destructive" />
+              <h2 className="font-semibold text-destructive">Remover imóvel</h2>
+            </div>
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Ele sai do app e para de gerar limpeza. O histórico de reservas fica
+              guardado, então nada de contabilidade se perde — mas as limpezas ainda não
+              feitas deste imóvel são canceladas e somem da agenda da diarista.
+            </p>
+
+            {confirmDelete ? (
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1"
+                  onClick={archive}
+                  disabled={deleting}
+                >
+                  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Confirmar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setConfirmDelete(true)}
+              >
+                Remover {form.name}
+              </Button>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* ------------------------------------------------------ Calendário */}
+      {step === "calendario" && (
+        <>
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Calendário</h2>
+            </div>
+
+            {icals.length === 0 && (
+              <p className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                Sem calendário conectado. Enquanto não colar o link, nenhuma reserva entra sozinha e
+                a agenda da diarista fica vazia.
+              </p>
+            )}
+
+            {ICAL_CHANNELS.map((channel) => {
+              const source = icals.find((s) => s.provider === channel.provider);
+              const busy = checkingIcal === channel.provider;
+
+              return (
+                <div
+                  key={channel.provider}
+                  className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn("h-2.5 w-2.5 rounded-full", channel.swatch)} aria-hidden />
+                    <h3 className="text-sm font-semibold">{channel.label}</h3>
+                  </div>
+
+                  {source && (
+                    <div
+                      className={cn(
+                        "rounded-lg p-2.5 text-xs leading-relaxed",
+                        source.consecutive_fails > 0
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-success/10 text-success",
+                      )}
+                    >
+                      {source.consecutive_fails > 0 ? (
+                        <>
+                          Falhando há {source.consecutive_fails} tentativa(s). Reserva nova não está
+                          virando limpeza. Normalmente o link foi regerado na plataforma — gere
+                          outro e cole abaixo.
+                        </>
+                      ) : (
+                        <>
+                          Conectado
+                          {source.events_last_sync !== null &&
+                            ` · ${source.events_last_sync} reserva(s) na última leitura`}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label>{source ? "Trocar o link" : "Link do calendário (iCal)"}</Label>
+                    <Input
+                      value={icalUrl[channel.provider] ?? ""}
+                      onChange={(e) =>
+                        setIcalUrl((u) => ({ ...u, [channel.provider]: e.target.value }))
+                      }
+                      placeholder={channel.placeholder}
+                      inputMode="url"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      No {channel.label}: {channel.hint}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => saveIcal(channel.provider)}
+                    disabled={busy}
                   >
-                    {item}
+                    {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Validar e salvar
+                  </Button>
+                </div>
+              );
+            })}
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Dá para conectar os dois ao mesmo tempo. Cada canal sincroniza sozinho a cada 15
+              minutos, e no calendário as reservas aparecem com a cor do canal de origem.
+            </p>
+          </section>
+
+          {stepFooter}
+        </>
+      )}
+
+      {/* --------------------------------------------------------- Limpeza */}
+      {step === "limpeza" && (
+        <>
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Quem faz a limpeza</h2>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">
+              <Checkbox
+                checked={form.self_clean}
+                onCheckedChange={(v) => {
+                  set("self_clean", Boolean(v));
+                  if (v) set("cleaner_id", null);
+                }}
+                className="mt-0.5"
+              />
+              <span className="text-sm">
+                <span className="font-medium">Eu mesmo limpo</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  As tarefas aparecem na sua própria agenda.
+                </span>
+              </span>
+            </label>
+
+            {!form.self_clean && (
+              <>
+                {cleaners.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Diarista deste imóvel</Label>
+                    {cleaners.map((c) => (
+                      <button
+                        key={c.user_id}
+                        type="button"
+                        onClick={() => set("cleaner_id", c.user_id)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors",
+                          form.cleaner_id === c.user_id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:bg-accent",
+                        )}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">
+                            {c.full_name ?? "Diarista"}
+                          </span>
+                          {c.phone_e164 && (
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {c.phone_e164}
+                            </span>
+                          )}
+                        </span>
+                        {form.cleaner_id === c.user_id && (
+                          <span className="shrink-0 text-xs font-medium text-primary">
+                            Vinculada
+                          </span>
+                        )}
+                      </button>
+                    ))}
+
+                    {form.cleaner_id && (
+                      <button
+                        type="button"
+                        onClick={() => set("cleaner_id", null)}
+                        className="text-xs text-muted-foreground hover:underline"
+                      >
+                        Desvincular
+                      </button>
+                    )}
+
+                    {/* Link do painel dela. Some quando ninguém está vinculado,
+                        porque sem vínculo não há agenda para o link abrir. */}
+                    {form.cleaner_id && (
+                      <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                        <div className="flex items-center gap-2">
+                          <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium">Link do painel dela</p>
+                        </div>
+
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          É por ele que {cleanerName(form.cleaner_id)} entra na agenda, vê as saídas
+                          do dia e marca a limpeza como feita. Ela digita só o telefone — senha não
+                          existe. O link é permanente: vale para salvar na tela inicial do celular
+                          dela.
+                        </p>
+
+                        {panelLink?.cleaner_id === form.cleaner_id ? (
+                          <div className="space-y-2">
+                            <p className="break-all rounded-lg bg-muted p-2.5 font-mono text-[11px] leading-relaxed">
+                              {panelLink.access_url}
+                            </p>
+
+                            {panelLink.replaced_previous && (
+                              <p className="text-xs leading-relaxed text-warning">
+                                O link anterior deixou de valer. Se ela já tinha um salvo, mande
+                                este.
+                              </p>
+                            )}
+
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(panelLink.access_url);
+                                  setLinkCopied(true);
+                                  setTimeout(() => setLinkCopied(false), 2000);
+                                }}
+                              >
+                                {linkCopied ? (
+                                  <Check className="mr-2 h-4 w-4" />
+                                ) : (
+                                  <Copy className="mr-2 h-4 w-4" />
+                                )}
+                                {linkCopied ? "Copiado" : "Copiar"}
+                              </Button>
+
+                              {panelLink.whatsapp_link && (
+                                <Button asChild size="sm" className="flex-1">
+                                  <a
+                                    href={panelLink.whatsapp_link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Enviar no WhatsApp
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => generatePanelLink(form.cleaner_id!)}
+                              disabled={linking}
+                            >
+                              {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Mostrar o link
+                            </Button>
+                            <p className="text-xs leading-relaxed text-muted-foreground">
+                              O link fica guardado embaralhado, então não dá para lê-lo de volta —
+                              mostrar gera um novo e derruba o anterior.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {pending.length > 0 && (
+                  <div className="rounded-xl bg-warning/10 p-3">
+                    <p className="text-xs font-medium text-warning">Convite ainda não aceito</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {/* O número aparece porque o mesmo nome pode ter sido
+                          convidado duas vezes em números diferentes — e aí o
+                          aviso parece contradizer a diarista já vinculada logo
+                          acima. Com o telefone à vista, dá para ver qual é qual. */}
+                      {pending.map((p) => (
+                        <li key={p.id} className="text-xs text-muted-foreground">
+                          {p.cleaner_name}
+                          {p.cleaner_phone_e164 && ` · ${p.cleaner_phone_e164}`}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      Esse convite foi enviado mas o link não foi aberto. Enquanto não aceitarem,
+                      não dá para vincular a nenhum imóvel — o vínculo só existe depois do aceite.
+                    </p>
+                  </div>
+                )}
+
+                {cleaners.length === 0 && pending.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma diarista vinculada ainda. Convide abaixo.
+                  </p>
+                )}
+
+                {/* Convidar (ou reenviar para quem não aceitou) */}
+                <div className="space-y-3 rounded-xl border border-dashed border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">Convidar diarista</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Nome dela</Label>
+                    <Input
+                      value={invite.name}
+                      onChange={(e) => setInvite({ ...invite, name: e.target.value })}
+                      placeholder="Aline"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>WhatsApp dela</Label>
+                    <Input
+                      value={invite.phone}
+                      onChange={(e) => setInvite({ ...invite, phone: e.target.value })}
+                      placeholder="(21) 99999-8888"
+                      inputMode="tel"
+                    />
+                  </div>
+
+                  {waLink && (
+                    <div className="space-y-2 rounded-lg bg-success/10 p-3">
+                      <p className="text-xs leading-relaxed text-success">
+                        Convite gerado. Envie pelo seu WhatsApp — chegando do seu número, ela clica
+                        sem desconfiar.
+                      </p>
+                      <Button asChild size="sm" className="w-full">
+                        <a href={waLink} target="_blank" rel="noreferrer">
+                          Enviar no WhatsApp
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={sendInvite}
+                    disabled={inviting}
+                  >
+                    {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Gerar convite
+                  </Button>
+                </div>
+              </>
+            )}
+          </section>
+
+          {stepFooter}
+        </>
+      )}
+
+      {/* --------------------------------------------------------- Insumos */}
+      {step === "insumos" && (
+        <>
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <ShoppingBasket className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Reposição de itens</h2>
+            </div>
+
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Um valor fixo por mês para a diarista repor o que acaba — papel, café, sabão, pilha.
+              Ela vê a lista na agenda dela; você vê o valor no Financeiro como despesa do mês.
+            </p>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">
+              <Checkbox
+                checked={form.supplies_enabled}
+                onCheckedChange={(v) => {
+                  const on = Boolean(v);
+                  set("supplies_enabled", on);
+                  // Ligar com a lista vazia deixaria a diarista sem saber o que
+                  // repor — o combinado começa preenchido e o dono tira o que não usa.
+                  if (on && (form.supplies_items ?? []).length === 0) {
+                    set("supplies_items", SUPPLIES_SUGERIDOS);
+                  }
+                }}
+                className="mt-0.5"
+              />
+              <span className="text-sm">
+                <span className="font-medium">Combinar reposição com a diarista</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Desligado, nada disso aparece para ela.
+                </span>
+              </span>
+            </label>
+
+            {form.supplies_enabled && (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Valor fixo por mês (R$)</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="10"
+                    value={String(form.supplies_monthly_price ?? 0)}
+                    onChange={(e) => set("supplies_monthly_price", Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O que você paga a ela por mês, além das diárias de limpeza.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>O que ela repõe</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(form.supplies_items ?? []).map((item) => (
+                      <span
+                        key={item}
+                        className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs"
+                      >
+                        {item}
+                        <button
+                          type="button"
+                          aria-label={`Remover ${item}`}
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            set(
+                              "supplies_items",
+                              (form.supplies_items ?? []).filter((i) => i !== item),
+                            )
+                          }
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+
+                  <Input
+                    placeholder="Adicionar item e apertar Enter"
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      const valor = e.currentTarget.value.trim();
+                      if (!valor) return;
+                      const atuais = form.supplies_items ?? [];
+                      if (!atuais.includes(valor)) set("supplies_items", [...atuais, valor]);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+
+                  {(form.supplies_items ?? []).length === 0 && (
                     <button
                       type="button"
-                      aria-label={`Remover ${item}`}
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() =>
-                        set(
-                          "supplies_items",
-                          (form.supplies_items ?? []).filter((i) => i !== item),
-                        )
-                      }
+                      className="text-xs font-medium text-primary hover:underline"
+                      onClick={() => set("supplies_items", SUPPLIES_SUGERIDOS)}
                     >
-                      ×
+                      Usar a lista sugerida
                     </button>
-                  </span>
-                ))}
-              </div>
+                  )}
+                </div>
 
-              <Input
-                placeholder="Adicionar item e apertar Enter"
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  const valor = e.currentTarget.value.trim();
-                  if (!valor) return;
-                  const atuais = form.supplies_items ?? [];
-                  if (!atuais.includes(valor)) set("supplies_items", [...atuais, valor]);
-                  e.currentTarget.value = "";
-                }}
+                <div className="space-y-1.5">
+                  <Label>Observações para a diarista (opcional)</Label>
+                  <Textarea
+                    rows={2}
+                    value={form.supplies_notes ?? ""}
+                    onChange={(e) => set("supplies_notes", e.target.value)}
+                    placeholder="Ex.: marca do café, onde guardar as compras, guardar a nota."
+                  />
+                </div>
+              </>
+            )}
+          </section>
+
+          {stepFooter}
+        </>
+      )}
+
+      {/* ----------------------------------------------------- Atendimento */}
+      {step === "atendimento" && (
+        <>
+          <section className="space-y-3 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Mensagem automática</h2>
+            </div>
+
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              É ela que leva o hóspede ao cadastro e ao assistente. Cole no Airbnb em Mensagens
+              programadas, na reserva confirmada.
+            </p>
+
+            <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-relaxed">
+              {autoMessage}
+            </pre>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                navigator.clipboard.writeText(autoMessage);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            >
+              {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {copied ? "Copiado" : "Copiar mensagem"}
+            </Button>
+
+            {form.auto_message_confirmed_at ? (
+              <p className="text-center text-xs text-success">
+                Você marcou que já configurou no Airbnb.
+              </p>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={confirmAutoMessage}
+                disabled={saving}
+              >
+                Já coloquei no Airbnb
+              </Button>
+            )}
+          </section>
+
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">O que a assistente sabe</h2>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3">
+              <Checkbox
+                checked={form.ai_enabled}
+                onCheckedChange={(v) => set("ai_enabled", Boolean(v))}
+                className="mt-0.5"
               />
+              <span className="text-sm">Responder os hóspedes automaticamente</span>
+            </label>
 
-              {(form.supplies_items ?? []).length === 0 && (
-                <button
-                  type="button"
-                  className="text-xs font-medium text-primary hover:underline"
-                  onClick={() => set("supplies_items", SUPPLIES_SUGERIDOS)}
-                >
-                  Usar a lista sugerida
-                </button>
-              )}
+            {AI_FIELDS.map((f) => (
+              <div key={f.key} className="space-y-1.5">
+                <Label>
+                  {f.icon} {f.label}
+                  {f.required && <span className="ml-1 text-destructive">*</span>}
+                </Label>
+                <Textarea
+                  rows={2}
+                  value={ai[f.key] ?? ""}
+                  onChange={(e) => setAi({ ...ai, [f.key]: e.target.value })}
+                  placeholder={f.placeholder}
+                />
+              </div>
+            ))}
+          </section>
+
+          {stepFooter}
+
+          {/* Depois do rodapé de propósito: o cartão tem gravação própria (a
+              senha vai para o cofre por outro caminho) e, acima do botão, o
+              dono leria "Salvar alterações" como se salvasse a credencial. */}
+          <HermesCard propertyId={form.id} />
+        </>
+      )}
+
+      {/* -------------------------------------------------------- Portaria */}
+      {step === "portaria" && (
+        <>
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <h2 className="font-semibold">Condomínio</h2>
+
+            <div className="space-y-1.5">
+              <Label>Nome do condomínio</Label>
+              <Input
+                value={form.condo_name ?? ""}
+                onChange={(e) => set("condo_name", e.target.value)}
+              />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Observações para a diarista (opcional)</Label>
-              <Textarea
-                rows={2}
-                value={form.supplies_notes ?? ""}
-                onChange={(e) => set("supplies_notes", e.target.value)}
-                placeholder="Ex.: marca do café, onde guardar as compras, guardar a nota."
+              <Label>E-mail da portaria</Label>
+              <Input
+                type="email"
+                value={form.condo_email ?? ""}
+                onChange={(e) => set("condo_email", e.target.value)}
+                placeholder="portaria@condominio.com.br"
               />
+              <p className="text-xs text-muted-foreground">
+                Sem esse e-mail, o aviso de cada reserva não sai.
+              </p>
             </div>
-          </>
-        )}
-      </section>
 
-      {/* ------------------------------------------------------- Condomínio */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <h2 className="font-semibold">Condomínio</h2>
+            <label className="flex cursor-pointer items-start gap-3">
+              <Checkbox
+                checked={form.condo_notify}
+                onCheckedChange={(v) => set("condo_notify", Boolean(v))}
+                className="mt-0.5"
+              />
+              <span className="text-sm">Avisar a portaria a cada reserva</span>
+            </label>
+          </section>
 
-        <div className="space-y-1.5">
-          <Label>Nome do condomínio</Label>
-          <Input
-            value={form.condo_name ?? ""}
-            onChange={(e) => set("condo_name", e.target.value)}
-          />
-        </div>
+          {/* Fora do formulário principal de propósito: salvar credencial de
+              terceiro é outra transação, com teste próprio, e não deve depender
+              do "Salvar alterações". */}
+          <PorterConnect propertyId={form.id} />
 
-        <div className="space-y-1.5">
-          <Label>E-mail da portaria</Label>
-          <Input
-            type="email"
-            value={form.condo_email ?? ""}
-            onChange={(e) => set("condo_email", e.target.value)}
-            placeholder="portaria@condominio.com.br"
-          />
-          <p className="text-xs text-muted-foreground">
-            Sem esse e-mail, o aviso de cada reserva não sai.
-          </p>
-        </div>
-
-        <label className="flex cursor-pointer items-start gap-3">
-          <Checkbox
-            checked={form.condo_notify}
-            onCheckedChange={(v) => set("condo_notify", Boolean(v))}
-            className="mt-0.5"
-          />
-          <span className="text-sm">Avisar a portaria a cada reserva</span>
-        </label>
-      </section>
-
-      {/* -------------------------------------------------- Portaria digital */}
-      {/* Fora do formulário principal de propósito: salvar credencial de
-          terceiro é outra transação, com teste próprio, e não deve depender
-          do "Salvar alterações" lá embaixo. */}
-      <PorterConnect propertyId={form.id} />
-
-      {/* ----------------------------------------------- Mensagem automática */}
-      <section className="space-y-3 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Mensagem automática</h2>
-        </div>
-
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          É ela que leva o hóspede ao cadastro e ao assistente. Cole no Airbnb em Mensagens
-          programadas, na reserva confirmada.
-        </p>
-
-        <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-relaxed">
-          {autoMessage}
-        </pre>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => {
-            navigator.clipboard.writeText(autoMessage);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-        >
-          {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-          {copied ? "Copiado" : "Copiar mensagem"}
-        </Button>
-
-        {form.auto_message_confirmed_at ? (
-          <p className="text-center text-xs text-success">Você marcou que já configurou no Airbnb.</p>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            className="w-full"
-            onClick={confirmAutoMessage}
-            disabled={saving}
-          >
-            Já coloquei no Airbnb
-          </Button>
-        )}
-      </section>
-
-      {/* ------------------------------------------------------- Assistente */}
-      <section className="space-y-4 rounded-xl glass-card p-5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">O que a assistente sabe</h2>
-        </div>
-
-        <label className="flex cursor-pointer items-start gap-3">
-          <Checkbox
-            checked={form.ai_enabled}
-            onCheckedChange={(v) => set("ai_enabled", Boolean(v))}
-            className="mt-0.5"
-          />
-          <span className="text-sm">Responder os hóspedes automaticamente</span>
-        </label>
-
-        {AI_FIELDS.map((f) => (
-          <div key={f.key} className="space-y-1.5">
-            <Label>
-              {f.icon} {f.label}
-              {f.required && <span className="ml-1 text-destructive">*</span>}
-            </Label>
-            <Textarea
-              rows={2}
-              value={ai[f.key] ?? ""}
-              onChange={(e) => setAi({ ...ai, [f.key]: e.target.value })}
-              placeholder={f.placeholder}
-            />
-          </div>
-        ))}
-      </section>
-
-      <Button onClick={save} disabled={saving} className="h-12 w-full text-base font-bold">
-        {saving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-        Salvar alterações
-      </Button>
-
-      {/* Depois do botão de salvar de propósito: o cartão tem gravação própria
-          (a senha vai para o cofre por outro caminho) e, acima do botão, o dono
-          leria "Salvar alterações" como se fosse salvar a credencial também. */}
-      <HermesCard propertyId={form.id} />
-
-      {/* ------------------------------------------------------------ Remover */}
-      <section className="space-y-3 rounded-xl border border-destructive/30 p-5">
-        <div className="flex items-center gap-2">
-          <Trash2 className="h-4 w-4 text-destructive" />
-          <h2 className="font-semibold text-destructive">Remover imóvel</h2>
-        </div>
-
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Ele sai do app e para de gerar limpeza. O histórico de reservas fica
-          guardado, então nada de contabilidade se perde — mas as limpezas ainda não
-          feitas deste imóvel são canceladas e somem da agenda da diarista.
-        </p>
-
-        {confirmDelete ? (
-          <div className="flex gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="flex-1"
-              onClick={archive}
-              disabled={deleting}
-            >
-              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirmar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              onClick={() => setConfirmDelete(false)}
-              disabled={deleting}
-            >
-              Cancelar
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Remover {form.name}
-          </Button>
-        )}
-      </section>
+          {stepFooter}
+        </>
+      )}
     </div>
   );
+}
+
+/**
+ * Só os campos que `save()` grava. iCal, portaria e convite têm gravação
+ * própria e não podem contar como "alteração pendente" do formulário.
+ */
+function snapshot(p: PropertyRow, ai: Record<string, string>): string {
+  return JSON.stringify([
+    p.name, p.property_type, p.address, p.street_number, p.apt_number, p.block,
+    p.neighborhood, p.city, p.state, p.zip_code, p.condo_name, p.condo_email,
+    p.condo_notify, hhmm(p.checkin_time), hhmm(p.checkout_time), Number(p.turnover_price),
+    p.self_clean, p.cleaner_id, p.ai_enabled, p.supplies_enabled,
+    Number(p.supplies_monthly_price), p.supplies_items ?? [], p.supplies_notes ?? "",
+    ai,
+  ]);
 }
