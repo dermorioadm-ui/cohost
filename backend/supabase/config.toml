@@ -16,6 +16,10 @@ verify_jwt = true
 [functions.cleaner-invite]
 verify_jwt = true
 
+# Dono reemitindo o link permanente do painel da diarista já vinculada.
+[functions.cleaner-link]
+verify_jwt = true
+
 [functions.ical-validate]
 verify_jwt = true
 

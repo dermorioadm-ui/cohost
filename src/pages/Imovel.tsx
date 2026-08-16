@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  CalendarDays, Check, ChevronLeft, Clock, Copy, Loader2,
+  CalendarDays, Check, ChevronLeft, Clock, Copy, Link as LinkIcon, Loader2,
   MessageCircle, ShoppingBasket, Sparkles, Trash2, UserPlus, Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -110,6 +110,17 @@ export default function Imovel() {
   const [inviting, setInviting] = useState(false);
   const [waLink, setWaLink] = useState<string | null>(null);
 
+  // Link permanente do painel da diarista já vinculada. Não vem no carregamento:
+  // o token só existe em claro no instante em que é gerado.
+  const [panelLink, setPanelLink] = useState<{
+    cleaner_id: string;
+    access_url: string;
+    whatsapp_link: string | null;
+    replaced_previous: boolean;
+  } | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   // Calendário — uma fonte por canal. O banco já tratava assim desde a 0004
   // (UNIQUE property_id, provider); era a tela que só enxergava uma.
   const [icals, setIcals] = useState<IcalSource[]>([]);
@@ -148,10 +159,21 @@ export default function Imovel() {
       }
 
       const row = prop.data as PropertyRow;
+      const connected = (conn.data ?? []) as ConnectedProfile[];
+
+      // Um convite antigo continua `pending` mesmo depois de a diarista entrar
+      // por outro link — e o aviso "ainda não aceitou" aparecia embaixo do
+      // nome de quem já estava vinculada. Quem já é conexão não é pendência.
+      const jaVinculados = new Set(connected.map((c) => c.phone_e164).filter(Boolean));
+
       setForm(row);
       setAi((row.ai_config ?? {}) as Record<string, string>);
-      setCleaners((conn.data ?? []) as ConnectedProfile[]);
-      setPending((inv.data ?? []) as PendingInvite[]);
+      setCleaners(connected);
+      setPending(
+        ((inv.data ?? []) as PendingInvite[]).filter(
+          (p) => !p.cleaner_phone_e164 || !jaVinculados.has(p.cleaner_phone_e164),
+        ),
+      );
       setIcals((src.data ?? []) as IcalSource[]);
       setLoading(false);
     })();
@@ -159,6 +181,9 @@ export default function Imovel() {
 
   const set = <K extends keyof PropertyRow>(key: K, value: PropertyRow[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
+
+  const cleanerName = (id: string) =>
+    cleaners.find((c) => c.user_id === id)?.full_name?.split(" ")[0] ?? "ela";
 
   const saveIcal = async (provider: IcalChannel["provider"]) => {
     const url = (icalUrl[provider] ?? "").trim();
@@ -266,6 +291,23 @@ export default function Imovel() {
       toast.error(e instanceof Error ? e.message : "Não consegui salvar");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const generatePanelLink = async (cleanerId: string) => {
+    setLinking(true);
+    try {
+      const res = await api.cleaner.link(cleanerId);
+      setPanelLink({
+        cleaner_id: cleanerId,
+        access_url: res.access_url,
+        whatsapp_link: res.whatsapp_link,
+        replaced_previous: res.replaced_previous,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não consegui gerar o link");
+    } finally {
+      setLinking(false);
     }
   };
 
@@ -577,16 +619,105 @@ export default function Imovel() {
                     Desvincular
                   </button>
                 )}
+
+                {/* Link do painel dela. Some quando ninguém está vinculado,
+                    porque sem vínculo não há agenda para o link abrir. */}
+                {form.cleaner_id && (
+                  <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-medium">Link do painel dela</p>
+                    </div>
+
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      É por ele que {cleanerName(form.cleaner_id)} entra na agenda, vê as saídas do
+                      dia e marca a limpeza como feita. Ela digita só o telefone — senha não existe.
+                      O link é permanente: vale para salvar na tela inicial do celular dela.
+                    </p>
+
+                    {panelLink?.cleaner_id === form.cleaner_id ? (
+                      <div className="space-y-2">
+                        <p className="break-all rounded-lg bg-muted p-2.5 font-mono text-[11px] leading-relaxed">
+                          {panelLink.access_url}
+                        </p>
+
+                        {panelLink.replaced_previous && (
+                          <p className="text-xs leading-relaxed text-warning">
+                            O link anterior deixou de valer. Se ela já tinha um salvo, mande este.
+                          </p>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              navigator.clipboard.writeText(panelLink.access_url);
+                              setLinkCopied(true);
+                              setTimeout(() => setLinkCopied(false), 2000);
+                            }}
+                          >
+                            {linkCopied ? (
+                              <Check className="mr-2 h-4 w-4" />
+                            ) : (
+                              <Copy className="mr-2 h-4 w-4" />
+                            )}
+                            {linkCopied ? "Copiado" : "Copiar"}
+                          </Button>
+
+                          {panelLink.whatsapp_link && (
+                            <Button asChild size="sm" className="flex-1">
+                              <a href={panelLink.whatsapp_link} target="_blank" rel="noreferrer">
+                                Enviar no WhatsApp
+                              </a>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => generatePanelLink(form.cleaner_id!)}
+                          disabled={linking}
+                        >
+                          {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Mostrar o link
+                        </Button>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          O link fica guardado embaralhado, então não dá para lê-lo de volta —
+                          mostrar gera um novo e derruba o anterior.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {pending.length > 0 && (
               <div className="rounded-xl bg-warning/10 p-3">
                 <p className="text-xs font-medium text-warning">Convite ainda não aceito</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {pending.map((p) => p.cleaner_name).join(", ")} recebeu o convite mas ainda não
-                  abriu o link. Enquanto ela não aceitar, não dá para vincular a nenhum imóvel —
-                  o vínculo só existe depois do aceite dela.
+                <ul className="mt-1 space-y-0.5">
+                  {/* O número aparece porque o mesmo nome pode ter sido
+                      convidado duas vezes em números diferentes — e aí o aviso
+                      parece contradizer a diarista que já está vinculada logo
+                      acima. Com o telefone à vista, dá para ver qual é qual. */}
+                  {pending.map((p) => (
+                    <li key={p.id} className="text-xs text-muted-foreground">
+                      {p.cleaner_name}
+                      {p.cleaner_phone_e164 && ` · ${p.cleaner_phone_e164}`}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                  Esse convite foi enviado mas o link não foi aberto. Enquanto não aceitarem, não
+                  dá para vincular a nenhum imóvel — o vínculo só existe depois do aceite.
                 </p>
               </div>
             )}

@@ -225,6 +225,18 @@ export const api = {
         auto_sent: boolean;
       }>("cleaner-invite", { body }),
 
+    // Reemite o link permanente do painel dela. O anterior deixa de valer —
+    // o token não fica em claro no banco, então não há "ver o mesmo de novo".
+    link: (cleaner_id: string) =>
+      request<{
+        invite_id: string;
+        cleaner_name: string;
+        access_url: string;
+        whatsapp_link: string | null;
+        whatsapp_message: string;
+        replaced_previous: boolean;
+      }>("cleaner-link", { body: { cleaner_id } }),
+
     preview: (token: string) =>
       request<{
         cleaner_name: string;
