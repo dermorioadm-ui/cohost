@@ -88,6 +88,7 @@ supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" \
   EMAIL_FROM_NAME="${EMAIL_FROM_NAME:-HospedePay}" \
   WHATSAPP_ENABLED="${WHATSAPP_ENABLED:-false}" \
   PORTER_ENABLED="${PORTER_ENABLED:-true}" \
+  PORTER_API_BASE_URL="${PORTER_API_BASE_URL:-https://api.cloud.kiper.com.br}" \
   >/dev/null
 echo "  ✓ segredos publicados"
 

@@ -89,42 +89,29 @@ export interface ActivationState {
   blocked_at: string;
 }
 
-export interface HermesCredential {
-  // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
-  // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
-  login: string;
-  status: "pendente" | "aguardando_codigo" | "ativo" | "falhou";
-  last_error: string | null;
-  last_read_at: string | null;
-  read_count: number;
-  created_at: string;
-  /** Preenchidos só enquanto o Airbnb está pedindo código de verificação. */
-  challenge_type: string | null;
-  challenge_hint: string | null;
-  codigo_enviado: boolean;
-  expira_em: number | null;
-  /** Reenvio: pedido em aberto, quantos já foram, e quando o botão destrava. */
-  reenvio_pedido: boolean;
-  reenvios_usados: number;
-  reenvio_em: number;
+/** Os seis headers que o app do prédio manda em toda chamada à Kiper. */
+export interface PorterCredentials {
+  porter_token: string;
+  porter_application_key: string;
+  porter_account_local_id: string;
+  porter_user_context_id: string;
+  porter_user_partner_context_id: string;
+  porter_condo_person_context_id: string;
+  // Vêm da captura do login (resposta de /auth/activate). Sem o segredo do
+  // TOTP a Kiper recusa o cadastro desde ago/2026 — é o que liga a integração.
+  porter_totp_secret?: string;
+  porter_app_device_id?: string;
 }
 
-export interface HermesStatus {
-  properties: Array<{
-    id: string;
-    name: string;
-    airbnb_listing_id: string | null;
-    hermes_enabled: boolean;
-  }>;
-  credential: HermesCredential | null;
-  term: { id: string; title: string; body: string; version: string } | null;
-  keys: Array<{
-    id: string;
-    name: string;
-    key_prefix: string;
-    created_at: string;
-    last_used_at: string | null;
-  }>;
+export interface PorterState {
+  ok: boolean;
+  connected: boolean;
+  active?: boolean;
+  last_ok_at?: string | null;
+  last_error?: string | null;
+  updated_at?: string | null;
+  reason?: string;
+  message?: string;
 }
 
 export const api = {
@@ -156,6 +143,33 @@ export const api = {
         next_checkout?: string | null;
         saved?: boolean;
       }>("ical-validate", { body }),
+  },
+
+  // Portaria digital. As credenciais só viajam daqui para o backend — a
+  // tabela não tem policy de SELECT, então nunca voltam. Por isso o formulário
+  // não "carrega o que está salvo": não existe carregar.
+  porter: {
+    status: (property_id: string) =>
+      request<PorterState>("porter-connect", { body: { action: "status", property_id } }),
+
+    test: (body: PorterCredentials & { property_id: string }) =>
+      request<{ ok: boolean; status: number | null; message: string }>("porter-connect", {
+        body: { action: "test", ...body },
+      }),
+
+    save: (body: PorterCredentials & { property_id: string; skip_test?: boolean }) =>
+      request<{
+        ok: boolean;
+        saved?: boolean;
+        reason?: string;
+        queued?: number;
+        message: string;
+      }>("porter-connect", { body: { action: "save", ...body } }),
+
+    disconnect: (property_id: string) =>
+      request<{ ok: boolean; connected: boolean; message: string }>("porter-connect", {
+        body: { action: "disconnect", property_id },
+      }),
   },
 
   cleaner: {

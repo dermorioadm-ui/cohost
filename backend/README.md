@@ -74,6 +74,7 @@ segredo, e nenhum dos dois pode ficar no código.
 |---|---|---|
 | `property-upsert` | owner | Cria/atualiza imóvel. Aceita preenchimento parcial — é a entrada do funil conversacional. Devolve o que ainda falta. |
 | `ical-validate` | owner | Valida o link do calendário e devolve *"achei 7 reservas, próxima saída dia 14"*. Salva se `save: true`. |
+| `porter-connect` | owner | Conecta o imóvel à portaria digital: testa as credenciais na Kiper, grava em `porter_accounts` (inclusive a semente do código de acesso) e enfileira quem já estava cadastrado. Nunca devolve credencial. |
 | `cleaner-invite` | owner | Gera o convite da diarista e devolve um link `wa.me` com a mensagem pronta. |
 | `admin-metrics` | admin | Painel: KPIs, assinantes, funil de ativação, saúde do sistema. |
 
@@ -108,7 +109,7 @@ segredo, e nenhum dos dois pode ficar no código.
 | `"Anon can lookup referral codes"` em `profiles` — RLS é por linha, então entregava e-mail, WhatsApp, **chave PIX** e IDs do Stripe de todo afiliado | `profiles` fechada. A consulta de indicação virou `lookup_referral()`, que devolve só id e primeiro nome. |
 | `register-porter-guest` público, aceitando `propertyId` avulso — qualquer um cadastrava morador na portaria digital, com permissão de abrir porta | O cadastro na portaria só nasce de um `guest_registration` criado com sessão válida. |
 | Preço do checkout vindo do cliente | Preço sempre do banco (tabela `plans`). |
-| Credenciais da portaria legíveis pelo dono | `porter_accounts` sem policy de SELECT — só `service_role` lê, na hora de chamar a API. |
+| Credenciais da portaria legíveis pelo dono | `porter_accounts` sem policy de SELECT — só `service_role` lê, na hora de chamar a API. O formulário de conexão não carrega o que está salvo porque não há como carregar. |
 | `EXECUTE` de funções `SECURITY DEFINER` herdado de `PUBLIC` | `0016` revoga de `PUBLIC` e concede explicitamente. |
 
 ### Falhas funcionais corrigidas
@@ -155,14 +156,23 @@ prioriza latência), prompt do imóvel em cache e fallback server-side ligado.
 
 ## Estado atual
 
-**Escrito:** 20 migrations, a biblioteca compartilhada e **19 edge functions**.
+**Escrito:** 25 migrations, a biblioteca compartilhada e **20 edge functions**.
+
+> **Portaria digital (Kiper): código de acesso (TOTP).** Desde ~ago/2026 a
+> Kiper exige, no cadastro de morador, um `otp` de 6 dígitos que troca a cada
+> 30 s (TOTP, RFC 6238 — HMAC-SHA1, semente = o `keyHash` da resposta do login
+> `/auth/activate`). O `job-porter-sync` gera esse código pela função
+> `public.porter_totp`, a partir de `porter_accounts.porter_totp_secret`, e
+> envia junto os headers de identidade do app (`appname`, `appdeviceid`, etc.),
+> com `datetime` em **UTC** — hora local faz a Kiper responder "verifique a
+> hora do aparelho". Sem a semente, o cadastro é recusado com "token inválido".
 
 | Grupo | Funções |
 |---|---|
 | Jobs | `job-sync-ical`, `job-process-outbox`, `job-notify-condo`, `job-subscription-sweep`, `job-monthly-report`, `job-porter-sync` |
 | Hóspede | `guest-register`, `guest-chat` |
 | Diarista | `cleaner-invite`, `cleaner-accept` |
-| Dono | `property-upsert`, `ical-validate`, `billing-checkout`, `billing-portal` |
+| Dono | `property-upsert`, `ical-validate`, `porter-connect`, `billing-checkout`, `billing-portal` |
 | Admin | `admin-metrics`, `admin-users` |
 | Webhooks | `stripe-webhook`, `email-webhook`, `whatsapp-webhook` |
 

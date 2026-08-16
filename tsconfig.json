@@ -11,7 +11,10 @@
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    // Sem baseUrl: o TypeScript 5.9 já trata a opção como removida na 7 e
+    // aborta o `tsc -b` do build — a Vercel roda exatamente esse comando.
+    // Desde a 5.0, `paths` sem baseUrl resolve relativo a este arquivo, que é
+    // o que já queríamos.
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]

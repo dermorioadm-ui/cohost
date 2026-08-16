@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, api } from "@/lib/api";
+import { PorterConnect } from "@/components/PorterConnect";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
 import { AI_FIELDS } from "@/lib/propertyFields";
@@ -670,6 +671,12 @@ export default function Imovel() {
           <span className="text-sm">Avisar a portaria a cada reserva</span>
         </label>
       </section>
+
+      {/* -------------------------------------------------- Portaria digital */}
+      {/* Fora do formulário principal de propósito: salvar credencial de
+          terceiro é outra transação, com teste próprio, e não deve depender
+          do "Salvar alterações" lá embaixo. */}
+      <PorterConnect propertyId={form.id} />
 
       {/* ----------------------------------------------- Mensagem automática */}
       <section className="space-y-3 rounded-xl glass-card p-5">

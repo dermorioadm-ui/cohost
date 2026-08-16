@@ -41,6 +41,22 @@ function permissions() {
   ];
 }
 
+/**
+ * Identidade do app que a Kiper passou a conferir junto com o token. São
+ * valores globais do aplicativo (não variam por imóvel); o único campo por
+ * conta é o `appdeviceid`, que fica em porter_accounts.
+ *
+ * Capturados da versão iOS 6.17.5. Se um dia a Kiper travar por versão, é aqui
+ * que se atualiza — sem tocar em banco.
+ */
+const PORTER_APP = {
+  appname: "porter",
+  appos: "ios",
+  appversion: "6.17.5",
+  apposversion: "26.5",
+  userAgent: "Porter/1372 CFNetwork/3860.600.12 Darwin/25.5.0",
+} as const;
+
 /** E.164 -> "+55 21 99999 8888", formato que a Kiper espera exibir. */
 function formatPhone(e164: string | null): string {
   if (!e164) return "";
@@ -108,10 +124,10 @@ export default handler(async (req) => {
       continue;
     }
 
-    const payload = {
+    const phone = formatPhone(person.phone_e164);
+    const baseBody = {
       name: person.full_name,
       email: person.email,
-      phone: formatPhone(person.phone_e164),
       accessibilityTime: 3,
       profileId: account.porter_profile_id ?? 16,
       bookingTime: { initDate: row.access_from, endDate: row.access_until },
@@ -123,31 +139,102 @@ export default handler(async (req) => {
       `${env.porterBaseUrl()}/Mobile/InsertDwellerFromMobile` +
       `?token=${encodeURIComponent(account.porter_token)}`;
 
-    try {
-      const res = await fetch(url, {
+    // Sem a semente do TOTP não adianta chamar: desde ~ago/2026 a Kiper exige
+    // o `otp` e devolve "token inválido" sem ele. Marca a conta com o motivo
+    // exato — o que o dono lê é "falta reconectar", não um erro genérico.
+    if (!account.porter_totp_secret) {
+      await db
+        .from("porter_registrations")
+        .update({
+          status: "no_integration",
+          response_body:
+            "Portaria conectada sem o código de acesso (TOTP). Reconecte o imóvel capturando o keyHash do login.",
+        })
+        .eq("id", row.id);
+      await db
+        .from("porter_accounts")
+        .update({ last_error: "Falta o segredo do código de acesso (keyHash). Reconecte pela captura do login." })
+        .eq("id", account.id);
+      noIntegration++;
+      continue;
+    }
+
+    // O código de 6 dígitos, gerado agora no banco a partir da semente. Fica no
+    // Postgres de propósito: a semente nunca sai de porter_accounts, e a função
+    // só é executável pelo service_role.
+    const { data: otp, error: otpError } = await db.rpc("porter_totp", {
+      _secret: account.porter_totp_secret,
+    });
+    if (otpError || !otp) {
+      const attempts = row.attempts + 1;
+      await db
+        .from("porter_registrations")
+        .update({
+          status: attempts >= MAX_ATTEMPTS ? "failed" : "pending",
+          attempts,
+          response_body: `Falha ao gerar o código de acesso: ${otpError?.message ?? "sem retorno"}`,
+        })
+        .eq("id", row.id);
+      failed++;
+      continue;
+    }
+
+    const reqHeaders: HeadersInit = {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "pt-br",
+      token: account.porter_token,
+      "x-auth-token": account.porter_token,
+      applicationkey: account.porter_application_key,
+      condominiumpersoncontextid: account.porter_condo_person_context_id,
+      userpartnercontextid: account.porter_user_partner_context_id,
+      usercontextid: account.porter_user_context_id,
+      accountlocalid: account.porter_account_local_id,
+      accessid: account.porter_account_local_id,
+      condominiumgmt: account.porter_condominium_gmt ?? "-3",
+      otp: otp as unknown as string,
+      appname: PORTER_APP.appname,
+      appos: PORTER_APP.appos,
+      appversion: PORTER_APP.appversion,
+      apposversion: PORTER_APP.apposversion,
+      appdeviceid: account.porter_app_device_id ?? "",
+      "user-agent": PORTER_APP.userAgent,
+      "x-datadog-tracked-by": "react-native",
+      timezone: env.timezone(),
+      // UTC, igual ao que o app manda. A Kiper compara com o relógio dela;
+      // hora local (−3h) faz cair em "verifique a hora do aparelho".
+      datetime: new Date().toISOString().replace("T", " ").slice(0, 19),
+    };
+
+    // A Kiper exige telefone único no condomínio. Hóspede repetido, ou cujo
+    // número já está em outro cadastro, é o caso comum — e o próprio painel
+    // da portaria, nesse caso, cadastra só com nome e e-mail. Espelhamos isso:
+    // manda com telefone; se ela recusar o número, refaz sem o campo.
+    const post = (withPhone: boolean) =>
+      fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/plain, */*",
-          "Accept-Language": "pt-br",
-          token: account.porter_token,
-          "x-auth-token": account.porter_token,
-          applicationkey: account.porter_application_key,
-          condominiumpersoncontextid: account.porter_condo_person_context_id,
-          userpartnercontextid: account.porter_user_partner_context_id,
-          usercontextid: account.porter_user_context_id,
-          accountlocalid: account.porter_account_local_id,
-          accessid: account.porter_account_local_id,
-          condominiumgmt: account.porter_condominium_gmt ?? "-3",
-          timezone: env.timezone(),
-          datetime: new Date().toISOString().replace("T", " ").slice(0, 19),
-        },
-        body: JSON.stringify(payload),
+        headers: reqHeaders,
+        body: JSON.stringify(withPhone && phone ? { ...baseBody, phone } : baseBody),
       });
 
-      const text = await res.text();
+    try {
+      let res = await post(Boolean(phone));
+      let text = await res.text();
 
-      if (res.ok) {
+      if (
+        !res.ok &&
+        phone &&
+        /(telefone[^"]*(vinculado|cadastro)|"specificities"\s*:\s*"phone")/i.test(text)
+      ) {
+        res = await post(false);
+        text = await res.text();
+      }
+
+      // "Esse usuário possui cadastro nessa unidade": a pessoa já tem acesso
+      // (morador fixo ou hóspede que voltou). Não é falha — é liberado.
+      const alreadyRegistered = res.status === 400 && /possui cadastro/i.test(text);
+
+      if (res.ok || alreadyRegistered) {
         await db
           .from("porter_registrations")
           .update({

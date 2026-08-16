@@ -51,6 +51,7 @@ interface PorterStatus {
   active: boolean;
   last_ok_at: string | null;
   has_error: boolean;
+  last_error: string | null;
 }
 
 const PORTER_LABEL: Record<string, string> = {
@@ -98,7 +99,9 @@ export default function Portaria() {
           .gte("checkin_date", since)
           .order("checkin_date")
           .limit(60),
-        supabase.from("porter_status").select("property_id, active, last_ok_at, has_error"),
+        supabase
+          .from("porter_status")
+          .select("property_id, active, last_ok_at, has_error, last_error"),
         supabase
           .from("porter_registrations")
           .select("id, property_id, person_id, status, attempts, access_from, access_until")
@@ -232,14 +235,34 @@ export default function Portaria() {
                 </div>
               </dl>
 
-              {!avisa && (
-                <Link
-                  to="/comecar"
-                  className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
-                >
-                  Configurar o condomínio
-                </Link>
+              {/* O motivo, não só o fato: o erro quase sempre é token vencido,
+                  e quem lê "com erro" abre chamado em vez de reconectar. */}
+              {st?.last_error && (
+                <p className="mt-3 break-words rounded-lg bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  {st.last_error}
+                </p>
               )}
+
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                {!avisa && (
+                  <Link
+                    to="/comecar"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Configurar o condomínio
+                  </Link>
+                )}
+                <Link
+                  to={`/imoveis/${p.id}`}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {!st
+                    ? "Conectar a portaria digital"
+                    : st.has_error
+                      ? "Refazer a conexão da portaria"
+                      : "Ver a conexão da portaria"}
+                </Link>
+              </div>
             </article>
           );
         })}
