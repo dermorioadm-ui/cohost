@@ -26,6 +26,7 @@ export default function CleanerAccept() {
     owner_name: string;
     properties: number;
     needs_phone: boolean;
+    already_accepted: boolean;
   } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -103,12 +104,26 @@ export default function CleanerAccept() {
         </div>
 
         <h1 className="mt-5 text-xl font-bold leading-tight">
-          Oi, {preview!.cleaner_name.split(" ")[0]}!
+          {preview!.already_accepted ? "Bem-vinda de volta" : "Oi"},{" "}
+          {preview!.cleaner_name.split(" ")[0]}!
         </h1>
         <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-          <span className="font-medium text-foreground">{preview!.owner_name}</span> quer te dar
-          acesso à agenda de limpeza
-          {preview!.properties > 0 && ` de ${preview!.properties} ${preview!.properties === 1 ? "apartamento" : "apartamentos"}`}.
+          {preview!.already_accepted ? (
+            <>
+              Sua agenda de limpeza
+              {preview!.properties > 0 &&
+                ` de ${preview!.properties} ${preview!.properties === 1 ? "apartamento" : "apartamentos"}`}{" "}
+              está aqui. Este é o seu link fixo — salve na tela inicial do celular.
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-foreground">{preview!.owner_name}</span> quer te dar
+              acesso à agenda de limpeza
+              {preview!.properties > 0 &&
+                ` de ${preview!.properties} ${preview!.properties === 1 ? "apartamento" : "apartamentos"}`}
+              .
+            </>
+          )}
         </p>
 
         <div className="mt-5 rounded-2xl border bg-background p-4 text-left space-y-2.5">
