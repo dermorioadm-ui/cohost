@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarDays, Check, ChevronLeft, Clock, Copy, Loader2,
-  MessageCircle, Sparkles, Trash2, UserPlus, Users,
+  MessageCircle, ShoppingBasket, Sparkles, Trash2, UserPlus, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase, api } from "@/lib/api";
@@ -56,7 +56,18 @@ interface PropertyRow {
   ai_enabled: boolean;
   public_slug: string;
   auto_message_confirmed_at: string | null;
+  supplies_enabled: boolean;
+  supplies_monthly_price: number;
+  supplies_items: string[] | null;
+  supplies_notes: string | null;
 }
+
+/** Sugestão inicial, para o dono não encarar uma caixa vazia ao ligar. */
+const SUPPLIES_SUGERIDOS = [
+  "Papel higiênico", "Sabonete", "Sabão líquido para as mãos", "Detergente",
+  "Esponja", "Saco de lixo", "Café", "Açúcar", "Sal", "Óleo", "Pilha",
+  "Produto de limpeza geral",
+];
 
 interface IcalSource {
   id: string;
@@ -245,6 +256,10 @@ export default function Imovel() {
         cleaner_id: form.cleaner_id,
         ai_config: ai,
         ai_enabled: form.ai_enabled,
+        supplies_enabled: form.supplies_enabled,
+        supplies_monthly_price: Number(form.supplies_monthly_price),
+        supplies_items: form.supplies_items ?? [],
+        supplies_notes: form.supplies_notes ?? "",
       });
       toast.success("Imóvel atualizado.");
     } catch (e) {
@@ -632,6 +647,121 @@ export default function Imovel() {
                 {inviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Gerar convite
               </Button>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* -------------------------------------------- Reposição de itens */}
+      <section className="space-y-4 rounded-xl glass-card p-5">
+        <div className="flex items-center gap-2">
+          <ShoppingBasket className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold">Reposição de itens</h2>
+        </div>
+
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Um valor fixo por mês para a diarista repor o que acaba — papel,
+          café, sabão, pilha. Ela vê a lista na agenda dela; você vê o valor
+          no Financeiro como despesa do mês.
+        </p>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">
+          <Checkbox
+            checked={form.supplies_enabled}
+            onCheckedChange={(v) => {
+              const on = Boolean(v);
+              set("supplies_enabled", on);
+              // Ligar com a lista vazia deixaria a diarista sem saber o que
+              // repor — o combinado começa preenchido e o dono tira o que não usa.
+              if (on && (form.supplies_items ?? []).length === 0) {
+                set("supplies_items", SUPPLIES_SUGERIDOS);
+              }
+            }}
+            className="mt-0.5"
+          />
+          <span className="text-sm">
+            <span className="font-medium">Combinar reposição com a diarista</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Desligado, nada disso aparece para ela.
+            </span>
+          </span>
+        </label>
+
+        {form.supplies_enabled && (
+          <>
+            <div className="space-y-1.5">
+              <Label>Valor fixo por mês (R$)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="10"
+                value={String(form.supplies_monthly_price ?? 0)}
+                onChange={(e) => set("supplies_monthly_price", Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground">
+                O que você paga a ela por mês, além das diárias de limpeza.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>O que ela repõe</Label>
+              <div className="flex flex-wrap gap-2">
+                {(form.supplies_items ?? []).map((item) => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs"
+                  >
+                    {item}
+                    <button
+                      type="button"
+                      aria-label={`Remover ${item}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() =>
+                        set(
+                          "supplies_items",
+                          (form.supplies_items ?? []).filter((i) => i !== item),
+                        )
+                      }
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <Input
+                placeholder="Adicionar item e apertar Enter"
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  const valor = e.currentTarget.value.trim();
+                  if (!valor) return;
+                  const atuais = form.supplies_items ?? [];
+                  if (!atuais.includes(valor)) set("supplies_items", [...atuais, valor]);
+                  e.currentTarget.value = "";
+                }}
+              />
+
+              {(form.supplies_items ?? []).length === 0 && (
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={() => set("supplies_items", SUPPLIES_SUGERIDOS)}
+                >
+                  Usar a lista sugerida
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Observações para a diarista (opcional)</Label>
+              <Textarea
+                rows={2}
+                value={form.supplies_notes ?? ""}
+                onChange={(e) => set("supplies_notes", e.target.value)}
+                placeholder="Ex.: marca do café, onde guardar as compras, guardar a nota."
+              />
             </div>
           </>
         )}

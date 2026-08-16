@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, CalendarCheck, DoorOpen, Home, LogOut, MessageSquare, Wallet } from "lucide-react";
+import { CalendarDays, CalendarCheck, DoorOpen, Home, LogOut, MessageSquare, Users, Wallet } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +19,14 @@ type NavItem = { label: string; short: string; icon: typeof CalendarDays; path: 
 
 const NAV: Record<Exclude<AppRole, "admin">, NavItem[]> = {
   owner: [
+    // `short` encolhe no celular: a barra é um grid de colunas iguais, e com
+    // sete itens um rótulo longo estoura a coluna em tela de 375px.
     { label: "Painel", short: "Painel", icon: CalendarCheck, path: "/painel" },
-    { label: "Calendário", short: "Calendário", icon: CalendarDays, path: "/calendario" },
+    { label: "Calendário", short: "Datas", icon: CalendarDays, path: "/calendario" },
     { label: "Imóveis", short: "Imóveis", icon: Home, path: "/imoveis" },
+    { label: "Clientes", short: "Clientes", icon: Users, path: "/clientes" },
     { label: "Portaria", short: "Portaria", icon: DoorOpen, path: "/portaria" },
-    { label: "Conversas", short: "Conversas", icon: MessageSquare, path: "/conversas" },
+    { label: "Conversas", short: "Chat", icon: MessageSquare, path: "/conversas" },
     { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
   ],
   cleaner: [

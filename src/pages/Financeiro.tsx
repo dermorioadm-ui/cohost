@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -11,6 +12,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   Image as ImageIcon,
   Loader2,
   Receipt,
@@ -81,6 +83,8 @@ export default function Financeiro() {
   const [fees, setFees] = useState<Fee[]>([]);
   const [tasks, setTasks] = useState<CompletedTask[]>([]);
   const [properties, setProperties] = useState<Record<string, string>>({});
+  // Reposição combinada: valor fixo por imóvel, independente do mês escolhido.
+  const [supplies, setSupplies] = useState<Array<{ name: string; price: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [deciding, setDeciding] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<Fee | null>(null);
@@ -106,7 +110,10 @@ export default function Financeiro() {
         .gte("checkout_date", month)
         .lte("checkout_date", monthEnd(month))
         .order("checkout_date", { ascending: false }),
-      supabase.from("properties").select("id, name"),
+      supabase
+        .from("properties")
+        .select("id, name, supplies_enabled, supplies_monthly_price")
+        .is("archived_at", null),
     ]);
 
     if (sum.error) toast.error("Não consegui carregar o resumo do mês.");
@@ -114,10 +121,17 @@ export default function Financeiro() {
     setSummary((sum.data ?? []) as SummaryRow[]);
     setFees((fee.data ?? []) as Fee[]);
     setTasks((tsk.data ?? []) as CompletedTask[]);
-    setProperties(
-      Object.fromEntries(
-        ((props.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name]),
-      ),
+    const propRows = (props.data ?? []) as Array<{
+      id: string;
+      name: string;
+      supplies_enabled: boolean | null;
+      supplies_monthly_price: number | null;
+    }>;
+    setProperties(Object.fromEntries(propRows.map((p) => [p.id, p.name])));
+    setSupplies(
+      propRows
+        .filter((p) => p.supplies_enabled)
+        .map((p) => ({ name: p.name, price: Number(p.supplies_monthly_price ?? 0) })),
     );
     setLoading(false);
   }, [month]);
@@ -157,7 +171,8 @@ export default function Financeiro() {
   const cleanings = summary.reduce((s, r) => s + Number(r.cleanings ?? 0), 0);
   const turnover = summary.reduce((s, r) => s + Number(r.turnover_total ?? 0), 0);
   const feesApproved = summary.reduce((s, r) => s + Number(r.fees_total ?? 0), 0);
-  const total = turnover + feesApproved;
+  const suppliesTotal = supplies.reduce((s, p) => s + p.price, 0);
+  const total = turnover + feesApproved + suppliesTotal;
 
   const pending = fees.filter((f) => f.status === "pending");
   const decided = fees.filter((f) => f.status !== "pending");
@@ -202,7 +217,7 @@ export default function Financeiro() {
           <section className="glass-accent rounded-2xl px-5 py-6">
             <p className="text-xs uppercase tracking-widest opacity-70">Total do mês</p>
             <p className="mt-1 text-3xl font-extrabold tabular-nums">{brl(total)}</p>
-            <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <div>
                 <p className="text-xs opacity-70">Limpezas</p>
                 <p className="font-bold tabular-nums">{cleanings}</p>
@@ -212,10 +227,31 @@ export default function Financeiro() {
                 <p className="font-bold tabular-nums">{brl(turnover)}</p>
               </div>
               <div>
-                <p className="text-xs opacity-70">Reposição</p>
+                <p className="text-xs opacity-70">Compras avulsas</p>
                 <p className="font-bold tabular-nums">{brl(feesApproved)}</p>
               </div>
+              <div>
+                <p className="text-xs opacity-70">Reposição fixa</p>
+                <p className="font-bold tabular-nums">{brl(suppliesTotal)}</p>
+              </div>
             </div>
+
+            {supplies.length > 0 && (
+              <p className="mt-3 text-xs opacity-70">
+                {supplies.map((p) => `${p.name}: ${brl(p.price)}/mês`).join(" · ")}
+              </p>
+            )}
+
+            <Link
+              to="/plano"
+              className="mt-4 flex items-center justify-between rounded-xl bg-background/40 px-3 py-2.5 text-sm font-medium transition-colors hover:bg-background/60"
+            >
+              <span className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 shrink-0" />
+                Meu plano e assinatura
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 opacity-60" />
+            </Link>
           </section>
 
           {pending.length > 0 && (
