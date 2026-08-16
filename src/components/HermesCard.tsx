@@ -27,17 +27,21 @@ import { cn } from "@/lib/utils";
  * exibem de novo. Trocar significa digitar outra.
  */
 
-const ESTADO: Record<
-  HermesCredential["status"],
-  { texto: string; classe: string }
-> = {
-  pendente: {
-    texto: "Aguardando a primeira conversa",
+const ESTADO: Record<HermesCredential["status"], { texto: string; classe: string }> = {
+  pendente: { texto: "Entrando na sua conta…", classe: "bg-warning/10 text-warning" },
+  aguardando_codigo: {
+    texto: "Precisa do código de verificação",
     classe: "bg-warning/10 text-warning",
   },
   ativo: { texto: "Atendendo", classe: "bg-success/10 text-success" },
   falhou: { texto: "Parou — precisa de atenção", classe: "bg-destructive/10 text-destructive" },
-  revogado: { texto: "Desligado", classe: "bg-muted text-muted-foreground" },
+};
+
+const ONDE_CHEGOU: Record<string, string> = {
+  sms: "por SMS",
+  email: "por e-mail",
+  app: "no seu aplicativo autenticador",
+  outro: "no seu celular ou e-mail",
 };
 
 function quando(iso: string | null): string {
@@ -63,6 +67,8 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
 
   const [novaChave, setNovaChave] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false);
 
   async function load() {
     try {
@@ -78,13 +84,27 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
     load();
   }, []);
 
+  // Enquanto o agente está entrando na conta, a tela precisa acompanhar sozinha:
+  // o dono acabou de digitar a senha e está olhando. Sem isto ele teria de
+  // recarregar a página para descobrir que o Airbnb pediu um código — e o
+  // código do Airbnb morre em poucos minutos.
+  const emAndamento =
+    state?.credential?.status === "pendente" ||
+    state?.credential?.status === "aguardando_codigo";
+
+  useEffect(() => {
+    if (!emAndamento) return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [emAndamento]);
+
   const prop = state?.properties.find((p) => p.id === propertyId);
   const semAnuncio = prop && !prop.airbnb_listing_id;
 
   // A credencial é da conta. O que diz se ESTE imóvel está sendo atendido é
   // `hermes_enabled` — separar os dois é o que permite desligar um apartamento
   // de cinco sem apagar a senha usada pelos outros quatro.
-  const contaConectada = state?.credentials.find((c) => c.platform === "airbnb");
+  const contaConectada = state?.credential ?? undefined;
   const cred = prop?.hermes_enabled ? contaConectada : undefined;
   const outrosLigados =
     (state?.properties.filter((p) => p.hermes_enabled && p.id !== propertyId).length) ?? 0;
@@ -105,20 +125,35 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
     }
     setSaving(true);
     try {
-      await api.hermes.save({
+      const { agent_key } = await api.hermes.save({
         property_id: propertyId,
         login: login.trim(),
         password: senha,
         totp_secret: totp.trim() || undefined,
         accept_term: true,
       });
-      toast.success("Atendimento 24h ativado.");
       limpar();
+      // A chave só existe aqui, uma vez. É ela que vai no .env do worker.
+      setNovaChave(agent_key);
       await load();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Não foi possível salvar.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function enviarCodigo() {
+    setEnviandoCodigo(true);
+    try {
+      await api.hermes.submitCode(codigo);
+      setCodigo("");
+      toast.success("Código enviado. O agente está entrando.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Não foi possível enviar o código.");
+    } finally {
+      setEnviandoCodigo(false);
     }
   }
 
@@ -194,11 +229,73 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
             <div className="mt-1 opacity-90">
               Conta: {cred.login}
               <br />
-              Último acesso do agente: {quando(cred.last_access_at)}
-              {cred.access_count > 0 && ` · ${cred.access_count} acesso(s)`}
+              Último acesso do agente: {quando(cred.last_read_at)}
+              {cred.read_count > 0 && ` · ${cred.read_count} acesso(s)`}
             </div>
             {cred.last_error && <div className="mt-2 font-medium">Erro: {cred.last_error}</div>}
           </div>
+
+          {/* O Airbnb pediu confirmação. O agente está com o navegador PARADO
+              esperando — o código só vale para a sessão que o pediu, então não
+              adianta ele tentar de novo depois. Daí o cronômetro na tela. */}
+          {cred.status === "aguardando_codigo" && (
+            <div className="space-y-3 rounded-xl border border-warning/40 bg-warning/[0.06] p-4">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <div className="text-xs leading-relaxed">
+                  <div className="font-semibold">O Airbnb pediu um código de confirmação.</div>
+                  <div className="mt-1 text-muted-foreground">
+                    Ele chegou {ONDE_CHEGOU[cred.challenge_type ?? "outro"]}
+                    {cred.challenge_hint && ` (${cred.challenge_hint})`}. Digite abaixo e o agente
+                    termina de entrar.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value)}
+                  placeholder="123456"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="text-center font-mono text-lg tracking-[0.3em]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && codigo.trim().length >= 4) enviarCodigo();
+                  }}
+                />
+                <Button
+                  type="button"
+                  onClick={enviarCodigo}
+                  disabled={enviandoCodigo || codigo.trim().length < 4}
+                >
+                  {enviandoCodigo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Enviar
+                </Button>
+              </div>
+
+              {cred.expira_em !== null && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    cred.expira_em < 60 ? "font-semibold text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {cred.expira_em > 0
+                    ? `Vale por mais ${Math.floor(cred.expira_em / 60)}min ${cred.expira_em % 60}s.`
+                    : "Expirou. Ative de novo para receber outro código."}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Nada a fazer além de esperar — mas esperar sem sinal parece travado. */}
+          {cred.status === "pendente" && (
+            <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Entrando na sua conta do Airbnb. Se ele pedir confirmação, o campo aparece aqui.
+            </div>
+          )}
 
           {cred.status === "falhou" && (
             <p className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-warning">
@@ -208,7 +305,7 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
           )}
 
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Termo aceito em {quando(cred.term_accepted_at)}.
+            Conta conectada em {quando(cred.created_at)}.
           </p>
 
           {!form ? (

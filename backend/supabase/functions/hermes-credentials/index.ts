@@ -17,7 +17,7 @@ import { admin, requireRole } from "../_shared/lib/db.ts";
  */
 
 interface Body {
-  action?: "status" | "save" | "enable" | "revoke" | "key-create" | "key-revoke";
+  action?: "status" | "save" | "enable" | "revoke" | "challenge-submit" | "key-create" | "key-revoke";
   property_id?: string;
   platform?: "airbnb" | "booking";
   login?: string;
@@ -28,6 +28,8 @@ interface Body {
   key_name?: string;
   /** "imovel" desliga um apartamento; "conta" apaga a credencial inteira. */
   scope?: "imovel" | "conta";
+  /** Código de verificação que o Airbnb mandou no SMS/e-mail do dono. */
+  code?: string;
 }
 
 /** IP real do cliente atrás do proxy do Supabase. */
@@ -53,13 +55,9 @@ export default handler(async (req) => {
       .is("archived_at", null)
       .order("created_at");
 
-    // Uma credencial por conta e por canal — não mais uma por imóvel.
-    const { data: creds } = await db
-      .from("hermes_credentials")
-      .select(
-        "platform, login, status, last_verified_at, last_error, last_access_at, access_count, term_accepted_at",
-      )
-      .eq("owner_id", user.id);
+    // Estado vem de `credentials`, incluindo o desafio pendente (o Airbnb
+    // pediu código e o agente está parado esperando o dono digitar).
+    const { data: cred } = await db.rpc("hermes_credential_state", { p_owner: user.id });
 
     const { data: term } = await db
       .from("term_versions")
@@ -79,7 +77,7 @@ export default handler(async (req) => {
     return json({
       ok: true,
       properties: props ?? [],
-      credentials: creds ?? [],
+      credential: cred ?? null,
       term,
       keys: keys ?? [],
     });
@@ -118,29 +116,49 @@ export default handler(async (req) => {
       );
     }
 
-    // A credencial é da CONTA (uma conta do Airbnb hospeda todos os anúncios
-    // dela). `_enable_property_id` não é chave: é só qual imóvel ligar agora.
-    const { error } = await db.rpc("hermes_save_credentials", {
-      _owner_id: user.id,
-      _platform: platform,
-      _login: login.trim(),
-      _password: password,
-      _otp_secret: body.totp_secret?.trim() ?? "",
-      _ip: clientIp(req),
-      _user_agent: req.headers.get("user-agent") ?? "",
-      _enable_property_id: property_id,
+    // A credencial é da CONTA e vive em `credentials` — a MESMA tabela que o
+    // worker lê. Antes o painel gravava num cofre e o agente lia de outro:
+    // senha salva aqui era invisível para o worker.
+    const { data: chave, error } = await db.rpc("save_credential", {
+      p_owner: user.id,
+      p_login: login.trim(),
+      p_password: password,
+      p_totp: body.totp_secret?.trim() || null,
     });
 
     if (error) {
-      const map: Record<string, string> = {
-        imovel_nao_e_seu: "Imóvel não encontrado.",
-        termo_indisponivel: "O termo não está disponível. Tente de novo em instantes.",
-      };
-      const key = Object.keys(map).find((k) => error.message.includes(k));
-      if (key) throw errors.forbidden(map[key]);
       console.error("Falha ao gravar credencial:", error.message);
       throw errors.upstream("Não foi possível salvar. Tente de novo.");
     }
+
+    if (property_id) {
+      await db.from("properties").update({ hermes_enabled: true })
+        .eq("id", property_id).eq("owner_id", user.id);
+    }
+
+    // A chave do agente aparece UMA vez. É ela que vai no .env do worker.
+    return json({ ok: true, agent_key: chave });
+  }
+
+  // ---- código de verificação que o Airbnb pediu ------------------------------
+  // O agente está com o navegador parado esperando isto. Segundos importam:
+  // código do Airbnb morre em poucos minutos.
+  if (action === "challenge-submit") {
+    if (!body.code?.trim()) throw errors.invalid("Digite o código.");
+
+    const { data, error } = await db.rpc("hermes_submit_challenge_code", {
+      p_owner: user.id,
+      p_code: body.code.trim(),
+    });
+    if (error) throw errors.upstream("Não foi possível enviar o código.");
+
+    const recado: Record<string, string> = {
+      sem_credencial: "Nenhuma conta cadastrada.",
+      nao_esta_esperando: "O agente não está esperando código agora.",
+      expirado: "O código expirou. Ative de novo para receber outro.",
+      codigo_invalido: "Código muito curto. Confira e digite de novo.",
+    };
+    if (data !== "ok") throw errors.invalid(recado[data as string] ?? "Código recusado.");
 
     return json({ ok: true });
   }
@@ -152,10 +170,9 @@ export default handler(async (req) => {
     if (!body.property_id) throw errors.invalid("Escolha o imóvel.");
 
     const { data: cred } = await db
-      .from("hermes_credentials")
+      .from("credentials")
       .select("id")
       .eq("owner_id", user.id)
-      .eq("platform", "airbnb")
       .maybeSingle();
 
     if (!cred) throw errors.invalid("Nenhuma conta conectada. Informe login e senha primeiro.");
@@ -213,7 +230,7 @@ export default handler(async (req) => {
         .eq("hermes_enabled", true);
 
       if ((count ?? 0) === 0) {
-        await db.from("hermes_credentials").delete().eq("owner_id", user.id);
+        await db.from("credentials").delete().eq("owner_id", user.id);
         return json({ ok: true, credencial_apagada: true });
       }
 
@@ -222,7 +239,7 @@ export default handler(async (req) => {
 
     // O DELETE dispara o gatilho que apaga os segredos do Vault e desliga
     // hermes_enabled em todos os imóveis do dono.
-    const { error } = await db.from("hermes_credentials").delete().eq("owner_id", user.id);
+    const { error } = await db.from("credentials").delete().eq("owner_id", user.id);
 
     if (error) {
       console.error("Falha ao revogar:", error.message);

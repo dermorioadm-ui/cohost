@@ -36,6 +36,9 @@ interface Body {
   limit?: number;
   guest_message?: string;
   agent_reply?: string;
+  challenge_type?: string;
+  challenge_hint?: string;
+  ttl?: number;
 }
 
 async function resolveOwner(req: Request): Promise<string> {
@@ -166,7 +169,38 @@ export default handler(async (req: Request) => {
       return json({ ok: true });
     }
 
-    // ---- 5. o login quebrou --------------------------------------------------
+    // ---- 5. o Airbnb pediu código de verificação -----------------------------
+    // O agente NÃO fecha o navegador aqui. O código que vai chegar só vale para
+    // a sessão que o pediu; reiniciar o login invalida tudo e o dono terá
+    // digitado um código morto.
+    case "challenge": {
+      const { data, error } = await db.rpc("hermes_report_challenge", {
+        p_owner: ownerId,
+        p_type: body.challenge_type ?? "outro",
+        p_hint: body.challenge_hint ?? null,
+        p_ttl: body.ttl ?? 600,
+      });
+      if (error) throw errors.upstream(`Falha ao pedir codigo: ${error.message}`);
+      if (!data) throw errors.notFound("Nenhuma credencial cadastrada para este dono");
+      return json({ ok: true, aguardando: true });
+    }
+
+    // O agente consulta em laço CURTO (3-5s) enquanto espera. Não são os 30s da
+    // fila: código de verificação morre em minutos e a sessão fica presa até lá.
+    case "challenge-code": {
+      const { data, error } = await db.rpc("hermes_take_challenge_code", { p_owner: ownerId });
+      if (error) throw errors.upstream(`Falha ao ler codigo: ${error.message}`);
+      return json(data ?? { estado: "sem_credencial" });
+    }
+
+    // Entrou. Marca 'ativo' e limpa o desafio.
+    case "session-ok": {
+      const { error } = await db.rpc("hermes_mark_active", { p_owner: ownerId });
+      if (error) throw errors.upstream(`Falha ao marcar ativo: ${error.message}`);
+      return json({ ok: true, status: "ativo" });
+    }
+
+    // ---- 7. o login quebrou --------------------------------------------------
     case "failure": {
       const { error } = await db.rpc("hermes_mark_failure", {
         p_owner: ownerId,

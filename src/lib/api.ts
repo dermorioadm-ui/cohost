@@ -92,14 +92,17 @@ export interface ActivationState {
 export interface HermesCredential {
   // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
   // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
-  platform: "airbnb" | "booking";
   login: string;
-  status: "pendente" | "ativo" | "falhou" | "revogado";
-  last_verified_at: string | null;
+  status: "pendente" | "aguardando_codigo" | "ativo" | "falhou";
   last_error: string | null;
-  last_access_at: string | null;
-  access_count: number;
-  term_accepted_at: string;
+  last_read_at: string | null;
+  read_count: number;
+  created_at: string;
+  /** Preenchidos só enquanto o Airbnb está pedindo código de verificação. */
+  challenge_type: string | null;
+  challenge_hint: string | null;
+  codigo_enviado: boolean;
+  expira_em: number | null;
 }
 
 export interface HermesStatus {
@@ -109,7 +112,7 @@ export interface HermesStatus {
     airbnb_listing_id: string | null;
     hermes_enabled: boolean;
   }>;
-  credentials: HermesCredential[];
+  credential: HermesCredential | null;
   term: { id: string; title: string; body: string; version: string } | null;
   keys: Array<{
     id: string;
@@ -202,7 +205,16 @@ export const api = {
       totp_secret?: string;
       platform?: "airbnb" | "booking";
       accept_term: boolean;
-    }) => request<{ ok: boolean }>("hermes-credentials", { body: { action: "save", ...body } }),
+    }) =>
+      request<{ ok: boolean; agent_key: string }>("hermes-credentials", {
+        body: { action: "save", ...body },
+      }),
+
+    /** Código de verificação que o Airbnb mandou no SMS/e-mail do dono. */
+    submitCode: (code: string) =>
+      request<{ ok: boolean }>("hermes-credentials", {
+        body: { action: "challenge-submit", code },
+      }),
 
     /** Liga um imóvel numa conta já conectada — sem redigitar a senha. */
     enable: (property_id: string) =>
