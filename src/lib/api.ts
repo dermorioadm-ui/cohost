@@ -114,6 +114,44 @@ export interface PorterState {
   message?: string;
 }
 
+export interface HermesCredential {
+  // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
+  // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
+  login: string;
+  status: "pendente" | "aguardando_codigo" | "ativo" | "falhou";
+  last_error: string | null;
+  last_read_at: string | null;
+  read_count: number;
+  created_at: string;
+  /** Preenchidos só enquanto o Airbnb está pedindo código de verificação. */
+  challenge_type: string | null;
+  challenge_hint: string | null;
+  codigo_enviado: boolean;
+  expira_em: number | null;
+  /** Reenvio: pedido em aberto, quantos já foram, e quando o botão destrava. */
+  reenvio_pedido: boolean;
+  reenvios_usados: number;
+  reenvio_em: number;
+}
+
+export interface HermesStatus {
+  properties: Array<{
+    id: string;
+    name: string;
+    airbnb_listing_id: string | null;
+    hermes_enabled: boolean;
+  }>;
+  credential: HermesCredential | null;
+  term: { id: string; title: string; body: string; version: string } | null;
+  keys: Array<{
+    id: string;
+    name: string;
+    key_prefix: string;
+    created_at: string;
+    last_used_at: string | null;
+  }>;
+}
+
 export const api = {
   property: {
     upsert: (body: Record<string, unknown>) =>
