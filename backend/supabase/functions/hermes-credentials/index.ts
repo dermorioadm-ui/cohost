@@ -17,7 +17,7 @@ import { admin, requireRole } from "../_shared/lib/db.ts";
  */
 
 interface Body {
-  action?: "status" | "save" | "enable" | "revoke" | "challenge-submit" | "key-create" | "key-revoke";
+  action?: "status" | "save" | "enable" | "revoke" | "challenge-submit" | "resend-request" | "key-create" | "key-revoke";
   property_id?: string;
   platform?: "airbnb" | "booking";
   login?: string;
@@ -159,6 +159,25 @@ export default handler(async (req) => {
       codigo_invalido: "Código muito curto. Confira e digite de novo.",
     };
     if (data !== "ok") throw errors.invalid(recado[data as string] ?? "Código recusado.");
+
+    return json({ ok: true });
+  }
+
+  // ---- "não recebi o código" -------------------------------------------------
+  // O painel só PEDE. Quem clica em reenviar é o worker, que tem a sessão do
+  // Airbnb aberta — a nossa página não tem como falar com o Airbnb.
+  if (action === "resend-request") {
+    const { data, error } = await db.rpc("hermes_request_resend", { p_owner: user.id });
+    if (error) throw errors.upstream("Não foi possível pedir o reenvio.");
+
+    const recado: Record<string, string> = {
+      sem_credencial: "Nenhuma conta cadastrada.",
+      nao_esta_esperando: "O agente não está esperando código agora.",
+      expirado: "O código expirou. Ative de novo para receber outro.",
+      muito_cedo: "Espere alguns segundos antes de pedir de novo.",
+      limite: "Já foram 3 reenvios. Desligue e ative de novo para recomeçar.",
+    };
+    if (data !== "ok") throw errors.invalid(recado[data as string] ?? "Não foi possível reenviar.");
 
     return json({ ok: true });
   }

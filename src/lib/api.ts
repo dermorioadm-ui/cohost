@@ -103,6 +103,10 @@ export interface HermesCredential {
   challenge_hint: string | null;
   codigo_enviado: boolean;
   expira_em: number | null;
+  /** Reenvio: pedido em aberto, quantos já foram, e quando o botão destrava. */
+  reenvio_pedido: boolean;
+  reenvios_usados: number;
+  reenvio_em: number;
 }
 
 export interface HermesStatus {
@@ -215,6 +219,10 @@ export const api = {
       request<{ ok: boolean }>("hermes-credentials", {
         body: { action: "challenge-submit", code },
       }),
+
+    /** Pede ao worker que clique em "reenviar" na página do Airbnb. */
+    resend: () =>
+      request<{ ok: boolean }>("hermes-credentials", { body: { action: "resend-request" } }),
 
     /** Liga um imóvel numa conta já conectada — sem redigitar a senha. */
     enable: (property_id: string) =>
