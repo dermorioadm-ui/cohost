@@ -210,6 +210,52 @@ export const api = {
     portal: () => request<{ url: string }>("billing-portal", {}),
   },
 
+  // Atendimento automático 24h. Repare que não existe `get` da senha: ela vai
+  // para o cofre e não volta. O `status` devolve só o estado — conectado,
+  // falhou, quando o agente usou pela última vez.
+  hermes: {
+    status: () => request<HermesStatus>("hermes-credentials", { body: { action: "status" } }),
+
+    save: (body: {
+      property_id: string;
+      login: string;
+      password: string;
+      totp_secret?: string;
+      platform?: "airbnb" | "booking";
+      accept_term: boolean;
+    }) =>
+      request<{ ok: boolean; agent_key: string }>("hermes-credentials", {
+        body: { action: "save", ...body },
+      }),
+
+    /** Código de verificação que o Airbnb mandou no SMS/e-mail do dono. */
+    submitCode: (code: string) =>
+      request<{ ok: boolean }>("hermes-credentials", {
+        body: { action: "challenge-submit", code },
+      }),
+
+    /** Pede ao worker que clique em "reenviar" na página do Airbnb. */
+    resend: () =>
+      request<{ ok: boolean }>("hermes-credentials", { body: { action: "resend-request" } }),
+
+    /** Liga um imóvel numa conta já conectada — sem redigitar a senha. */
+    enable: (property_id: string) =>
+      request<{ ok: boolean }>("hermes-credentials", {
+        body: { action: "enable", property_id },
+      }),
+
+    revoke: (property_id: string, scope: "imovel" | "conta" = "imovel") =>
+      request<{ ok: boolean; credencial_apagada: boolean }>("hermes-credentials", {
+        body: { action: "revoke", property_id, scope },
+      }),
+
+    createKey: (key_name?: string) =>
+      request<{ key: string }>("hermes-credentials", { body: { action: "key-create", key_name } }),
+
+    revokeKey: (key_id: string) =>
+      request<{ ok: boolean }>("hermes-credentials", { body: { action: "key-revoke", key_id } }),
+  },
+
   admin: {
     metrics: async (view: string, params: Record<string, string> = {}) => {
       const { data } = await supabase.auth.getSession();

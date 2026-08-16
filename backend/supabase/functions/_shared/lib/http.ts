@@ -14,6 +14,7 @@ const ALLOWED_HEADERS = [
   "x-cron-secret",
   "x-guest-token",
   "x-invite-token",
+  "x-agent-key",
   "stripe-signature",
 ].join(", ");
 

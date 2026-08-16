@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Building2, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus } from "lucide-react";
+import {
+  ArrowLeft, Building2, CheckCircle2, ChevronRight, Loader2, MessageCircle,
+  Plus, Send, Trash2, UserPlus,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { guestApi, guestSession, type GuestInput } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -14,8 +17,14 @@ import { cn } from "@/lib/utils";
  *   - fazer o cadastro (obrigatório, libera as instruções de acesso)
  *   - falar com o atendimento 24h
  *
- * Quem já se cadastrou cai direto no chat: o token fica no localStorage,
- * porque a estadia dura dias e a aba não.
+ * A escolha é SEMPRE a entrada. Antes, quem já tinha se cadastrado era jogado
+ * direto no chat — o token fica no localStorage porque a estadia dura dias e a
+ * aba não. Parecia atalho, mas tirava do hóspede a única porta de volta: ele
+ * não conseguia mais abrir o cadastro para incluir alguém que chegou depois, e
+ * quem testava o link achava que a tela de escolha não existia.
+ *
+ * Agora o token só pré-carrega o chat. A escolha continua na frente, com o
+ * primeiro botão mostrando que o cadastro já foi feito.
  */
 
 type Mode = "choice" | "register" | "chat";
@@ -24,8 +33,13 @@ type Msg = { role: "user" | "assistant"; content: string };
 const T = {
   pt: {
     welcome: "Bem-vindo!", how: "Como podemos ajudar?",
-    register: "Fazer meu cadastro", support: "Atendimento 24 horas",
-    required: "Cadastro obrigatório antes da chegada",
+    register: "Cadastro de acesso ao apartamento",
+    registerDone: "Cadastro de acesso concluído",
+    support: "Chat de Atendimento",
+    required: "Obrigatório antes da chegada — libera as instruções de acesso",
+    requiredDone: "Toque para incluir mais alguém na estadia",
+    supportHint: "Wi-Fi, acesso, regras da casa — 24 horas",
+    back: "Voltar",
     dates: "Datas da estadia", checkin: "Entrada", checkout: "Saída",
     guests: "Hóspedes", add: "Adicionar hóspede", guest: "Hóspede",
     name: "Nome completo", email: "E-mail", phone: "Telefone com DDD",
@@ -63,15 +77,19 @@ export default function GuestChat() {
   const [streaming, setStreaming] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Já cadastrado nesta estadia? Vai direto ao chat.
+  // Recupera a sessão, mas NÃO pula a escolha: o token só evita pedir cadastro
+  // de novo. Quem decide para onde ir continua sendo o hóspede.
   useEffect(() => {
     const saved = guestSession.get(slug);
-    if (saved) {
-      setToken(saved);
-      setMode("chat");
-      setMessages([{ role: "assistant", content: `${t.hello}! ${t.helpYou}` }]);
-    }
+    if (saved) setToken(saved);
   }, [slug]);
+
+  function abrirChat() {
+    setMode("chat");
+    setMessages((m) =>
+      m.length ? m : [{ role: "assistant", content: `${t.hello}! ${t.helpYou}` }],
+    );
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -155,36 +173,54 @@ export default function GuestChat() {
 
   // ------------------------------------------------------------- escolha
   if (mode === "choice") {
+    const jaCadastrou = Boolean(token);
+
     return (
       <div className="min-h-screen flex flex-col bg-muted/30">
         <div className="bg-primary text-primary-foreground px-6 py-10 text-center">
           <Building2 className="h-9 w-9 mx-auto opacity-90" />
           <h1 className="mt-3 text-xl font-bold">{t.welcome}</h1>
+          {propertyName && <p className="mt-1 text-sm font-medium opacity-90">{propertyName}</p>}
           <p className="mt-1 text-sm opacity-80">{t.how}</p>
         </div>
 
         <div className="flex-1 px-4 py-6 max-w-sm mx-auto w-full space-y-3">
+          {/* Cadastro em cima: é ele que libera o acesso ao apartamento, e sem
+              ele o hóspede chega na porta sem código. A ordem não é estética. */}
           <button
             onClick={() => setMode("register")}
-            className="w-full rounded-2xl border bg-background p-5 text-left hover:border-primary transition-colors"
+            className="w-full rounded-2xl border bg-background p-5 text-left transition-colors hover:border-primary"
           >
-            <UserPlus className="h-5 w-5 text-primary" />
-            <p className="mt-3 font-semibold">{t.register}</p>
-            <p className="text-xs text-muted-foreground mt-1">{t.required}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {jaCadastrou ? (
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                ) : (
+                  <UserPlus className="h-5 w-5 text-primary" />
+                )}
+                <p className="mt-3 font-semibold">
+                  {jaCadastrou ? t.registerDone : t.register}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {jaCadastrou ? t.requiredDone : t.required}
+                </p>
+              </div>
+              <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            </div>
           </button>
 
           <button
-            onClick={() => {
-              setMode("chat");
-              setMessages([{ role: "assistant", content: `${t.hello}! ${t.helpYou}` }]);
-            }}
-            className="w-full rounded-2xl border bg-background p-5 text-left hover:border-primary transition-colors"
+            onClick={abrirChat}
+            className="w-full rounded-2xl border bg-background p-5 text-left transition-colors hover:border-primary"
           >
-            <MessageCircle className="h-5 w-5 text-primary" />
-            <p className="mt-3 font-semibold">{t.support}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Wi-Fi, acesso, regras da casa
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <MessageCircle className="h-5 w-5 text-primary" />
+                <p className="mt-3 font-semibold">{t.support}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t.supportHint}</p>
+              </div>
+              <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+            </div>
           </button>
         </div>
       </div>
@@ -195,7 +231,17 @@ export default function GuestChat() {
   if (mode === "register") {
     return (
       <div className="min-h-screen bg-muted/30 pb-10">
+        {/* Sem esta volta, a escolha vira porta de mão única: o hóspede que
+            entra no cadastro por engano fica preso e recarrega a página. */}
         <div className="bg-primary text-primary-foreground px-5 py-6">
+          <button
+            type="button"
+            onClick={() => setMode("choice")}
+            className="mb-3 flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t.back}
+          </button>
           <h1 className="text-lg font-bold">{t.register}</h1>
           <p className="text-sm opacity-80 mt-0.5">{t.required}</p>
         </div>
@@ -281,6 +327,14 @@ export default function GuestChat() {
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <header className="bg-background border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <button
+          type="button"
+          onClick={() => setMode("choice")}
+          aria-label={t.back}
+          className="-ml-1 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
           <MessageCircle className="h-4 w-4 text-primary" />
         </div>

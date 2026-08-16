@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase, api } from "@/lib/api";
 import { PorterConnect } from "@/components/PorterConnect";
 import { useAuth } from "@/hooks/useAuth";
+import { HermesCard } from "@/components/HermesCard";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 import { cn, getAppBaseUrl } from "@/lib/utils";
@@ -759,6 +760,11 @@ export default function Imovel() {
         {saving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
         Salvar alterações
       </Button>
+
+      {/* Depois do botão de salvar de propósito: o cartão tem gravação própria
+          (a senha vai para o cofre por outro caminho) e, acima do botão, o dono
+          leria "Salvar alterações" como se fosse salvar a credencial também. */}
+      <HermesCard propertyId={form.id} />
 
       {/* ------------------------------------------------------------ Remover */}
       <section className="space-y-3 rounded-xl border border-destructive/30 p-5">
