@@ -39,6 +39,10 @@ interface Body {
   challenge_type?: string;
   challenge_hint?: string;
   ttl?: number;
+  /** Apelidos usados pelo worker: method/poll/code. */
+  method?: string;
+  poll?: boolean;
+  code?: string;
 }
 
 async function resolveOwner(req: Request): Promise<string> {
@@ -173,10 +177,14 @@ export default handler(async (req: Request) => {
     // O agente NÃO fecha o navegador aqui. O código que vai chegar só vale para
     // a sessão que o pediu; reiniciar o login invalida tudo e o dono terá
     // digitado um código morto.
+    // `verification-request` é o nome que o worker já usa. Apelido, não
+    // implementação nova: renomear no worker que já está rodando custaria mais
+    // que aceitar os dois nomes aqui.
+    case "verification-request":
     case "challenge": {
       const { data, error } = await db.rpc("hermes_report_challenge", {
         p_owner: ownerId,
-        p_type: body.challenge_type ?? "outro",
+        p_type: body.challenge_type ?? body.method ?? "outro",
         p_hint: body.challenge_hint ?? null,
         p_ttl: body.ttl ?? 600,
       });
@@ -187,10 +195,28 @@ export default handler(async (req: Request) => {
 
     // O agente consulta em laço CURTO (3-5s) enquanto espera. Não são os 30s da
     // fila: código de verificação morre em minutos e a sessão fica presa até lá.
+    case "verification-submit":
     case "challenge-code": {
+      // Duas direções na mesma ação, porque é assim que o worker a chama:
+      // com `code` alguém está ENTREGANDO o código; sem, está PERGUNTANDO.
+      if (body.code?.trim()) {
+        const { data, error } = await db.rpc("hermes_submit_challenge_code", {
+          p_owner: ownerId,
+          p_code: body.code.trim(),
+        });
+        if (error) throw errors.upstream(`Falha ao enviar codigo: ${error.message}`);
+        if (data !== "ok") throw errors.invalid(String(data));
+        return json({ ok: true });
+      }
+
       const { data, error } = await db.rpc("hermes_take_challenge_code", { p_owner: ownerId });
       if (error) throw errors.upstream(`Falha ao ler codigo: ${error.message}`);
-      return json(data ?? { estado: "sem_credencial" });
+
+      const r = (data ?? { estado: "sem_credencial" }) as Record<string, unknown>;
+      // `code` e `codigo` no mesmo corpo: o worker lê `code`, o painel e o
+      // restante do contrato leem `codigo`. Um alias no JSON é mais barato que
+      // uma migração de nome nos dois lados.
+      return json({ ...r, code: r.estado === "ok" ? r.codigo : null });
     }
 
     // Entrou. Marca 'ativo' e limpa o desafio.
