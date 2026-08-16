@@ -51,6 +51,9 @@ interface Property {
   name: string;
   neighborhood: string | null;
   owner_id: string;
+  supplies_enabled: boolean | null;
+  supplies_items: string[] | null;
+  supplies_notes: string | null;
 }
 
 interface Fee {
@@ -252,6 +255,44 @@ export default function CleanerAgenda() {
           Comprei alguma coisa para o apartamento
         </Button>
       )}
+
+      {/* O combinado de reposição. Fica no topo, junto do botão de compra, e
+          não dentro de cada tarefa: é acordo do mês, não do dia — repetir em
+          toda limpeza viraria ruído que ela para de ler. */}
+      {properties
+        .filter((p) => p.supplies_enabled && (p.supplies_items ?? []).length > 0)
+        .map((p) => (
+          <section key={p.id} className="rounded-2xl glass-card p-4">
+            <div className="flex items-center gap-2">
+              <ShoppingBasket className="h-4 w-4 shrink-0 text-primary" />
+              <h2 className="text-sm font-semibold">
+                Reposição combinada
+                {properties.length > 1 && (
+                  <span className="font-normal text-muted-foreground"> · {p.name}</span>
+                )}
+              </h2>
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              Estes itens você repõe e já estão pagos no valor fixo do mês — não
+              precisa lançar como compra avulsa.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {(p.supplies_items ?? []).map((item) => (
+                <span key={item} className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            {p.supplies_notes && (
+              <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed">
+                {p.supplies_notes}
+              </p>
+            )}
+          </section>
+        ))}
 
       {grouped.length === 0 && (
         <div className="rounded-2xl glass-card p-8 text-center">

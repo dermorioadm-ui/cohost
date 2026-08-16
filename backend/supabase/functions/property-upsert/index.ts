@@ -51,6 +51,11 @@ interface Body {
   ai_config?: AiConfig;
   ai_enabled?: boolean;
   auto_message_confirmed?: boolean;
+  /** Reposição de itens combinada com a diarista, por valor fixo mensal. */
+  supplies_enabled?: boolean;
+  supplies_monthly_price?: number;
+  supplies_items?: string[];
+  supplies_notes?: string;
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -73,6 +78,9 @@ export default handler(async (req) => {
   }
   if (body.condo_email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.condo_email)) {
     throw errors.invalid("E-mail da portaria inválido");
+  }
+  if (body.supplies_monthly_price !== undefined && body.supplies_monthly_price < 0) {
+    throw errors.invalid("O valor da reposição não pode ser negativo");
   }
 
   // Só a diarista já vinculada a este dono pode ser atribuída.
@@ -111,6 +119,18 @@ export default handler(async (req) => {
   assign("self_clean", body.self_clean);
   assign("cleaner_id", body.cleaner_id);
   assign("ai_enabled", body.ai_enabled);
+  assign("supplies_enabled", body.supplies_enabled);
+  assign("supplies_monthly_price", body.supplies_monthly_price);
+  assign("supplies_notes", body.supplies_notes?.trim());
+
+  // Lista de itens: descarta vazios e apara espaços, senão uma vírgula sobrando
+  // no formulário virava um item em branco na agenda da diarista.
+  if (body.supplies_items !== undefined) {
+    patch.supplies_items = body.supplies_items
+      .map((i) => i.trim())
+      .filter((i) => i.length > 0)
+      .slice(0, 40);
+  }
 
   if (body.auto_message_confirmed !== undefined) {
     patch.auto_message_confirmed_at = body.auto_message_confirmed
