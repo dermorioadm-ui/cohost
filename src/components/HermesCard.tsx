@@ -69,6 +69,7 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
   const [copiado, setCopiado] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [enviandoCodigo, setEnviandoCodigo] = useState(false);
+  const [pedindoReenvio, setPedindoReenvio] = useState(false);
 
   async function load() {
     try {
@@ -154,6 +155,19 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
       toast.error(e instanceof ApiError ? e.message : "Não foi possível enviar o código.");
     } finally {
       setEnviandoCodigo(false);
+    }
+  }
+
+  async function pedirReenvio() {
+    setPedindoReenvio(true);
+    try {
+      await api.hermes.resend();
+      toast.success("Pedido enviado. O agente vai reenviar o código.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Não foi possível pedir o reenvio.");
+    } finally {
+      setPedindoReenvio(false);
     }
   }
 
@@ -272,6 +286,37 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
                   {enviandoCodigo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Enviar
                 </Button>
+              </div>
+
+              {/* Reenviar não é coisa que o painel faça: o botão "reenviar"
+                  fica na página do Airbnb, e quem tem aquela sessão aberta é o
+                  agente. Aqui a gente só PEDE — por isso o texto fala em pedido
+                  e não em "código reenviado". */}
+              <div className="flex items-center justify-between gap-2">
+                {cred.reenvios_usados >= 3 ? (
+                  <span className="text-xs text-muted-foreground">
+                    Limite de reenvios. Desligue e ative de novo para recomeçar.
+                  </span>
+                ) : cred.reenvio_pedido && cred.reenvio_em > 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    Pedido de reenvio enviado ao agente…
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={pedirReenvio}
+                    disabled={pedindoReenvio || cred.reenvio_em > 0}
+                    className="text-xs font-semibold text-primary underline underline-offset-2 disabled:opacity-50 disabled:no-underline"
+                  >
+                    {pedindoReenvio ? "Pedindo…" : "Não recebi — reenviar código"}
+                  </button>
+                )}
+
+                {cred.reenvios_usados > 0 && cred.reenvios_usados < 3 && (
+                  <span className="text-xs text-muted-foreground">
+                    {cred.reenvios_usados} de 3
+                  </span>
+                )}
               </div>
 
               {cred.expira_em !== null && (
