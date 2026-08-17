@@ -293,6 +293,14 @@ export default handler(async (req) => {
         checkin_time: property.checkin_time,
         checkout_time: property.checkout_time,
         term_version: term.version,
+        // Este e-mail é o comprovante do aceite, então leva a data em que ele
+        // aconteceu — sem isso o hóspede tem um recibo sem quando.
+        term_accepted_at: new Date().toLocaleString("pt-BR", {
+          timeZone: env.timezone(),
+          dateStyle: "short",
+          timeStyle: "short",
+        }),
+        guest_count: insertedPeople!.length,
         has_porter: Boolean(porter),
       },
       _to_email: person.email,

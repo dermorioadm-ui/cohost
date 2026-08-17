@@ -61,6 +61,11 @@ verify_jwt = false
 [functions.guest-chat]
 verify_jwt = false
 
+# "Esqueci minha senha": quem chama não está logado, por definição. Autoriza
+# devolvendo sempre a mesma resposta e limitando por destinatário.
+[functions.password-reset]
+verify_jwt = false
+
 # Diarista entrando pelo link mágico. Autoriza pelo token do convite.
 [functions.cleaner-accept]
 verify_jwt = false

@@ -8,6 +8,7 @@ import { AuthProvider, useAuth, type AppRole } from "@/hooks/useAuth";
 import { AppShell } from "@/components/AppShell";
 
 const Auth = lazy(() => import("@/pages/Auth"));
+const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Calendario = lazy(() => import("@/pages/Calendario"));
@@ -82,6 +83,10 @@ export default function App() {
               {/* Públicas — fora do AuthProvider, carregam na hora */}
               <Route path="/c/:slug" element={<GuestChat />} />
               <Route path="/d/:token" element={<CleanerAccept />} />
+              {/* Fora do AuthProvider: quem chega aqui está trocando a senha a
+                  partir de um link, sem sessão de verdade ainda. O provider
+                  redirecionaria para o login antes de a troca acontecer. */}
+              <Route path="/nova-senha" element={<NovaSenha />} />
 
               <Route
                 path="/*"

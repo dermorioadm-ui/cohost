@@ -260,6 +260,16 @@ export const api = {
     portal: () => request<{ url: string }>("billing-portal", {}),
   },
 
+  // Recuperação de senha. A resposta é a mesma exista a conta ou não — a tela
+  // precisa refletir isso e nunca dizer "e-mail não encontrado".
+  auth: {
+    resetPassword: (email: string) =>
+      request<{ ok: boolean; message: string }>("password-reset", {
+        body: { email },
+        auth: false,
+      }),
+  },
+
   // Atendimento automático 24h. Repare que não existe `get` da senha: ela vai
   // para o cofre e não volta. O `status` devolve só o estado — conectado,
   // falhou, quando o agente usou pela última vez.

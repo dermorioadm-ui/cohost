@@ -47,7 +47,12 @@ export const env = {
   emailProvider: () => optional("EMAIL_PROVIDER", "resend"),
   emailFrom: () => optional("EMAIL_FROM_ADDRESS", "nao-responda@hospedepay.com.br"),
   emailFromName: () => optional("EMAIL_FROM_NAME", "HospedePay"),
+  // Sem valor por padrão, e é intencional: todo e-mail do produto sai de uma
+  // caixa não monitorada. Preencher isto aponta as respostas para algum lugar
+  // — e aí alguém precisa lê-las.
   emailReplyTo: () => optional("EMAIL_REPLY_TO"),
+  /** Caixa interna que recebe os avisos da plataforma (assinatura nova). */
+  adminNotifyEmail: () => optional("ADMIN_NOTIFY_EMAIL"),
 
   whatsappEnabled: () => flag("WHATSAPP_ENABLED", false),
 
