@@ -9,6 +9,7 @@ import { AppShell } from "@/components/AppShell";
 
 const Auth = lazy(() => import("@/pages/Auth"));
 const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
+const Landing = lazy(() => import("@/pages/Landing"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Calendario = lazy(() => import("@/pages/Calendario"));
@@ -64,11 +65,17 @@ function Protected({
   return shell ? <AppShell>{children}</AppShell> : <>{children}</>;
 }
 
-/** Manda cada papel para a sua casa; visitante vai para o cadastro. */
+/**
+ * Manda cada papel para a sua casa; visitante vê a página de vendas.
+ *
+ * Antes o visitante caía direto no formulário de cadastro — o que só funciona
+ * para quem já foi convencido em outro lugar. Quem chega de anúncio ou de
+ * indicação precisa primeiro saber o que é e quanto custa.
+ */
 function Home() {
   const { user, role, loading } = useAuth();
   if (loading) return <Splash />;
-  if (!user) return <Navigate to="/entrar?modo=cadastro" replace />;
+  if (!user) return <Landing />;
   return <Navigate to={role === "cleaner" ? "/agenda" : "/painel"} replace />;
 }
 
