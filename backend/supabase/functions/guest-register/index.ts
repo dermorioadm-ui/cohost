@@ -177,11 +177,23 @@ export default handler(async (req) => {
     throw errors.upstream("Não foi possível concluir o cadastro. Tente novamente.");
   }
 
+  // A coluna se chama `phone_e164` e por muito tempo guardou o que a pessoa
+  // digitou — "21988978322", "(21) 98897-8322", "+55 21…". Quem consome isso
+  // depois (a portaria) confiava no nome da coluna, montava "+21988978322" e
+  // a Kiper recusava por DDI inexistente. Normalizar aqui é o conserto na
+  // origem: `normalize_phone` é a mesma função que o convite da diarista usa.
+  const normalizedPhones = await Promise.all(
+    guests.map(async (g) => {
+      const { data } = await db.rpc("normalize_phone", { _phone: g.phone ?? null });
+      return (data as unknown as string | null) ?? (g.phone ?? null);
+    }),
+  );
+
   const people = guests.map((g, i) => ({
     registration_id: registration.id,
     full_name: g.full_name!.trim(),
     email: g.email!.trim().toLowerCase(),
-    phone_e164: g.phone,
+    phone_e164: normalizedPhones[i],
     document_type: g.document_type ?? null,
     document_number: g.document_number ?? null,
     is_primary: i === 0,

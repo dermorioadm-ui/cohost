@@ -57,14 +57,35 @@ const PORTER_APP = {
   userAgent: "Porter/1372 CFNetwork/3860.600.12 Darwin/25.5.0",
 } as const;
 
-/** E.164 -> "+55 21 99999 8888", formato que a Kiper espera exibir. */
+/**
+ * E.164 -> "+55 21 99999 8888", formato que a Kiper espera exibir.
+ *
+ * O caso do meio existe porque a coluna se chama `phone_e164` e nem sempre
+ * contém E.164: o cadastro do hóspede gravava o que a pessoa digitou. Um
+ * número solto como "21988978322" caía no último `return` e virava
+ * "+21988978322" — a Kiper lia "+21" como DDI e recusava com
+ * "Could not interpret numbers after plus-sign". Pior: "11999269896" virava
+ * "+1 1999269896", DDI dos Estados Unidos, e a recusa vinha como
+ * "O número 1999269896 é inválido" — mensagem que não aponta para o Brasil
+ * nem para o formato, e mandou a investigação para o lado errado.
+ *
+ * 10 ou 11 dígitos sem DDI é telefone brasileiro (DDD + 8 ou 9 dígitos). Não
+ * há ambiguidade a resolver aqui, e supor o Brasil é melhor do que emitir um
+ * DDI que não existe.
+ */
 function formatPhone(e164: string | null): string {
   if (!e164) return "";
   const digits = e164.replace(/\D/g, "");
+
   if (digits.startsWith("55") && digits.length >= 12) {
     const local = digits.slice(2);
     return `+55 ${local.slice(0, 2)} ${local.slice(2, 7)} ${local.slice(7)}`;
   }
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `+55 ${digits.slice(0, 2)} ${digits.slice(2, -4)} ${digits.slice(-4)}`;
+  }
+
   // DDI de 1 a 3 dígitos: sem tabela, devolvemos com o + e o resto junto.
   return `+${digits}`;
 }
