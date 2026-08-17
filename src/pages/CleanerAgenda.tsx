@@ -11,17 +11,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  BadgeCheck,
   Camera,
   Check,
   CheckCircle2,
+  ChevronRight,
   ImageUp,
   Loader2,
   Receipt,
   ShoppingBasket,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { styleOf, type Provider } from "@/lib/channels";
 import { cn } from "@/lib/utils";
 import {
   brl,
@@ -38,6 +42,7 @@ import {
 interface Task {
   id: string;
   property_id: string;
+  reservation_id: string | null;
   checkout_date: string;
   checkout_time: string | null;
   next_checkin_date: string | null;
@@ -86,6 +91,9 @@ export default function CleanerAgenda() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
+  /** reservation_id -> canal. É o que pinta a tarja lateral do cartão. */
+  const [providers, setProviders] = useState<Record<string, Provider>>({});
+  const [pendentes, setPendentes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -120,10 +128,10 @@ export default function CleanerAgenda() {
       const monthEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
         .toISOString().slice(0, 10);
 
-      const [tsk, props] = await Promise.all([
+      const [tsk, props, cal, agr] = await Promise.all([
         supabase
           .from("cleaning_tasks")
-          .select("id, property_id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, photo_path")
+          .select("id, property_id, reservation_id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, photo_path")
           .gte("checkout_date", today)
           .lte("checkout_date", monthEndDate)
           .neq("status", "cancelled")
@@ -133,10 +141,27 @@ export default function CleanerAgenda() {
         // senha de Wi-Fi na mesma linha, e RLS filtra linha, não coluna. A
         // função devolve só as colunas de trabalho (migration 0022).
         supabase.rpc("my_cleaning_properties"),
+        // Só para saber de qual canal veio cada limpeza — a tarja do cartão.
+        // Pela mesma razão, é função e não a tabela: `reservations` carrega
+        // quem é o hóspede, e isso não é dela.
+        supabase.rpc("my_cleaning_calendar", { _from: today, _to: monthEndDate }),
+        supabase
+          .from("cleaner_agreements")
+          .select("id")
+          .eq("status", "pending"),
       ]);
 
       setTasks((tsk.data ?? []) as Task[]);
       setProperties((props.data ?? []) as Property[]);
+      setProviders(
+        Object.fromEntries(
+          ((cal.data ?? []) as Array<{ id: string; provider: Provider }>).map((r) => [
+            r.id,
+            r.provider,
+          ]),
+        ),
+      );
+      setPendentes((agr.data ?? []).length);
       await loadFees();
       setLoading(false);
     })();
@@ -245,6 +270,23 @@ export default function CleanerAgenda() {
         </p>
       </header>
 
+      {/* Combinado esperando resposta. Fica acima de tudo porque é dinheiro
+          dela: sem o aceite, o valor da limpeza continua sendo uma proposta. */}
+      {pendentes > 0 && (
+        <Link
+          to="/aprovacoes"
+          className="flex items-center gap-3 rounded-2xl bg-warning/10 px-4 py-3.5 text-warning"
+        >
+          <BadgeCheck className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1 text-sm font-semibold">
+            {pendentes === 1
+              ? "1 combinado esperando você aceitar"
+              : `${pendentes} combinados esperando você aceitar`}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" />
+        </Link>
+      )}
+
       {properties.length > 0 && (
         <Button
           variant="outline"
@@ -318,13 +360,34 @@ export default function CleanerAgenda() {
           <div className="space-y-3">
             {dayTasks.map((task) => {
               const sameDay = task.next_checkin_date === task.checkout_date;
+              const provider = task.reservation_id ? providers[task.reservation_id] : undefined;
+
               return (
-                <article key={task.id} className="rounded-2xl glass-card p-5">
+                <article
+                  key={task.id}
+                  className="relative overflow-hidden rounded-2xl glass-card p-5 pl-6"
+                >
+                  {/* Tarja do canal: Airbnb e Booking têm cores diferentes, e é
+                      isso que ela lê de relance sem precisar de rótulo. Some na
+                      limpeza avulsa, que não veio de reserva nenhuma. */}
+                  {provider && (
+                    <span
+                      aria-hidden
+                      title={styleOf(provider).label}
+                      className={cn("absolute inset-y-0 left-0 w-1.5", styleOf(provider).stripe)}
+                    />
+                  )}
+
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold leading-tight">
                         {propertyLabel(task.property_id)}
                       </p>
+                      {provider && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {styleOf(provider).label}
+                        </p>
+                      )}
                       <p className="mt-2 text-2xl font-extrabold tabular-nums">
                         {task.checkout_time?.slice(0, 5) ?? "--:--"}
                       </p>

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase, api, type ActivationState } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { styleOf, type Provider } from "@/lib/channels";
 import { cn } from "@/lib/utils";
 
 interface Task {
@@ -19,6 +20,7 @@ interface Task {
   turnover_price: number;
   guest_label: string | null;
   property_id: string;
+  reservation_id: string | null;
 }
 
 /**
@@ -34,6 +36,8 @@ export default function Dashboard() {
   const [activation, setActivation] = useState<ActivationState[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [properties, setProperties] = useState<Record<string, string>>({});
+  /** reservation_id -> canal, para a tarja lateral do cartão. */
+  const [providers, setProviders] = useState<Record<string, Provider>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -44,16 +48,23 @@ export default function Dashboard() {
         .toISOString()
         .slice(0, 10);
 
-      const [act, props, tsk] = await Promise.all([
+      const [act, props, tsk, res] = await Promise.all([
         supabase.rpc("my_activation"),
         supabase.from("properties").select("id, name").is("archived_at", null),
         supabase
           .from("cleaning_tasks")
-          .select("id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, guest_label, property_id")
+          .select("id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, guest_label, property_id, reservation_id")
           .gte("checkout_date", today)
           .lte("checkout_date", monthEnd)
           .neq("status", "cancelled")
           .order("checkout_date"),
+        // Só o canal de cada reserva: é o que pinta a tarja lateral do cartão.
+        supabase
+          .from("reservations")
+          .select("id, provider")
+          .eq("status", "confirmed")
+          .gte("checkout_date", today)
+          .lte("checkout_date", monthEnd),
       ]);
 
       setActivation((act.data ?? []) as ActivationState[]);
@@ -61,6 +72,14 @@ export default function Dashboard() {
         Object.fromEntries(((props.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name])),
       );
       setTasks((tsk.data ?? []) as Task[]);
+      setProviders(
+        Object.fromEntries(
+          ((res.data ?? []) as Array<{ id: string; provider: Provider }>).map((r) => [
+            r.id,
+            r.provider,
+          ]),
+        ),
+      );
       setLoading(false);
     })();
   }, [user]);
@@ -202,30 +221,51 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-2">
-              {dayTasks.map((t) => (
-                <div key={t.id} className="rounded-2xl glass-card p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">
-                        {properties[t.property_id] ?? "Imóvel"}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Saída {t.checkout_time?.slice(0, 5) ?? "--:--"}
-                        {t.next_checkin_date === t.checkout_date && (
-                          <span className="text-amber-600 font-medium"> · entrada no mesmo dia</span>
+              {dayTasks.map((t) => {
+                const provider = t.reservation_id ? providers[t.reservation_id] : undefined;
+                return (
+                  <div
+                    key={t.id}
+                    className="relative overflow-hidden rounded-2xl glass-card p-4 pl-5"
+                  >
+                    {/* Tarja do canal na lateral: qual limpeza veio do Airbnb e
+                        qual veio do Booking, sem gastar uma linha de texto.
+                        Ausente na limpeza avulsa, que não tem canal. */}
+                    {provider && (
+                      <span
+                        aria-hidden
+                        title={styleOf(provider).label}
+                        className={cn("absolute inset-y-0 left-0 w-1", styleOf(provider).stripe)}
+                      />
+                    )}
+
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">
+                          {properties[t.property_id] ?? "Imóvel"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Saída {t.checkout_time?.slice(0, 5) ?? "--:--"}
+                          {provider && ` · ${styleOf(provider).label}`}
+                          {t.next_checkin_date === t.checkout_date && (
+                            <span className="text-amber-600 font-medium">
+                              {" "}
+                              · entrada no mesmo dia
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <Badge variant={t.status === "completed" ? "default" : "secondary"}>
+                        {t.status === "completed" ? (
+                          <><Check className="h-3 w-3 mr-1" /> Feita</>
+                        ) : (
+                          "Pendente"
                         )}
-                      </p>
+                      </Badge>
                     </div>
-                    <Badge variant={t.status === "completed" ? "default" : "secondary"}>
-                      {t.status === "completed" ? (
-                        <><Check className="h-3 w-3 mr-1" /> Feita</>
-                      ) : (
-                        "Pendente"
-                      )}
-                    </Badge>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

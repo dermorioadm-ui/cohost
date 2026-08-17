@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Undo2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, MapPin, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { PROVIDER_STYLE, guestLabelOf, styleOf, type Provider } from "@/lib/channels";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,9 +31,8 @@ interface Task {
   turnover_price: number | null;
   guest_label: string | null;
   property_id: string;
+  reservation_id: string | null;
 }
-
-type Provider = "airbnb" | "booking" | "vrbo" | "other";
 
 interface Reservation {
   id: string;
@@ -40,7 +40,8 @@ interface Reservation {
   provider: Provider;
   checkin_date: string;
   checkout_date: string;
-  guest_label: string | null;
+  /** A diarista não recebe este campo: `my_cleaning_calendar` não o devolve. */
+  guest_label?: string | null;
 }
 
 /** Uma faixa já posicionada dentro de uma semana da grade. */
@@ -55,40 +56,6 @@ interface Bar {
   openLeft: boolean;
   openRight: boolean;
 }
-
-/**
- * Rótulos que as plataformas mandam quando NÃO revelam quem é o hóspede.
- *
- * O Booking exporta toda estadia como "CLOSED - Not available" e o Airbnb como
- * "Reserved" — nenhum dos dois diz nada ao dono, e "CLOSED - Not available"
- * atravessando a faixa ainda parece defeito. Nesses casos mostramos o nome do
- * canal, que é a informação que sobra e que ele realmente usa.
- */
-const OPAQUE_LABEL = /^(closed|reserved|not available|unavailable|blocked|busy|bloqueado)\b/i;
-
-/** Cada canal com sua cor — é assim que o dono distingue Airbnb de Booking. */
-const PROVIDER_STYLE: Record<Provider, { bar: string; dot: string; label: string }> = {
-  airbnb: {
-    bar: "border-primary/45 bg-primary/30",
-    dot: "border-primary/40 bg-primary/20",
-    label: "Airbnb",
-  },
-  booking: {
-    bar: "border-[hsl(var(--booking)/0.55)] bg-[hsl(var(--booking)/0.38)]",
-    dot: "border-[hsl(var(--booking)/0.45)] bg-[hsl(var(--booking)/0.25)]",
-    label: "Booking",
-  },
-  vrbo: {
-    bar: "border-[hsl(var(--vrbo)/0.5)] bg-[hsl(var(--vrbo)/0.32)]",
-    dot: "border-[hsl(var(--vrbo)/0.4)] bg-[hsl(var(--vrbo)/0.2)]",
-    label: "Vrbo",
-  },
-  other: {
-    bar: "border-white/25 bg-white/15",
-    dot: "border-white/20 bg-white/10",
-    label: "Outro",
-  },
-};
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 const MONTHS = [
@@ -125,22 +92,30 @@ const CELL_W = `((100% - 6 * ${CELL_GAP}) / 7)`;
 const middleOfDay = (i: number) => `calc(${i} * (${CELL_W} + ${CELL_GAP}) + ${CELL_W} / 2)`;
 
 /** Nome do hóspede quando a plataforma manda; senão, o canal. */
-function guestLabel(r: Reservation): string {
-  const raw = r.guest_label?.trim() ?? "";
-  if (raw && !OPAQUE_LABEL.test(raw)) return raw;
-  return PROVIDER_STYLE[r.provider ?? "other"].label;
-}
+const guestLabel = (r: Reservation) => guestLabelOf(r.guest_label, r.provider);
 
 const BAR_TOP = "1.75rem";
 const BAR_HEIGHT = "1.05rem";
 const BAR_GAP = "0.2rem";
 
+interface PropertyInfo {
+  id: string;
+  name: string;
+  neighborhood?: string | null;
+  city?: string | null;
+  address?: string | null;
+  street_number?: string | null;
+  apt_number?: string | null;
+}
+
 export default function Calendario() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isCleaner = role === "cleaner";
+
   const [cursor, setCursor] = useState(() => new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [properties, setProperties] = useState<Record<string, string>>({});
+  const [propertyList, setPropertyList] = useState<PropertyInfo[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -157,12 +132,22 @@ export default function Calendario() {
       const first = iso(new Date(year, month, 1));
       const last = iso(new Date(year, month + 1, 0));
 
+      /**
+       * As duas leituras que mudam com o papel.
+       *
+       * A diarista não lê `properties` nem `reservations` direto — a 0022 tirou
+       * as duas de propósito (a linha do imóvel carrega senha de Wi-Fi e código
+       * de fechadura; a reserva carrega quem é o hóspede). As funções abaixo
+       * devolvem só o que a agenda dela precisa: onde é, e quando está ocupado.
+       */
       const [props, tsk, res] = await Promise.all([
-        supabase.from("properties").select("id, name").is("archived_at", null),
+        isCleaner
+          ? supabase.rpc("my_cleaning_properties")
+          : supabase.from("properties").select("id, name").is("archived_at", null),
         supabase
           .from("cleaning_tasks")
           .select(
-            "id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, guest_label, property_id",
+            "id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, guest_label, property_id, reservation_id",
           )
           .gte("checkout_date", first)
           .lte("checkout_date", last)
@@ -170,27 +155,41 @@ export default function Calendario() {
           .order("checkout_date"),
         // Reserva que ENCOSTA no mês, não só a que começa nele — senão uma
         // estadia que atravessa a virada do mês desaparece da grade.
-        supabase
-          .from("reservations")
-          .select("id, property_id, provider, checkin_date, checkout_date, guest_label")
-          .eq("status", "confirmed")
-          .lte("checkin_date", last)
-          .gte("checkout_date", first)
-          .order("checkin_date"),
+        isCleaner
+          ? supabase.rpc("my_cleaning_calendar", { _from: first, _to: last })
+          : supabase
+            .from("reservations")
+            .select("id, property_id, provider, checkin_date, checkout_date, guest_label")
+            .eq("status", "confirmed")
+            .lte("checkin_date", last)
+            .gte("checkout_date", first)
+            .order("checkin_date"),
       ]);
 
-      setProperties(
-        Object.fromEntries(
-          ((props.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name]),
+      setPropertyList((props.data ?? []) as PropertyInfo[]);
+      setTasks((tsk.data ?? []) as Task[]);
+      setReservations(
+        [...((res.data ?? []) as Reservation[])].sort((a, b) =>
+          a.checkin_date.localeCompare(b.checkin_date),
         ),
       );
-      setTasks((tsk.data ?? []) as Task[]);
-      setReservations((res.data ?? []) as Reservation[]);
       setLoading(false);
     })();
-  }, [user, year, month]);
+  }, [user, year, month, isCleaner]);
 
-  const propertyList = useMemo(() => Object.entries(properties), [properties]);
+  const properties = useMemo(
+    () => Object.fromEntries(propertyList.map((p) => [p.id, p.name])),
+    [propertyList],
+  );
+
+  /** Canal de cada limpeza — a tarja do cartão vem daqui. */
+  const providerOfTask = useMemo(() => {
+    const byReservation = Object.fromEntries(
+      reservations.map((r) => [r.id, (r.provider ?? "other") as Provider]),
+    );
+    return (t: Task): Provider | null =>
+      t.reservation_id ? (byReservation[t.reservation_id] ?? null) : null;
+  }, [reservations]);
 
   /**
    * Com dez imóveis, tudo na mesma grade vira sopa. O filtro é a saída, e ele
@@ -397,9 +396,9 @@ export default function Calendario() {
           className="glass h-12 w-full rounded-2xl px-4 text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="all">Todos os imóveis ({propertyList.length})</option>
-          {propertyList.map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
+          {propertyList.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
           ))}
         </select>
@@ -557,19 +556,22 @@ export default function Calendario() {
           ) : (
             <>
               {selectedReservations.map((r) => (
-                <article key={r.id} className="glass-card rounded-2xl p-4">
+                <article
+                  key={r.id}
+                  className="glass-card relative overflow-hidden rounded-2xl p-4 pl-5"
+                >
+                  <ChannelStripe provider={r.provider} />
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{guestLabel(r)}</p>
                       <p className="text-sm text-muted-foreground">
-                        {properties[r.property_id] ?? "Imóvel"} ·{" "}
-                        {PROVIDER_STYLE[r.provider ?? "other"].label}
+                        {properties[r.property_id] ?? "Imóvel"} · {styleOf(r.provider).label}
                       </p>
                     </div>
                     <span
                       className={cn(
                         "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-foreground/90",
-                        PROVIDER_STYLE[r.provider ?? "other"].dot,
+                        styleOf(r.provider).dot,
                       )}
                     >
                       {r.checkin_date === selected
@@ -582,57 +584,114 @@ export default function Calendario() {
                 </article>
               ))}
 
-              {selectedTasks.map((t) => (
-                <article key={t.id} className="glass-card rounded-2xl p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        Limpeza · {properties[t.property_id] ?? "Imóvel"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Saída às {(t.checkout_time ?? "11:00").slice(0, 5)}
-                        {t.next_checkin_date === selected && " · entrada no mesmo dia"}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-semibold">
-                        R$ {Number(t.turnover_price ?? 0).toFixed(2).replace(".", ",")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {STATUS_LABEL[t.status] ?? t.status}
-                      </p>
-                    </div>
-                  </div>
-
-                  {t.next_checkin_date === selected && (
-                    <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-                      Entrada no mesmo dia — a limpeza precisa ficar pronta antes.
-                    </p>
-                  )}
-
-                  <Button
-                    variant={t.status === "completed" ? "ghost" : "outline"}
-                    size="sm"
-                    disabled={saving === t.id}
-                    onClick={() => setCompleted(t, t.status !== "completed")}
-                    className="mt-3 w-full"
+              {selectedTasks.map((t) => {
+                const provider = providerOfTask(t);
+                return (
+                  <article
+                    key={t.id}
+                    className="glass-card relative overflow-hidden rounded-2xl p-4 pl-5"
                   >
-                    {saving === t.id ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : t.status === "completed" ? (
-                      <Undo2 className="mr-2 h-4 w-4" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    <ChannelStripe provider={provider} />
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          Limpeza · {properties[t.property_id] ?? "Imóvel"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Saída às {(t.checkout_time ?? "11:00").slice(0, 5)}
+                          {provider && ` · ${styleOf(provider).label}`}
+                          {t.next_checkin_date === selected && " · entrada no mesmo dia"}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold">
+                          R$ {Number(t.turnover_price ?? 0).toFixed(2).replace(".", ",")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {STATUS_LABEL[t.status] ?? t.status}
+                        </p>
+                      </div>
+                    </div>
+
+                    {t.next_checkin_date === selected && (
+                      <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                        Entrada no mesmo dia — a limpeza precisa ficar pronta antes.
+                      </p>
                     )}
-                    {t.status === "completed" ? "Reabrir limpeza" : "Marcar como concluída"}
-                  </Button>
-                </article>
-              ))}
+
+                    <Button
+                      variant={t.status === "completed" ? "ghost" : "outline"}
+                      size="sm"
+                      disabled={saving === t.id}
+                      onClick={() => setCompleted(t, t.status !== "completed")}
+                      className="mt-3 w-full"
+                    >
+                      {saving === t.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : t.status === "completed" ? (
+                        <Undo2 className="mr-2 h-4 w-4" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      {t.status === "completed" ? "Reabrir limpeza" : "Marcar como concluída"}
+                    </Button>
+                  </article>
+                );
+              })}
             </>
           )}
         </section>
       )}
+
+      {/* A diarista não tem tela de imóveis: esta lista é onde ela confere
+          endereço e horário de cada apartamento a que está vinculada. */}
+      {isCleaner && propertyList.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="px-1 text-sm font-semibold text-muted-foreground">
+            {propertyList.length === 1
+              ? "Seu apartamento"
+              : `Seus apartamentos (${propertyList.length})`}
+          </h2>
+
+          {propertyList.map((p) => (
+            <article key={p.id} className="glass-card rounded-2xl px-4 py-3">
+              <p className="text-sm font-semibold">{p.name}</p>
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {[
+                    [p.address, p.street_number].filter(Boolean).join(", "),
+                    p.apt_number ? `apto ${p.apt_number}` : "",
+                    p.neighborhood,
+                    p.city,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Endereço não informado"}
+                </span>
+              </p>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
+  );
+}
+
+/**
+ * Tarja vertical do canal, na lateral esquerda do cartão.
+ *
+ * É o que responde "de onde veio essa limpeza" sem custar uma linha de texto.
+ * Some quando a limpeza não veio de reserva nenhuma (tarefa avulsa criada à
+ * mão) — inventar uma cor ali seria afirmar um canal que não existe.
+ */
+function ChannelStripe({ provider }: { provider: Provider | null | undefined }) {
+  if (!provider) return null;
+  return (
+    <span
+      aria-hidden
+      className={cn("absolute inset-y-0 left-0 w-1", styleOf(provider).stripe)}
+      title={styleOf(provider).label}
+    />
   );
 }
