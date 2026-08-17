@@ -18,6 +18,8 @@ const Conversas = lazy(() => import("@/pages/Conversas"));
 const GuestChat = lazy(() => import("@/pages/GuestChat"));
 const CleanerAccept = lazy(() => import("@/pages/CleanerAccept"));
 const CleanerAgenda = lazy(() => import("@/pages/CleanerAgenda"));
+const CleanerAprovacoes = lazy(() => import("@/pages/CleanerAprovacoes"));
+const CleanerGanhos = lazy(() => import("@/pages/CleanerGanhos"));
 const Financeiro = lazy(() => import("@/pages/Financeiro"));
 const Hospedes = lazy(() => import("@/pages/Hospedes"));
 const Plano = lazy(() => import("@/pages/Plano"));
@@ -105,10 +107,13 @@ export default function App() {
                           </Protected>
                         }
                       />
+                      {/* A mesma grade serve os dois papéis: a diarista vê o
+                          mês dos imóveis dela, sem quem é o hóspede. Quem filtra
+                          é a própria tela, pelas funções de leitura da 0035. */}
                       <Route
                         path="/calendario"
                         element={
-                          <Protected allow={["owner"]}>
+                          <Protected allow={["owner", "cleaner"]}>
                             <Calendario />
                           </Protected>
                         }
@@ -174,6 +179,22 @@ export default function App() {
                         element={
                           <Protected allow={["cleaner"]}>
                             <CleanerAgenda />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/aprovacoes"
+                        element={
+                          <Protected allow={["cleaner"]}>
+                            <CleanerAprovacoes />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/ganhos"
+                        element={
+                          <Protected allow={["cleaner"]}>
+                            <CleanerGanhos />
                           </Protected>
                         }
                       />

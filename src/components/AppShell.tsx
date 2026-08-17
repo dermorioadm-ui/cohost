@@ -1,6 +1,9 @@
 import { type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, CalendarCheck, DoorOpen, Home, LogOut, MessageSquare, Users, Wallet } from "lucide-react";
+import {
+  BadgeCheck, CalendarDays, CalendarCheck, DoorOpen, Home, LogOut,
+  MessageSquare, Users, Wallet,
+} from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -29,8 +32,15 @@ const NAV: Record<Exclude<AppRole, "admin">, NavItem[]> = {
     { label: "Conversas", short: "Chat", icon: MessageSquare, path: "/conversas" },
     { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
   ],
+  // A diarista tinha uma tela só e nenhuma barra. Agora tem quatro: o dia
+  // (agenda), o mês (calendário), o que ela precisa responder (aprovações) e
+  // quanto ela recebe (ganhos). A ordem é a do uso — o dia primeiro, porque é
+  // com o app aberto no corredor do prédio que ela passa quase todo o tempo.
   cleaner: [
     { label: "Minha agenda", short: "Agenda", icon: CalendarCheck, path: "/agenda" },
+    { label: "Calendário", short: "Datas", icon: CalendarDays, path: "/calendario" },
+    { label: "Aprovações", short: "Aprovar", icon: BadgeCheck, path: "/aprovacoes" },
+    { label: "Ganhos", short: "Ganhos", icon: Wallet, path: "/ganhos" },
   ],
 };
 

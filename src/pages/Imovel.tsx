@@ -100,6 +100,14 @@ interface PendingInvite {
   cleaner_phone_e164: string | null;
 }
 
+/** O combinado vigente com a diarista deste imóvel (migration 0035). */
+interface Agreement {
+  status: "pending" | "accepted" | "declined";
+  decline_note: string | null;
+  turnover_price: number;
+  supplies_monthly_price: number;
+}
+
 type StepKey = "imovel" | "calendario" | "limpeza" | "insumos" | "atendimento" | "portaria";
 
 const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
@@ -123,6 +131,7 @@ export default function Imovel() {
   const [cleaners, setCleaners] = useState<ConnectedProfile[]>([]);
   const [pending, setPending] = useState<PendingInvite[]>([]);
   const [porterActive, setPorterActive] = useState(false);
+  const [agreement, setAgreement] = useState<Agreement | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -166,7 +175,7 @@ export default function Imovel() {
     if (!user || !id) return;
 
     (async () => {
-      const [prop, conn, inv, src, porter] = await Promise.all([
+      const [prop, conn, inv, src, porter, agr] = await Promise.all([
         supabase.from("properties").select("*").eq("id", id).maybeSingle(),
         supabase.rpc("connected_profiles"),
         supabase
@@ -179,6 +188,11 @@ export default function Imovel() {
           .eq("property_id", id)
           .eq("active", true),
         supabase.from("porter_status").select("active").eq("property_id", id).maybeSingle(),
+        supabase
+          .from("cleaner_agreements")
+          .select("status, decline_note, turnover_price, supplies_monthly_price")
+          .eq("property_id", id)
+          .maybeSingle(),
       ]);
 
       if (!prop.data) {
@@ -206,6 +220,7 @@ export default function Imovel() {
       );
       setIcals((src.data ?? []) as IcalSource[]);
       setPorterActive(Boolean((porter.data as { active: boolean } | null)?.active));
+      setAgreement((agr.data ?? null) as Agreement | null);
       setLoading(false);
     })();
   }, [user, id, navigate]);
@@ -832,6 +847,45 @@ export default function Imovel() {
                       >
                         Desvincular
                       </button>
+                    )}
+
+                    {/* O outro lado do aceite. Sem isto a tela de aprovações
+                        dela seria um buraco: ele proporia um valor e nunca
+                        saberia se ela concordou. Muda de valor aqui embaixo e o
+                        aceite volta a ficar pendente — o gatilho da 0035 cuida. */}
+                    {form.cleaner_id && agreement && (
+                      <div
+                        className={cn(
+                          "rounded-xl p-3 text-xs leading-relaxed",
+                          agreement.status === "accepted" && "bg-success/10 text-success",
+                          agreement.status === "pending" && "bg-warning/10 text-warning",
+                          agreement.status === "declined" && "bg-destructive/10 text-destructive",
+                        )}
+                      >
+                        {agreement.status === "accepted" && (
+                          <>
+                            <span className="font-medium">Ela aceitou o combinado</span> — R${" "}
+                            {Number(agreement.turnover_price).toFixed(2).replace(".", ",")} por
+                            limpeza
+                            {Number(agreement.supplies_monthly_price) > 0 &&
+                              ` e R$ ${Number(agreement.supplies_monthly_price).toFixed(2).replace(".", ",")} por mês de reposição`}
+                            .
+                          </>
+                        )}
+                        {agreement.status === "pending" && (
+                          <>
+                            <span className="font-medium">Aguardando o aceite dela.</span> O valor
+                            aparece no painel dela em Aprovações. Enquanto ela não responder, o
+                            combinado é só uma proposta.
+                          </>
+                        )}
+                        {agreement.status === "declined" && (
+                          <>
+                            <span className="font-medium">Ela não concordou com o valor.</span>
+                            {agreement.decline_note && ` Resposta dela: “${agreement.decline_note}”`}
+                          </>
+                        )}
+                      </div>
                     )}
 
                     {/* Link do painel dela. Some quando ninguém está vinculado,
