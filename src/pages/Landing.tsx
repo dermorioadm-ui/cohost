@@ -41,55 +41,50 @@ const IMG = {
   cafe: `${CDN}/hf_20260817_034518_d496a9fa-8cb8-48f5-b0c1-744c8901f988.png`,
 };
 
-/** Espelha public.plans. Preço em reais inteiros porque não há centavos. */
+/**
+ * Espelha public.plans.
+ *
+ * Os três planos são IGUAIS. A única variável é quantos imóveis rodam — e é
+ * por isso que a lista de recursos saiu de dentro dos cartões e virou um bloco
+ * único acima deles. Distribuir recursos entre as faixas, como estava antes,
+ * fazia o leitor procurar a diferença linha a linha e concluir que o plano
+ * barato era capado. Não é: quem paga R$ 97 tem exatamente o mesmo produto.
+ */
 const PLANOS = [
+  { tier: "essencial", nome: "Essencial", imoveis: 1, mensal: 97, anual: 970, destaque: false },
+  { tier: "pro", nome: "Profissional", imoveis: 3, mensal: 197, anual: 1970, destaque: true },
+  { tier: "ilimitado", nome: "Portfólio", imoveis: 5, mensal: 297, anual: 2970, destaque: false },
+];
+
+/** O que vem em qualquer plano. Uma lista só, porque é uma lista só mesmo. */
+const TUDO_INCLUSO = [
+  "Calendário do Airbnb e do Booking em um lugar só",
+  "Checkout vira limpeza na agenda automaticamente",
+  "Assistente com IA respondendo o hóspede 24h",
+  "Cadastro do hóspede com termo de responsabilidade",
+  "Cadastro direto no sistema da portaria",
+  "Reposição de insumos por taxa fixa combinada",
+  "Diaristas ilimitadas, sem custo por pessoa",
+  "Painel da diarista com agenda, ganhos e aprovações",
+  "Fechamento financeiro do mês, por imóvel",
+  "Relatório mensal no seu e-mail",
+];
+
+/** Perguntas reais de hóspede, para mostrar a assistente em vez de descrevê-la. */
+const CONVERSA = [
+  { de: "hospede", texto: "Oi! Qual a senha do wifi?", hora: "23:47" },
   {
-    tier: "essencial",
-    nome: "Essencial",
-    imoveis: "1 imóvel",
-    mensal: 97,
-    anual: 970,
-    linha: "Para quem tem um apartamento e quer ele rodando sozinho.",
-    itens: [
-      "Calendário do Airbnb e do Booking sincronizados",
-      "Checkout vira limpeza na agenda da diarista",
-      "Cadastro do hóspede com termo de responsabilidade",
-      "Assistente responde o hóspede 24h",
-      "Portaria avisada a cada reserva",
-    ],
-    destaque: false,
+    de: "bot",
+    texto:
+      "Oi, Ana! A rede é SOU_MAIS_302 e a senha é icarai2026. Se não aparecer, o roteador fica atrás da TV — é só tirar da tomada e ligar de novo.",
+    hora: "23:47",
   },
+  { de: "hospede", texto: "E pra estacionar o carro?", hora: "23:49" },
   {
-    tier: "pro",
-    nome: "Profissional",
-    imoveis: "até 3 imóveis",
-    mensal: 197,
-    anual: 1970,
-    linha: "Quando deixa de ser um extra e vira operação.",
-    itens: [
-      "Tudo do Essencial, nos três imóveis",
-      "Reposição de insumos por taxa fixa mensal",
-      "Painel da diarista com ganhos e aprovações",
-      "Cadastro direto no sistema da portaria",
-      "Fechamento financeiro do mês por imóvel",
-    ],
-    destaque: true,
-  },
-  {
-    tier: "ilimitado",
-    nome: "Portfólio",
-    imoveis: "até 5 imóveis",
-    mensal: 297,
-    anual: 2970,
-    linha: "Para quem administra os imóveis dos outros também.",
-    itens: [
-      "Tudo do Profissional, nos cinco imóveis",
-      "Uma diarista atendendo vários apartamentos",
-      "Relatório mensal consolidado",
-      "Histórico completo de hóspedes e acessos",
-      "Suporte prioritário",
-    ],
-    destaque: false,
+    de: "bot",
+    texto:
+      "A vaga é a 302, no segundo subsolo. O portão abre pelo aplicativo da portaria, com o mesmo e-mail que você usou no cadastro.",
+    hora: "23:49",
   },
 ];
 
@@ -184,6 +179,19 @@ export default function Landing() {
           <p className="lp-nota lp-rise" style={{ animationDelay: "360ms" }}>
             Sem fidelidade. Cancela quando quiser, no próprio painel.
           </p>
+
+          {/* A promoção fica dentro do hero, colada no CTA, e não numa faixa
+              no topo: faixa de promoção é a primeira coisa que o olho aprende
+              a ignorar. Aqui ela derruba a objeção logo depois do preço —
+              "vai dar trabalho configurar" —, que é a segunda da lista. */}
+          <div className="lp-promo lp-rise" style={{ animationDelay: "420ms" }}>
+            <span className="lp-promo-selo">Promoção de lançamento</span>
+            <p>
+              <strong>Nós cadastramos seu apartamento de graça.</strong> Você manda o
+              link do anúncio e as informações; a gente configura calendário,
+              assistente e portaria. Você recebe pronto, funcionando.
+            </p>
+          </div>
         </div>
 
         <figure className="lp-hero-foto lp-rise" style={{ animationDelay: "180ms" }}>
@@ -254,6 +262,97 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ------------------------------------------------------- A assistente */}
+      <section className="lp-ia">
+        <div className="lp-ia-texto">
+          <p className="lp-olho">Atendimento 24 horas</p>
+          <h2>
+            Uma assistente que <em>você</em> ensina.
+          </h2>
+          <p className="lp-ia-lead">
+            Ela responde o hóspede a qualquer hora — três da manhã, feriado, você
+            dormindo. E responde sobre o <strong>seu</strong> apartamento, porque tudo
+            o que ela sabe foi você quem escreveu no painel.
+          </p>
+
+          <div className="lp-ia-pontos">
+            <div>
+              <h3>Ela não inventa</h3>
+              <p>
+                A assistente só fala o que está no painel: senha do wifi, como abrir o
+                portão, onde fica a vaga, horário de saída, regra da churrasqueira. Não
+                tem no painel, ela não chuta — avisa que vai confirmar com você.
+              </p>
+            </div>
+            <div>
+              <h3>Ela melhora todo dia</h3>
+              <p>
+                Toda vez que um hóspede pergunta algo que faltava, você escreve a
+                resposta no painel e ela nunca mais erra aquilo. Em um mês ela já sabe
+                mais sobre o apartamento do que a maioria dos anfitriões lembra de cor.
+              </p>
+            </div>
+            <div>
+              <h3>Em português, inglês e espanhol</h3>
+              <p>
+                O hóspede escreve no idioma dele e é atendido nele. Você escreve tudo
+                em português, uma vez só.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Mostrar a assistente funcionando convence mais do que descrevê-la —
+            e uma conversa real cabe em quatro balões. */}
+        <div className="lp-chat" aria-label="Exemplo de conversa com a assistente">
+          <div className="lp-chat-topo">
+            <span className="lp-chat-ponto" aria-hidden />
+            Assistente · SOU MAIS ICARAÍ
+          </div>
+          {CONVERSA.map((m, i) => (
+            <div
+              key={i}
+              className={m.de === "bot" ? "lp-balao lp-balao--bot" : "lp-balao"}
+            >
+              <p>{m.texto}</p>
+              <span className="lp-balao-hora">{m.hora}</span>
+            </div>
+          ))}
+          <p className="lp-chat-rodape">Respondido em 4 segundos. Você estava dormindo.</p>
+        </div>
+      </section>
+
+      {/* --------------------------------------------------- Um só calendário */}
+      <section className="lp-sync">
+        <div className="lp-sync-cabeca">
+          <p className="lp-olho">Airbnb e Booking</p>
+          <h2>Dois anúncios, um calendário</h2>
+          <p>
+            Você cola o link do calendário de cada canal e o app lê os dois a cada 15
+            minutos. As reservas entram sozinhas, cada uma com a cor do canal de onde
+            veio — e viram limpeza na agenda da diarista sem você tocar em nada.
+          </p>
+        </div>
+
+        <div className="lp-sync-fluxo">
+          <div className="lp-sync-canal lp-sync-canal--airbnb">
+            <span>Airbnb</span>
+            <small>Reserva confirmada</small>
+          </div>
+          <div className="lp-sync-canal lp-sync-canal--booking">
+            <span>Booking</span>
+            <small>Reserva confirmada</small>
+          </div>
+          <div className="lp-sync-seta" aria-hidden>
+            →
+          </div>
+          <div className="lp-sync-destino">
+            <span>Seu calendário</span>
+            <small>Limpeza agendada · Hóspede cadastrado · Portaria avisada</small>
+          </div>
+        </div>
+      </section>
+
       {/* --------------------------------------------------------- Como roda */}
       <section className="lp-passos">
         <h2>Três passos, uma vez só</h2>
@@ -309,13 +408,32 @@ export default function Landing() {
           </div>
         </div>
 
+        {/* A lista vem ANTES dos preços, e é uma só. É a forma de dizer sem
+            texto que os planos não são versões capadas um do outro. */}
+        <div className="lp-inclui">
+          <p className="lp-inclui-titulo">
+            Em <em>qualquer</em> plano, sem exceção
+          </p>
+          <ul>
+            {TUDO_INCLUSO.map((i) => (
+              <li key={i}>{i}</li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="lp-planos-corte">A única diferença é quantos apartamentos rodam.</p>
+
         <div className="lp-planos-grade">
           {PLANOS.map((p) => (
             <article key={p.tier} className={p.destaque ? "lp-plano lp-plano--on" : "lp-plano"}>
               {p.destaque && <span className="lp-plano-fita">Mais escolhido</span>}
 
               <h3>{p.nome}</h3>
-              <p className="lp-plano-imoveis">{p.imoveis}</p>
+
+              <p className="lp-plano-qtd">
+                <span className="lp-plano-qtd-num">{p.imoveis}</span>
+                {p.imoveis === 1 ? "apartamento" : "apartamentos"}
+              </p>
 
               <p className="lp-plano-preco">
                 <span className="lp-cifra">R$</span>
@@ -328,13 +446,11 @@ export default function Landing() {
                   : `No anual sai por R$ ${brl(p.anual)} — dois meses de graça`}
               </p>
 
-              <p className="lp-plano-linha">{p.linha}</p>
-
-              <ul>
-                {p.itens.map((i) => (
-                  <li key={i}>{i}</li>
-                ))}
-              </ul>
+              <p className="lp-plano-linha">
+                {p.imoveis === 1
+                  ? "R$ 97 por mês pelo apartamento inteiro rodando sozinho."
+                  : `Sai a R$ ${brl(Math.round(p.mensal / p.imoveis))} por apartamento.`}
+              </p>
 
               <Link
                 to={`/entrar?modo=cadastro&plano=${p.tier}`}
@@ -347,8 +463,8 @@ export default function Landing() {
         </div>
 
         <p className="lp-planos-rodape">
-          Todos os planos incluem o assistente 24h, o cadastro do hóspede com termo
-          e o aviso à portaria. A diferença é quantos imóveis rodam.
+          Diarista não é cobrada: coloque quantas quiser, em qualquer plano. Tem mais de
+          cinco apartamentos? Fale com a gente que a gente monta.
         </p>
       </section>
 
@@ -357,6 +473,18 @@ export default function Landing() {
         <h2>Antes que você pergunte</h2>
         <dl>
           {[
+            [
+              "A assistente inventa resposta?",
+              "Não. Ela só responde com o que você escreveu no painel — wifi, fechadura, vaga, regras, horários. Quando o hóspede pergunta algo que não está lá, ela avisa que vai confirmar com você em vez de chutar. E aí você escreve a resposta uma vez e ela nunca mais erra aquilo.",
+            ],
+            [
+              "O cadastro grátis é grátis mesmo?",
+              "É. Você manda o link do seu anúncio e as informações do apartamento, e a gente configura tudo: calendário dos dois canais, o que a assistente precisa saber, a portaria e a mensagem automática. Você recebe funcionando e só paga a mensalidade do plano.",
+            ],
+            [
+              "Qual a diferença entre os planos?",
+              "Só a quantidade de apartamentos. O produto é exatamente o mesmo nos três — inclusive a assistente 24h e a reposição de insumos. E diarista não é cobrada: pode colocar quantas quiser em qualquer plano.",
+            ],
             [
               "Preciso trocar de plataforma?",
               "Não. Você continua anunciando no Airbnb e no Booking do mesmo jeito. O app só lê o calendário dos dois e cuida do resto — ele não toca no seu anúncio nem no seu preço.",
@@ -584,6 +712,19 @@ const CSS = `
 }
 @media (max-width: 900px) { .lp-hero-foto figcaption { left: 12px; bottom: -20px; } }
 
+/* --------------------------------------------------------------- promo */
+.lp-promo {
+  margin-top: 26px; max-width: 46ch;
+  border: 1px dashed var(--clay); border-radius: 5px;
+  padding: 16px 18px 17px; background: rgba(184,79,49,.05);
+}
+.lp-promo-selo {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--clay); margin-bottom: 8px;
+}
+.lp-promo p { font-size: 14.5px; line-height: 1.55; color: var(--ink-70); }
+.lp-promo strong { color: var(--ink); }
+
 /* ------------------------------------------------------------------ dor */
 .lp-dor {
   position: relative; z-index: 1;
@@ -642,6 +783,82 @@ const CSS = `
 .lp-foto-b img { height: clamp(130px, 17vw, 190px); }
 @media (max-width: 940px) { .lp-foto-b { right: 0; bottom: -30px; width: 46%; } }
 
+/* ----------------------------------------------------------- assistente */
+.lp-ia {
+  position: relative; z-index: 1; background: var(--sand);
+  padding: clamp(60px, 8vw, 108px) clamp(20px, 5vw, 72px);
+  display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(32px, 5vw, 72px);
+  align-items: center;
+}
+@media (max-width: 940px) { .lp-ia { grid-template-columns: 1fr; } }
+.lp-ia h2 { font-size: clamp(30px, 4.2vw, 50px); margin-top: 14px; line-height: 1.08; font-variation-settings: 'SOFT' 30, 'WONK' 1; }
+.lp-ia-lead { margin-top: 20px; font-size: clamp(16.5px, 1.5vw, 19px); color: var(--ink-70); max-width: 48ch; }
+.lp-ia-lead strong { color: var(--ink); }
+.lp-ia-pontos { margin-top: 30px; }
+.lp-ia-pontos > div { padding: 18px 0; border-top: 1px solid var(--areia-2); }
+.lp-ia-pontos h3 { font-size: 18px; font-variation-settings: 'SOFT' 40; }
+.lp-ia-pontos p { margin-top: 7px; font-size: 15px; color: var(--ink-70); max-width: 52ch; }
+
+/* Conversa de exemplo. Vidro claro sobre a areia, para parecer tela e não
+   mais um cartão de conteúdo. */
+.lp-chat {
+  background: var(--bone); border: 1px solid var(--areia-2); border-radius: 8px;
+  padding: 16px 16px 14px; box-shadow: 0 30px 60px -46px rgba(26,23,20,.7);
+}
+.lp-chat-topo {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+  color: var(--ink-45); padding-bottom: 12px; border-bottom: 1px solid var(--areia-2);
+  margin-bottom: 14px; letter-spacing: .01em;
+}
+.lp-chat-ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); flex-shrink: 0; }
+.lp-balao {
+  max-width: 82%; margin-bottom: 10px; padding: 10px 13px; border-radius: 13px 13px 13px 3px;
+  background: var(--sand); font-size: 14.5px; line-height: 1.5;
+}
+.lp-balao--bot {
+  margin-left: auto; background: var(--moss); color: var(--bone);
+  border-radius: 13px 13px 3px 13px;
+}
+.lp-balao p { margin: 0; }
+.lp-balao-hora { display: block; margin-top: 5px; font-size: 10.5px; opacity: .55; }
+.lp-chat-rodape {
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--areia-2);
+  font-size: 12px; color: var(--clay); font-weight: 600; text-align: center;
+}
+
+/* -------------------------------------------------------------- calendário */
+.lp-sync {
+  position: relative; z-index: 1;
+  padding: clamp(56px, 8vw, 96px) clamp(20px, 5vw, 72px);
+  max-width: 1440px; margin: 0 auto;
+}
+.lp-sync-cabeca { max-width: 58ch; }
+.lp-sync h2 { font-size: clamp(28px, 3.8vw, 44px); margin-top: 12px; font-variation-settings: 'SOFT' 30; }
+.lp-sync-cabeca p { margin-top: 16px; color: var(--ink-70); }
+
+.lp-sync-fluxo {
+  margin-top: clamp(28px, 4vw, 44px);
+  display: grid; grid-template-columns: 1fr auto 1.3fr; gap: 16px; align-items: center;
+}
+@media (max-width: 780px) { .lp-sync-fluxo { grid-template-columns: 1fr; } .lp-sync-seta { transform: rotate(90deg); } }
+.lp-sync-canal {
+  border: 1px solid var(--areia-2); border-left-width: 4px; border-radius: 4px;
+  padding: 14px 16px; background: rgba(255,255,255,.45);
+}
+.lp-sync-canal:first-child { margin-bottom: 12px; }
+@media (min-width: 781px) { .lp-sync-canal { grid-column: 1; } .lp-sync-canal:first-child { grid-row: 1; } .lp-sync-canal:nth-child(2) { grid-row: 2; margin-bottom: 0; } .lp-sync-seta { grid-column: 2; grid-row: 1 / 3; } .lp-sync-destino { grid-column: 3; grid-row: 1 / 3; } }
+.lp-sync-canal--airbnb { border-left-color: var(--airbnb); }
+.lp-sync-canal--booking { border-left-color: var(--booking); }
+.lp-sync-canal span { display: block; font-weight: 700; font-size: 15px; }
+.lp-sync-canal small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-45); }
+.lp-sync-seta { text-align: center; font-size: 26px; color: var(--ink-45); }
+.lp-sync-destino {
+  background: var(--moss); color: var(--bone); border-radius: 4px;
+  padding: 22px 24px;
+}
+.lp-sync-destino span { display: block; font-family: var(--serif); font-size: 23px; font-weight: 600; }
+.lp-sync-destino small { display: block; margin-top: 8px; font-size: 13.5px; color: rgba(247,243,236,.72); line-height: 1.5; }
+
 /* --------------------------------------------------------------- passos */
 .lp-passos {
   position: relative; z-index: 1;
@@ -689,6 +906,35 @@ const CSS = `
   background: var(--clay); color: #fff; padding: 3px 7px; border-radius: 999px;
 }
 
+/* Bloco único do que está incluso — o argumento de que os planos são iguais. */
+.lp-inclui {
+  border: 1px solid var(--areia-2); border-radius: 5px; padding: 26px clamp(20px, 3vw, 32px);
+  background: rgba(255,255,255,.45);
+}
+.lp-inclui-titulo {
+  font-family: var(--serif); font-size: 20px; font-weight: 600;
+  margin-bottom: 16px !important; font-variation-settings: 'SOFT' 40;
+}
+.lp-inclui ul {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 32px;
+}
+@media (max-width: 700px) { .lp-inclui ul { grid-template-columns: 1fr; } }
+.lp-inclui li {
+  font-size: 14.5px; color: var(--ink-70); padding: 8px 0 8px 25px;
+  position: relative; line-height: 1.45;
+}
+.lp-inclui li::before {
+  content: ''; position: absolute; left: 3px; top: 15px;
+  width: 9px; height: 5px; border-left: 1.6px solid var(--moss); border-bottom: 1.6px solid var(--moss);
+  transform: rotate(-45deg);
+}
+.lp-planos-corte {
+  text-align: center; margin: clamp(26px, 4vw, 40px) 0 clamp(18px, 2.5vw, 26px);
+  font-family: var(--serif); font-size: clamp(19px, 2.2vw, 25px); font-weight: 600;
+  font-variation-settings: 'SOFT' 40;
+}
+
 .lp-planos-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 940px) {
   .lp-planos-grade { grid-template-columns: 1fr; max-width: 460px; margin-inline: auto; }
@@ -712,7 +958,16 @@ const CSS = `
   padding: 4px 11px; border-radius: 999px;
 }
 .lp-plano h3 { font-size: 25px; font-variation-settings: 'SOFT' 40; }
-.lp-plano-imoveis { font-size: 13px; color: var(--ink-45); margin-top: 3px !important; letter-spacing: .01em; }
+/* A quantidade é a única variável entre os planos, então ela é o segundo
+   maior número do cartão — logo abaixo do nome e acima do preço. */
+.lp-plano-qtd {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 10px !important;
+  font-size: 14px; color: var(--ink-45);
+}
+.lp-plano-qtd-num {
+  font-family: var(--serif); font-size: 30px; font-weight: 600; line-height: 1;
+  color: var(--moss); font-variant-numeric: tabular-nums;
+}
 
 .lp-plano-preco { display: flex; align-items: baseline; gap: 4px; margin-top: 20px !important; color: var(--ink); }
 .lp-cifra { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink-45); }
