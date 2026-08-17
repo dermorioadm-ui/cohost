@@ -66,7 +66,6 @@ async function resolveUserId(
   return null;
 }
 
-/** Descobre o tier a partir do price id gravado na tabela plans. */
 /**
  * Assinatura nova no ar: avisa o cliente e avisa a plataforma.
  *
@@ -145,6 +144,7 @@ async function notifyNewSubscriber(
   });
 }
 
+/** Descobre o tier a partir do price id gravado na tabela plans. */
 async function resolvePlan(
   db: ReturnType<typeof admin>,
   priceId: string | null,
