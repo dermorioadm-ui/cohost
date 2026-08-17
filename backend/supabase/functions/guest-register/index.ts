@@ -128,9 +128,15 @@ export default handler(async (req) => {
     ? body.locale!
     : env.defaultLocale();
 
+  // O filtro por `kind` não é enfeite: esta consulta nasceu quando existia um
+  // termo só no sistema, e a 0025 acrescentou o do Hermes. A partir dali havia
+  // DOIS termos ativos em `pt`, `maybeSingle()` passou a devolver nulo (mais de
+  // uma linha), e todo cadastro de hóspede morria em "Termo de responsabilidade
+  // indisponível". Publicar um terceiro assunto sem este filtro quebraria de novo.
   const { data: term } = await db
     .from("term_versions")
     .select("id, version")
+    .eq("kind", "cadastro_hospede")
     .eq("locale", locale)
     .eq("active", true)
     .maybeSingle();
