@@ -98,3 +98,8 @@ verify_jwt = false
 
 [functions.job-porter-sync]
 verify_jwt = false
+
+# Manutenção: reconcilia produtos e preços da Stripe com a tabela `plans`.
+# Autoriza pelo segredo de cron; roda por private.call_job.
+[functions.billing-sync-plans]
+verify_jwt = false
