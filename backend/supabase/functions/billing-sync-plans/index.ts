@@ -1,7 +1,6 @@
 import Stripe from "npm:stripe@^18.5.0";
-import { handler, json } from "../_shared/lib/http.ts";
+import { errors, handler, json } from "../_shared/lib/http.ts";
 import { admin, requireCron } from "../_shared/lib/db.ts";
-import { env } from "../_shared/lib/env.ts";
 
 /**
  * Cria (ou reconcilia) na Stripe os produtos e preços de `public.plans`.
@@ -32,8 +31,38 @@ import { env } from "../_shared/lib/env.ts";
 // a falta de STRIPE_SECRET_KEY estourava antes de qualquer código nosso rodar e
 // o Supabase devolvia só "WORKER_ERROR: check logs" — quem chamasse não ficava
 // sabendo o que faltava. Aqui o erro sai como resposta, com o nome do segredo.
-const stripeClient = () =>
-  new Stripe(env.stripeSecret(), { apiVersion: "2025-08-27.basil" });
+//
+// E ele diz mais do que "faltou": o segredo pode ter sido salvo com outro nome
+// (STRIPE_KEY, STRIPE_API_KEY) ou no lugar errado do painel, e nesse caso a
+// mensagem "ausente" manda procurar exatamente onde já se olhou. Por isso a
+// resposta lista os NOMES parecidos que existem no ambiente — nunca os valores.
+function stripeClient(): Stripe {
+  const key = Deno.env.get("STRIPE_SECRET_KEY")?.trim();
+
+  if (!key) {
+    let parecidos: string[] = [];
+    try {
+      parecidos = Object.keys(Deno.env.toObject()).filter((n) => /STRIPE/i.test(n));
+    } catch {
+      // Ambiente sem permissão de listar: seguimos só com o nome que falta.
+    }
+    throw errors.invalid(
+      "Falta o segredo STRIPE_SECRET_KEY nas Edge Functions deste projeto." +
+        (parecidos.length
+          ? ` Existem com nome parecido: ${parecidos.join(", ")}.`
+          : " Nenhuma variável com \"STRIPE\" no nome chegou até a function."),
+    );
+  }
+
+  if (!/^sk_(live|test)_/.test(key)) {
+    throw errors.invalid(
+      "STRIPE_SECRET_KEY não parece uma chave secreta da Stripe: ela começa com " +
+        "sk_live_ ou sk_test_. Chave publicável (pk_) e restrita (rk_) não criam preços.",
+    );
+  }
+
+  return new Stripe(key, { apiVersion: "2025-08-27.basil" });
+}
 
 interface PlanRow {
   tier: string;
