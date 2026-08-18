@@ -45,7 +45,7 @@ export const env = {
   aiMaxTokens: () => num("AI_MAX_OUTPUT_TOKENS", 800),
 
   emailProvider: () => optional("EMAIL_PROVIDER", "resend"),
-  emailFrom: () => optional("EMAIL_FROM_ADDRESS", "nao-responda@hospedepay.com.br"),
+  emailFrom: () => optional("EMAIL_FROM_ADDRESS", "nao-responda@hospedepay.org"),
   emailFromName: () => optional("EMAIL_FROM_NAME", "HospedePay"),
   // Sem valor por padrão, e é intencional: todo e-mail do produto sai de uma
   // caixa não monitorada. Preencher isto aponta as respostas para algum lugar
