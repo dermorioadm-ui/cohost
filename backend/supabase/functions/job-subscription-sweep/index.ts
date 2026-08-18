@@ -19,90 +19,12 @@ export default handler(async (req) => {
   await requireCron(req);
 
   const db = admin();
-  const now = new Date();
-  const result = { expired: 0, reminders: 0, broken_feeds: 0 };
+  const result = { broken_feeds: 0 };
 
-  // ---- 1. trials vencidos --------------------------------------------------
-  const { data: expired } = await db
-    .from("profiles")
-    .update({ subscription_status: "expired" })
-    .eq("subscription_status", "trialing")
-    .lt("trial_ends_at", now.toISOString())
-    .select("user_id, email, locale");
-
-  result.expired = expired?.length ?? 0;
-
-  for (const p of expired ?? []) {
-    if (!p.email) continue;
-    await db.rpc("enqueue_notification", {
-      _channel: "email",
-      _template: "subscription-expired",
-      _payload: { checkout_url: `${env.appBaseUrl()}/assinatura` },
-      _to_email: p.email,
-      _to_user_id: p.user_id,
-      _idempotency_key: `trial-expired:${p.user_id}`,
-      _locale: p.locale ?? "pt",
-      _entity: "profiles",
-      _entity_id: p.user_id,
-    });
-  }
-
-  // ---- 2. lembretes de fim de trial ---------------------------------------
-  for (const daysLeft of [3, 1]) {
-    const from = new Date(now.getTime() + (daysLeft - 1) * 86400_000).toISOString();
-    const to = new Date(now.getTime() + daysLeft * 86400_000).toISOString();
-
-    const { data: ending } = await db
-      .from("profiles")
-      .select("user_id, email, locale")
-      .eq("subscription_status", "trialing")
-      .gte("trial_ends_at", from)
-      .lt("trial_ends_at", to);
-
-    for (const p of ending ?? []) {
-      if (!p.email) continue;
-
-      // Números concretos convertem melhor que "seu teste vai acabar".
-      const { data: props } = await db
-        .from("properties").select("id").eq("owner_id", p.user_id).is("archived_at", null);
-      const propertyIds = (props ?? []).map((x) => x.id);
-
-      let checkouts = 0;
-      let cleanings = 0;
-      if (propertyIds.length > 0) {
-        const { count: c1 } = await db
-          .from("reservations")
-          .select("id", { count: "exact", head: true })
-          .in("property_id", propertyIds)
-          .eq("status", "confirmed");
-        const { count: c2 } = await db
-          .from("cleaning_tasks")
-          .select("id", { count: "exact", head: true })
-          .in("property_id", propertyIds);
-        checkouts = c1 ?? 0;
-        cleanings = c2 ?? 0;
-      }
-
-      await db.rpc("enqueue_notification", {
-        _channel: "email",
-        _template: "trial-ending",
-        _payload: {
-          days_left: daysLeft,
-          checkouts,
-          cleanings,
-          checkout_url: `${env.appBaseUrl()}/assinatura`,
-        },
-        _to_email: p.email,
-        _to_user_id: p.user_id,
-        _idempotency_key: `trial-ending:${p.user_id}:${daysLeft}`,
-        _locale: p.locale ?? "pt",
-        _entity: "profiles",
-        _entity_id: p.user_id,
-      });
-      result.reminders++;
-    }
-  }
-
+  // Não existe teste grátis: a assinatura nasce cobrando, e quem deixa de
+  // pagar é rebaixado pelo webhook do Stripe (invoice.payment_failed ->
+  // past_due, customer.subscription.deleted -> expired). Não há prazo de
+  // graça para esta varredura vigiar, então ela cuida só dos calendários.
   // ---- 3. calendários quebrados -------------------------------------------
   const { data: broken } = await db
     .from("property_ical_sources")

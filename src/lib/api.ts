@@ -255,7 +255,7 @@ export const api = {
   },
 
   billing: {
-    checkout: (body: { tier: string; cycle: string; trial?: boolean }) =>
+    checkout: (body: { tier: string; cycle: string }) =>
       request<{ url: string }>("billing-checkout", { body }),
     portal: () => request<{ url: string }>("billing-portal", {}),
   },

@@ -14,7 +14,6 @@ import { env } from "../_shared/lib/env.ts";
 interface Body {
   tier?: "essencial" | "pro" | "ilimitado";
   cycle?: "monthly" | "annual";
-  trial?: boolean;
 }
 
 const stripe = new Stripe(env.stripeSecret(), { apiVersion: "2025-08-27.basil" });
@@ -23,7 +22,7 @@ export default handler(async (req) => {
   if (req.method !== "POST") throw errors.invalid("Use POST");
 
   const user = await requireRole(req, "owner");
-  const { tier = "essencial", cycle = "monthly", trial = false } = await readJson<Body>(req);
+  const { tier = "essencial", cycle = "monthly" } = await readJson<Body>(req);
 
   if (!["essencial", "pro", "ilimitado"].includes(tier)) {
     throw errors.invalid("Plano inválido");
@@ -42,16 +41,29 @@ export default handler(async (req) => {
 
   if (!plan || !plan.active) throw errors.notFound("Plano não disponível");
 
+  // O preço é o ID de um Price recorrente do Stripe, gravado em `plans`. Sem
+  // ele não há como cobrar — e o erro precisa dizer exatamente o que falta,
+  // porque quem vai consertar é quem administra a conta do Stripe, não o
+  // cliente que clicou em assinar.
   const priceId = cycle === "annual" ? plan.stripe_price_annual : plan.stripe_price_monthly;
   if (!priceId) {
     throw errors.upstream(
-      `O plano ${plan.name} (${cycle}) ainda não tem preço configurado no Stripe.`,
+      `O plano ${plan.name} (${cycle === "annual" ? "anual" : "mensal"}) ainda não tem ` +
+        `preço configurado no Stripe. Preencha plans.` +
+        `${cycle === "annual" ? "stripe_price_annual" : "stripe_price_monthly"} ` +
+        `com o ID do Price (price_...).`,
+    );
+  }
+  if (!priceId.startsWith("price_")) {
+    throw errors.upstream(
+      `O preço do plano ${plan.name} está gravado como "${priceId}", que não é um ID ` +
+        `de Price do Stripe. Use o ID que começa com "price_", não o do produto (prod_).`,
     );
   }
 
   const { data: profile } = await db
     .from("profiles")
-    .select("stripe_customer_id, email, full_name, subscription_status")
+    .select("stripe_customer_id, email, full_name")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -77,22 +89,16 @@ export default handler(async (req) => {
     await db.from("profiles").update({ stripe_customer_id: customerId }).eq("user_id", user.id);
   }
 
-  // Trial no Stripe só na primeira assinatura. Quem já testou e voltou paga
-  // direto — senão o período de graça vira infinito.
-  const alreadyUsedTrial = profile?.subscription_status
-    ? ["expired", "canceled", "past_due", "active"].includes(profile.subscription_status)
-    : false;
-
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     client_reference_id: user.id,
     line_items: [{ price: priceId, quantity: 1 }],
-    payment_method_collection: trial && !alreadyUsedTrial ? "if_required" : "always",
-    subscription_data:
-      trial && !alreadyUsedTrial
-        ? { trial_period_days: 7, metadata: { supabase_user_id: user.id } }
-        : { metadata: { supabase_user_id: user.id } },
+    // Sem teste grátis: o cartão é obrigatório e a assinatura começa cobrando.
+    // `always` + nenhum `trial_period_days` é o que garante isso — deixar o
+    // padrão do Stripe aqui reabriria o período de graça sem ninguém notar.
+    payment_method_collection: "always",
+    subscription_data: { metadata: { supabase_user_id: user.id } },
     success_url: `${env.appBaseUrl()}/assinatura?status=ok&session={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.appBaseUrl()}/assinatura?status=cancelado`,
     locale: "pt-BR",
