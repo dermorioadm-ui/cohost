@@ -31,7 +31,13 @@ export const env = {
   serviceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
   anonKey: () => optional("SUPABASE_ANON_KEY"),
 
-  appBaseUrl: () => optional("APP_BASE_URL", "https://cohost-ten.vercel.app"),
+  // O padrão é o domínio do produto, não a URL de preview da Vercel. Ele vaza
+  // para lugares visíveis: o link do assistente no e-mail do hóspede, o link
+  // do painel da diarista, o redirect da recuperação de senha e o retorno do
+  // checkout da Stripe — tudo saindo de uma mensagem assinada @hospedepay.org.
+  // Em produção quem manda é o secret APP_BASE_URL; este valor é a rede de
+  // segurança para quando ele não estiver preenchido.
+  appBaseUrl: () => optional("APP_BASE_URL", "https://hospedepay.org"),
   timezone: () => optional("APP_TIMEZONE", "America/Sao_Paulo"),
   defaultLocale: () => optional("APP_DEFAULT_LOCALE", "pt"),
   isProduction: () => optional("APP_ENV", "production") === "production",
