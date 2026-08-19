@@ -268,6 +268,14 @@ export const api = {
         body: { email },
         auth: false,
       }),
+
+    // Cadastro pelo backend, e não pelo `supabase.auth.signUp`. O signUp manda
+    // a confirmação pelo e-mail padrão do Supabase, cujo link aponta para o
+    // Site URL do projeto — campo de dashboard que, em branco, mandava todo
+    // cliente novo para localhost. Aqui o link é nosso, e o e-mail sai com a
+    // mesma cara dos outros. A resposta também não distingue conta existente.
+    signup: (body: { email: string; password: string; full_name: string; phone?: string }) =>
+      request<{ ok: boolean; message: string }>("signup", { body, auth: false }),
   },
 
   // Atendimento automático 24h. Repare que não existe `get` da senha: ela vai

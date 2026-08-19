@@ -9,6 +9,7 @@ import { AppShell } from "@/components/AppShell";
 
 const Auth = lazy(() => import("@/pages/Auth"));
 const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
+const Confirmar = lazy(() => import("@/pages/Confirmar"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -94,6 +95,7 @@ export default function App() {
                   partir de um link, sem sessão de verdade ainda. O provider
                   redirecionaria para o login antes de a troca acontecer. */}
               <Route path="/nova-senha" element={<NovaSenha />} />
+              <Route path="/confirmar" element={<Confirmar />} />
 
               <Route
                 path="/*"

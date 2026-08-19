@@ -41,29 +41,27 @@ export default function Auth() {
         if (form.name.trim().length < 3) throw new Error("Informe seu nome completo");
         if (form.password.length < 8) throw new Error("A senha precisa de ao menos 8 caracteres");
 
-        const { data, error } = await supabase.auth.signUp({
+        // Quem cria a conta é o backend, não o `supabase.auth.signUp`.
+        //
+        // O signUp dispara a confirmação pelo e-mail padrão do Supabase, e o
+        // link dele aponta para o Site URL do projeto. Com esse campo no padrão
+        // de fábrica, todo cadastro recebia um link para `http://localhost:3000`
+        // e a conta ficava presa em "confirme seu e-mail" para sempre — sem
+        // erro em tela nenhuma. A function `signup` monta o link no nosso
+        // domínio e manda pela nossa fila, com o mesmo template dos outros.
+        //
+        // O papel do usuário continua sendo gravado pelo gatilho
+        // on_auth_user_created, no banco: aqui não haveria sessão para escrever.
+        const res = await api.auth.signup({
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          options: {
-            data: { full_name: form.name.trim(), whatsapp: form.phone },
-          },
+          full_name: form.name.trim(),
+          phone: form.phone,
         });
-        if (error) throw error;
 
-        // O papel do usuário é gravado pelo gatilho on_auth_user_created, no
-        // banco. Aqui não dá: com confirmação de e-mail ligada, o cadastro não
-        // devolve sessão, então qualquer escrita daqui sairia sem autenticação
-        // e a RLS recusaria — sem erro visível, deixando a conta sem papel.
-
-        // Sem sessão, o cadastro só termina depois que o e-mail é confirmado.
-        if (!data.session) {
-          toast.success("Conta criada! Confirme o e-mail que enviamos para entrar.");
-          setMode("signin");
-          return;
-        }
-
-        toast.success("Conta criada! Vamos configurar seu primeiro imóvel.");
-        navigate("/comecar");
+        toast.success(res.message);
+        setMode("signin");
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: form.email.trim().toLowerCase(),

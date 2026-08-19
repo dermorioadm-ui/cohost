@@ -337,6 +337,54 @@ ${rows([
   },
 
   /**
+   * Confirmação de e-mail no cadastro.
+   *
+   * Este e-mail existe porque o do Supabase não servia: o link dele aponta
+   * para o Site URL do projeto, um campo de dashboard que, esquecido, mandava
+   * todo cliente novo para `localhost`. Aqui o destino é nosso.
+   *
+   * O texto diz o que vem depois de clicar. "Confirme seu e-mail" sozinho é um
+   * pedido sem contrapartida — quem acabou de se cadastrar quer saber se ainda
+   * falta muito antes de o produto começar a funcionar.
+   */
+  "confirm-email": (p) => {
+    const body = `<p>Olá, ${esc(s(p.full_name, "tudo bem").split(" ")[0])}!</p>
+<p>Falta um clique para sua conta ficar pronta. É só confirmar que este endereço é seu.</p>
+${button("Confirmar meu e-mail", s(p.confirm_url))}
+<p>Ao confirmar, você já entra direto e cai na configuração do primeiro imóvel — conectar o calendário, convidar a diarista e ligar o atendimento. Leva alguns minutos.</p>
+<p style="margin-top:20px;padding-top:16px;border-top:1px solid #eceef0;font-size:13px;color:#66707a;">
+<strong>Não foi você?</strong> Pode ignorar esta mensagem. A conta só passa a existir de verdade quando alguém abre este link, e sem isso ela expira sozinha.</p>`;
+
+    return {
+      subject: "Confirme seu e-mail para ativar a conta",
+      html: layout("Confirme seu e-mail", body, "Você recebeu este e-mail porque criou uma conta no HospedePay."),
+      text: `Olá, ${s(p.full_name)}!\n\nFalta um clique para sua conta ficar pronta. Confirme seu e-mail:\n${s(p.confirm_url)}\n\nSe não foi você, ignore: sem abrir o link, a conta não é ativada.`,
+    };
+  },
+
+  /**
+   * Alguém tentou criar conta com um e-mail que já tem cadastro.
+   *
+   * A resposta do endpoint é a mesma para quem tem conta e para quem não tem —
+   * senão ele vira consulta de base de clientes. Mas a informação é útil para
+   * uma pessoa: o dono do endereço. Ela tentou se cadastrar de novo porque
+   * esqueceu que já tinha conta, e o que ela precisa é do caminho para entrar.
+   */
+  "signup-existing": (p) => {
+    const body = `<p>Alguém tentou criar uma conta no HospedePay com <strong>${esc(p.email)}</strong> — e este endereço já tem cadastro.</p>
+<p>Se foi você, não precisa criar outra: é só entrar. Se não lembra a senha, use "esqueci minha senha" na tela de login.</p>
+${button("Ir para o login", s(p.login_url))}
+<p style="margin-top:20px;padding-top:16px;border-top:1px solid #eceef0;font-size:13px;color:#66707a;">
+<strong>Não foi você?</strong> Nada mudou na sua conta e ninguém entrou nela. Uma tentativa de cadastro com um e-mail já usado não dá acesso a nada — ela só resulta neste aviso.</p>`;
+
+    return {
+      subject: "Você já tem conta no HospedePay",
+      html: layout("Este e-mail já tem cadastro", body, "Você recebeu este aviso porque tentaram criar uma conta com o seu e-mail."),
+      text: `Alguem tentou criar uma conta com ${s(p.email)}, que ja tem cadastro.\n\nSe foi voce, entre em: ${s(p.login_url)}\nEsqueceu a senha? Use "esqueci minha senha" na tela de login.\n\nSe nao foi voce: nada mudou e ninguem entrou na sua conta.`,
+    };
+  },
+
+  /**
    * Recuperação de senha.
    *
    * O link é de uso único e curto de propósito. O texto evita a armadilha
