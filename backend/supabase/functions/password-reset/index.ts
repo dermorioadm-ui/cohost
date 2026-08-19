@@ -71,15 +71,25 @@ export default handler(async (req) => {
   // Sem conta: encerra aqui, com a MESMA resposta de quem tem.
   if (!profile) return sameAnswer();
 
-  // O `redirectTo` é a tela do app que troca a senha. Sem ele o Supabase manda
-  // para a URL padrão do projeto, que não sabe o que fazer com o token.
+  // O link é montado por nós, e não é o `action_link` que o GoTrue devolve.
+  //
+  // O caminho óbvio seria passar `redirectTo` e mandar o `action_link`: o
+  // GoTrue verifica o token e redireciona para a nossa tela. Só que ele valida
+  // esse destino contra a allow-list de Redirect URLs do projeto e, quando não
+  // encontra, NÃO devolve erro — troca em silêncio pelo Site URL. Com o Site
+  // URL no padrão de fábrica, todo pedido de recuperação saía apontando para
+  // `http://localhost:3000`, que não abre no celular de ninguém. Uma tela de
+  // configuração esquecida quebrava a recuperação de senha sem um único log.
+  //
+  // Com `hashed_token` o destino é escolhido aqui e a tela troca o token por
+  // sessão com `verifyOtp`. O link nasce no nosso domínio, e não existe campo
+  // de dashboard capaz de desviá-lo.
   const { data: link, error } = await db.auth.admin.generateLink({
     type: "recovery",
     email: address,
-    options: { redirectTo: `${env.appBaseUrl()}/nova-senha` },
   });
 
-  if (error || !link.properties?.action_link) {
+  if (error || !link.properties?.hashed_token) {
     console.error("Falha ao gerar link de recuperação:", error?.message);
     // Continua devolvendo a resposta neutra: o motivo da falha é nosso, não
     // dele, e detalhá-lo aqui só ajudaria quem está sondando.
@@ -91,7 +101,9 @@ export default handler(async (req) => {
     _template: "password-reset",
     _payload: {
       email: address,
-      reset_url: link.properties.action_link,
+      reset_url:
+        `${env.appBaseUrl()}/nova-senha` +
+        `?token_hash=${encodeURIComponent(link.properties.hashed_token)}&type=recovery`,
       expires_minutes: LINK_TTL_MINUTES,
     },
     _to_email: address,
