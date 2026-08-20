@@ -51,6 +51,7 @@ interface Task {
   status: string;
   turnover_price: number;
   photo_path: string | null;
+  hospede_saiu_em: string | null;
 }
 
 interface Property {
@@ -133,7 +134,7 @@ export default function CleanerAgenda() {
       const [tsk, props, cal, agr] = await Promise.all([
         supabase
           .from("cleaning_tasks")
-          .select("id, property_id, reservation_id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, photo_path")
+          .select("id, property_id, reservation_id, checkout_date, checkout_time, next_checkin_date, status, turnover_price, photo_path, hospede_saiu_em")
           .gte("checkout_date", today)
           .lte("checkout_date", monthEndDate)
           .neq("status", "cancelled")
@@ -401,6 +402,19 @@ export default function CleanerAgenda() {
                       {sameDay && (
                         <p className="mt-1 text-xs font-semibold text-amber-600">
                           Entrada no mesmo dia — precisa estar pronto
+                        </p>
+                      )}
+                      {/* O hóspede avisa a saída pelo link dele, e o aviso
+                          aparece AQUI — é a diferença entre "chego quando dá"
+                          e "posso ir agora, o apartamento já liberou". */}
+                      {task.hospede_saiu_em && task.status !== "completed" && (
+                        <p className="mt-1 text-xs font-semibold text-emerald-600">
+                          Hóspede saiu às{" "}
+                          {new Date(task.hospede_saiu_em).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}{" "}
+                          — pode entrar
                         </p>
                       )}
                     </div>

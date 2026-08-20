@@ -814,6 +814,17 @@ export const guestApi = {
       termo_url: string | null;
     }>("guest-register", { body, auth: false }),
 
+  /**
+   * Avisa que o hóspede saiu do apartamento. Idempotente no servidor:
+   * o horário que vale é o do primeiro toque.
+   */
+  checkout: (token: string) =>
+    request<{ ok: true; saida_em: string; ja_confirmado?: boolean }>("guest-checkout", {
+      body: {},
+      auth: false,
+      headers: { "x-guest-token": token },
+    }),
+
   /** Chat em streaming — chama onChunk a cada pedaço de texto. */
   async chat(
     token: string,

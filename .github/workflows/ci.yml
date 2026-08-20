@@ -1,0 +1,22 @@
+# O portão de todo PR: tipos, build e os testes das funções por onde passa
+# dinheiro e documento. Sem isto, "o build quebrou" é descoberto no deploy —
+# ou seja, pelo cliente.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run
+      - run: npm run build

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Activity, Loader2, RefreshCw } from "lucide-react";
+import { Activity, Loader2, RefreshCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { api, supabase } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /**
@@ -45,8 +45,25 @@ const REGRAS: Record<string, { rotulo: string; ruimAcima?: number; ruimAbaixo?: 
   },
 };
 
+interface LinhaLog {
+  origem: string;
+  acao: string;
+  ator_nome: string | null;
+  alvo: string | null;
+  detalhe: string | null;
+  created_at: string;
+}
+
+/** Rótulo legível por ação. O que não está aqui aparece como veio. */
+const ACAO: Record<string, string> = {
+  "admin.view_as": "Abriu o painel de",
+  erro_interno: "Erro interno em",
+  expurgo_lgpd: "Expurgo LGPD",
+};
+
 export default function AdminSistema() {
   const [saude, setSaude] = useState<Record<string, unknown> | null>(null);
+  const [log, setLog] = useState<LinhaLog[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [recarregando, setRecarregando] = useState(false);
 
@@ -56,6 +73,10 @@ export default function AdminSistema() {
       const r = await api.admin.visaoGeral();
       setSaude(r.saude);
       setErro(null);
+      // O log carrega junto, mas a falha dele não derruba a tela: os
+      // indicadores continuam sendo a parte que responde "tem algo quebrado?".
+      const { data } = await supabase.rpc("log_do_sistema", { _limite: 100 });
+      setLog((data ?? []) as LinhaLog[]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não consegui carregar");
     } finally {
@@ -158,6 +179,60 @@ export default function AdminSistema() {
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* -------------------------------------------------- registro de sistema
+          A linha do tempo do que aconteceu por trás das telas: admin entrando
+          em conta de assinante (auditoria que já era gravada), erro interno de
+          function e expurgo da retenção. Existe para a pergunta "o que houve?"
+          ter onde ser respondida — sem ela, a resposta é o log efêmero da
+          function, que some em horas. */}
+      <section className="glass-card overflow-hidden rounded-xl">
+        <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+          <ScrollText className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <h2 className="text-sm font-semibold">Registro de sistema</h2>
+        </div>
+
+        {log === null ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : log.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+            Nenhum evento registrado ainda.
+          </p>
+        ) : (
+          <ul className="divide-y divide-white/[0.04]">
+            {log.map((l, i) => (
+              <li key={i} className="px-4 py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="min-w-0 text-sm">
+                    <span className={cn(
+                      "font-medium",
+                      l.acao === "erro_interno" && "text-destructive",
+                    )}>
+                      {ACAO[l.acao] ?? l.acao}
+                    </span>
+                    {l.alvo && <span className="text-muted-foreground"> {l.alvo}</span>}
+                  </p>
+                  <time className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    {new Date(l.created_at).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {[l.ator_nome, l.origem !== "admin" ? l.origem : null, l.detalhe]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
