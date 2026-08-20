@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, Clock, Loader2, Mail, MapPin, Phone, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/api";
+import { supabase, api, type TermoAssinado } from "@/lib/api";
+import { BotaoBaixarTermo } from "@/components/TermosAssinados";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -98,6 +99,8 @@ function endereco(p: Property | undefined): string | null {
 export default function Hospedes() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
+  /** registration_id -> termo assinado pelo responsável. */
+  const [termos, setTermos] = useState<Map<string, TermoAssinado>>(new Map());
   const [properties, setProperties] = useState<Property[]>([]);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [busca, setBusca] = useState("");
@@ -131,6 +134,23 @@ export default function Hospedes() {
         created_at: string;
         guest_people: Array<Omit<Row, keyof Row> & Record<string, unknown>>;
       }>;
+
+      // Os termos assinados, indexados pelo cadastro. Uma consulta só para a
+      // tela toda: pedir o termo por cartão faria 300 requisições numa lista
+      // que rola.
+      try {
+        const termos = await api.termos.listar();
+        setTermos(
+          new Map(
+            termos
+              .filter((t) => t.registration_id && t.pdf_path)
+              .map((t) => [t.registration_id!, t]),
+          ),
+        );
+      } catch {
+        // Sem termo não é erro de tela: a lista de clientes existia antes de
+        // os termos existirem, e continua servindo sem eles.
+      }
 
       // O estado na portaria vem numa segunda consulta: `porter_registrations`
       // tem policy própria e o embed do PostgREST esconderia essa dependência.
@@ -359,6 +379,16 @@ export default function Hospedes() {
                   <p className="mt-3 break-words rounded-lg bg-destructive/5 px-3 py-2 text-xs text-destructive">
                     {r.porter_reason.slice(0, 300)}
                   </p>
+                )}
+
+                {/* O termo aparece no cartão do RESPONSÁVEL: foi ele quem
+                    assinou, e por ele que os acompanhantes entraram. Repetir o
+                    botão em cada acompanhante daria a impressão de vários
+                    documentos onde existe um. */}
+                {r.is_primary && termos.get(r.registration_id) && (
+                  <div className="mt-3 border-t border-white/[0.06] pt-3">
+                    <BotaoBaixarTermo termo={termos.get(r.registration_id)!} compacto />
+                  </div>
                 )}
               </article>
             );
