@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,19 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Assinatura } from "@/components/Assinatura";
 import {
-  ArrowLeft, Building2, CheckCircle2, ChevronRight, Loader2, MessageCircle,
-  Plus, Send, Trash2, UserPlus,
+  ArrowLeft, Building2, Camera, Check, CheckCircle2, ChevronDown, ChevronRight,
+  Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { guestApi, guestSession, type GuestInput } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { T, IDIOMAS, idiomaInicial, salvarIdioma, type Idioma } from "@/lib/guestI18n";
+import { bandeira, paises, paisPorIso } from "@/lib/paises";
+import { cpfValido, formatarCpf, passaporteValido, soDigitos } from "@/lib/documentos";
+import { prepararImagem } from "@/lib/imagem";
+import {
+  TelefonePais, paraE164, telefoneCompleto, type ValorTelefone,
+} from "@/components/TelefonePais";
 
 /**
  * Página pública do hóspede. Duas portas na entrada:
@@ -31,38 +38,31 @@ import { cn } from "@/lib/utils";
 type Mode = "choice" | "register" | "chat";
 type Msg = { role: "user" | "assistant"; content: string };
 
-const T = {
-  pt: {
-    welcome: "Bem-vindo!", how: "Como podemos ajudar?",
-    register: "Cadastro de acesso ao apartamento",
-    registerDone: "Cadastro de acesso concluído",
-    support: "Chat de Atendimento",
-    required: "Obrigatório antes da chegada — libera as instruções de acesso",
-    requiredDone: "Toque para incluir mais alguém na estadia",
-    supportHint: "Wi-Fi, acesso, regras da casa — 24 horas",
-    back: "Voltar",
-    dates: "Datas da estadia", checkin: "Entrada", checkout: "Saída",
-    guests: "Hóspedes", add: "Adicionar hóspede", guest: "Hóspede",
-    name: "Nome completo", email: "E-mail", phone: "Telefone com DDD",
-    term: "Termo de responsabilidade",
-    termText:
-      "Declaro que cadastrei <b>todas as pessoas</b> que irão se hospedar, respeitando o limite de ocupação. " +
-      "Assumo a responsabilidade pelo imóvel e <b>pelas demais pessoas que cadastrei</b> durante toda a estadia. " +
-      "Comprometo-me a <b>não receber pessoas que não estão neste check-in</b> sem autorização do anfitrião. " +
-      "Estou ciente de que será realizada uma <b>vistoria ao término</b>.",
-    signTitle: "Assine o termo",
-    signHint: "Assine com o dedo. O documento assinado é enviado ao anfitrião.",
-    signMissing: "Assine o termo antes de concluir",
-    submit: "Cadastrar e liberar acesso", sending: "Cadastrando…",
-    placeholder: "Escreva sua dúvida…", assistant: "Assistente do imóvel",
-    hello: "Olá", helpYou: "Como posso te ajudar?",
-    done: "Cadastro concluído! As instruções de acesso foram enviadas para o seu e-mail.",
-  },
-} as const;
 
-const t = T.pt;
 
-const emptyGuest = (): GuestInput => ({ full_name: "", email: "", phone: "" });
+/** Um hóspede em edição. `telefone` fica separado porque o campo tem país. */
+interface Rascunho extends GuestInput {
+  telefone: ValorTelefone;
+  estrangeiro: boolean;
+  cpf: string;
+  passaporte: string;
+  nacionalidade: string;
+  fotoNome: string;
+  fotoDataUrl: string;
+}
+
+const novoHospede = (): Rascunho => ({
+  full_name: "",
+  email: "",
+  phone: "",
+  telefone: { iso: "BR", numero: "" },
+  estrangeiro: false,
+  cpf: "",
+  passaporte: "",
+  nacionalidade: "",
+  fotoNome: "",
+  fotoDataUrl: "",
+});
 
 export default function GuestChat() {
   const { slug = "" } = useParams();
@@ -72,7 +72,12 @@ export default function GuestChat() {
 
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
-  const [guests, setGuests] = useState<GuestInput[]>([emptyGuest()]);
+  const [guests, setGuests] = useState<Rascunho[]>([novoHospede()]);
+  const [idioma, setIdioma] = useState<Idioma>(idiomaInicial);
+  const [fotoOcupada, setFotoOcupada] = useState<number | null>(null);
+
+  /** Todo texto da tela sai daqui. Trocar o idioma troca a tela inteira. */
+  const t = T[idioma];
   const [term, setTerm] = useState(false);
   const [assinatura, setAssinatura] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,21 +108,56 @@ export default function GuestChat() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  /** Lista de países no idioma da tela, para a nacionalidade. */
+  const listaPaises = useMemo(() => paises(idioma), [idioma]);
+
+  /** Altera um hóspede pelo índice, sem reescrever a lista à mão em cada campo. */
+  const trocar = (i: number, patch: Partial<Rascunho>) =>
+    setGuests((atual) => atual.map((g, j) => (j === i ? { ...g, ...patch } : g)));
+
+  /**
+   * Recebe a foto do documento e a reduz antes de guardar no estado.
+   *
+   * A redução acontece AQUI, e não no envio: se ficasse para o submit, a
+   * pessoa descobriria que a imagem é grande demais depois de preencher a
+   * ficha inteira — no pior momento possível.
+   */
+  const pegarFoto = async (i: number, arquivo: File) => {
+    setFotoOcupada(i);
+    setError("");
+    try {
+      const { dataUrl } = await prepararImagem(arquivo);
+      trocar(i, { fotoDataUrl: dataUrl, fotoNome: arquivo.name });
+    } catch {
+      setError(`${t.guest} ${i + 1}: ${t.errPhoto}`);
+    } finally {
+      setFotoOcupada(null);
+    }
+  };
+
   const submitRegistration = async () => {
     setError("");
 
-    if (!checkin || !checkout) return setError("Informe as datas da estadia");
-    if (checkout <= checkin) return setError("A saída precisa ser depois da entrada");
-    if (!term) return setError("É necessário aceitar o termo de responsabilidade");
+    if (!checkin || !checkout) return setError(t.errDates);
+    if (checkout <= checkin) return setError(t.errOrder);
+    if (!term) return setError(t.errTerm);
     if (!assinatura) return setError(t.signMissing);
 
     for (const [i, g] of guests.entries()) {
-      if (g.full_name.trim().split(" ").length < 2)
-        return setError(`Hóspede ${i + 1}: informe o nome completo`);
+      const quem = `${t.guest} ${i + 1}`;
+      if (g.full_name.trim().split(/\s+/).length < 2) return setError(`${quem}: ${t.errName}`);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(g.email.trim()))
-        return setError(`Hóspede ${i + 1}: e-mail inválido`);
-      if (g.phone.replace(/\D/g, "").length < 10)
-        return setError(`Hóspede ${i + 1}: telefone inválido`);
+        return setError(`${quem}: ${t.errEmail}`);
+      if (!telefoneCompleto(g.telefone)) return setError(`${quem}: ${t.errPhone}`);
+
+      // O documento é o que dá validade ao termo assinado. Sem ele, a
+      // assinatura identifica um nome — e nome não é identificação.
+      if (g.estrangeiro) {
+        if (!g.nacionalidade) return setError(`${quem}: ${t.errNationality}`);
+        if (!passaporteValido(g.passaporte)) return setError(`${quem}: ${t.errPassport}`);
+      } else if (!cpfValido(g.cpf)) {
+        return setError(`${quem}: ${t.errCpf}`);
+      }
     }
 
     setBusy(true);
@@ -126,10 +166,27 @@ export default function GuestChat() {
         property_slug: slug,
         checkin_date: checkin,
         checkout_date: checkout,
-        guests,
+        guests: guests.map((g) => ({
+          full_name: g.full_name.trim(),
+          email: g.email.trim(),
+          // O telefone sai daqui em E.164, com o DDI do país escolhido. É esse
+          // formato que a portaria digital aceita — e a falta dele foi o que
+          // fez a Kiper recusar cadastro lendo "+21" como código de país.
+          phone: paraE164(g.telefone, idioma),
+          // O DDI vai em separado: o comprimento do número não distingue
+          // "+34 612345678" de um brasileiro com DDD, e a portaria recusa
+          // número formatado com o país errado.
+          phone_ddi: paisPorIso(g.telefone.iso, idioma)?.ddi ?? "",
+          document_type: g.estrangeiro ? "passaporte" : "cpf",
+          document_number: g.estrangeiro
+            ? g.passaporte.trim().toUpperCase()
+            : soDigitos(g.cpf),
+          nationality: g.estrangeiro ? g.nacionalidade : "BR",
+          document_photo: g.fotoDataUrl || undefined,
+        })),
         term_accepted: true,
         assinatura,
-        locale: "pt",
+        locale: idioma,
       });
 
       guestSession.set(slug, res.session_token);
@@ -193,6 +250,38 @@ export default function GuestChat() {
         </div>
 
         <div className="flex-1 px-4 py-6 max-w-sm mx-auto w-full space-y-3">
+          {/* Idioma ACIMA dos botões, e não escondido num menu.
+              O hóspede estrangeiro é o caso normal num apartamento de
+              temporada. Se ele precisa achar um seletor para entender os dois
+              botões, o seletor chegou tarde demais — e ele já desistiu ou
+              apertou o botão errado. */}
+          <div
+            role="group"
+            aria-label="Idioma / Language / Idioma"
+            className="flex items-center justify-center gap-2 pb-1"
+          >
+            {IDIOMAS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => {
+                  setIdioma(l.id);
+                  salvarIdioma(l.id);
+                }}
+                aria-pressed={idioma === l.id}
+                className={cn(
+                  "inline-flex min-h-[44px] items-center gap-2 rounded-full border px-3.5 text-sm transition-colors",
+                  idioma === l.id
+                    ? "border-primary bg-primary/10 font-semibold text-primary"
+                    : "border-border text-muted-foreground hover:bg-accent",
+                )}
+              >
+                <span className="text-lg leading-none">{bandeira(l.iso)}</span>
+                <span className="text-xs">{l.nome}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Cadastro em cima: é ele que libera o acesso ao apartamento, e sem
               ele o hóspede chega na porta sem código. A ordem não é estética. */}
           <button
@@ -287,25 +376,150 @@ export default function GuestChat() {
                 )}
               </div>
 
-              {(["full_name", "email", "phone"] as const).map((field) => (
+              {/* Nome e e-mail */}
+              {(["full_name", "email"] as const).map((field) => (
                 <div key={field} className="space-y-1.5">
-                  <Label className="text-xs">
-                    {field === "full_name" ? t.name : field === "email" ? t.email : t.phone}
-                  </Label>
+                  <Label className="text-xs">{field === "full_name" ? t.name : t.email}</Label>
                   <Input
-                    value={g[field]}
+                    value={g[field] ?? ""}
                     onChange={(e) =>
-                      setGuests(guests.map((x, j) => (j === i ? { ...x, [field]: e.target.value } : x)))
+                      trocar(i, { [field]: e.target.value } as Partial<Rascunho>)
                     }
-                    type={field === "email" ? "email" : field === "phone" ? "tel" : "text"}
-                    autoCapitalize={field === "email" ? "off" : "words"}
+                    type={field === "email" ? "email" : "text"}
+                    autoComplete={field === "full_name" ? "name" : "email"}
+                    className="min-h-[44px]"
                   />
                 </div>
               ))}
+
+              {/* Telefone com país. O DDI explícito é o que a portaria exige. */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">{t.phone}</Label>
+                <TelefonePais
+                  valor={g.telefone}
+                  onChange={(v) => trocar(i, { telefone: v })}
+                  locale={idioma}
+                  rotuloBusca={t.phoneSearch}
+                />
+              </div>
+
+              {/* ------------------------------------------------ documento */}
+              <div className="space-y-2 rounded-xl bg-muted/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs font-semibold">{t.docTitle}</Label>
+                  {/* O "sou estrangeiro" fica AO LADO do campo, e não numa tela
+                      antes: quem tem CPF nunca precisa pensar nele, e quem não
+                      tem descobre a saída no exato momento em que trava. */}
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={g.estrangeiro}
+                      onCheckedChange={(v) =>
+                        trocar(i, { estrangeiro: Boolean(v), cpf: "", passaporte: "" })
+                      }
+                    />
+                    {t.foreign}
+                  </label>
+                </div>
+
+                {!g.estrangeiro ? (
+                  <div className="space-y-1.5">
+                    <Input
+                      value={g.cpf}
+                      onChange={(e) => trocar(i, { cpf: formatarCpf(e.target.value) })}
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      aria-label={t.cpf}
+                      className={cn(
+                        "min-h-[44px]",
+                        g.cpf.length === 14 && !cpfValido(g.cpf) && "border-destructive",
+                      )}
+                    />
+                    {/* O aviso só aparece quando o campo está cheio: avisar a
+                        cada dígito é acusar a pessoa de errar enquanto digita. */}
+                    {g.cpf.length === 14 && !cpfValido(g.cpf) && (
+                      <p className="text-xs text-destructive">{t.errCpf}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t.nationality}</Label>
+                      <select
+                        value={g.nacionalidade}
+                        onChange={(e) => trocar(i, { nacionalidade: e.target.value })}
+                        className="min-h-[44px] w-full rounded-lg border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="">{t.nationalityPick}</option>
+                        {listaPaises.map((p) => (
+                          <option key={p.iso} value={p.iso}>
+                            {p.bandeira} {p.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t.passport}</Label>
+                      <Input
+                        value={g.passaporte}
+                        onChange={(e) =>
+                          trocar(i, { passaporte: e.target.value.toUpperCase().slice(0, 12) })
+                        }
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        className="min-h-[44px]"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t.foreignHint}</p>
+                  </div>
+                )}
+
+                {/* Foto do documento */}
+                <div className="space-y-1.5 border-t pt-2">
+                  <Label className="text-xs">{t.photo}</Label>
+                  <label
+                    className={cn(
+                      "flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm",
+                      g.fotoDataUrl && "border-solid border-success/50",
+                    )}
+                  >
+                    <input
+                      type="file"
+                      // `capture` abre a câmera direto no celular. Sem ele o
+                      // hóspede cai na galeria e tem que sair para fotografar.
+                      accept="image/*,application/pdf"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) pegarFoto(i, f);
+                        e.target.value = "";
+                      }}
+                    />
+                    {fotoOcupada === i ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="text-muted-foreground">{t.photoSending}</span>
+                      </>
+                    ) : g.fotoDataUrl ? (
+                      <>
+                        <Check className="h-4 w-4 shrink-0 text-success" />
+                        <span className="min-w-0 flex-1 truncate">{g.fotoNome}</span>
+                        <span className="shrink-0 text-xs text-primary">{t.photoChange}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="text-muted-foreground">{t.photo}</span>
+                      </>
+                    )}
+                  </label>
+                  <p className="text-xs text-muted-foreground">{t.photoHint}</p>
+                </div>
+              </div>
             </section>
           ))}
 
-          <Button variant="outline" className="w-full" onClick={() => setGuests([...guests, emptyGuest()])}>
+          <Button variant="outline" className="w-full" onClick={() => setGuests([...guests, novoHospede()])}>
             <Plus className="h-4 w-4 mr-1" /> {t.add}
           </Button>
 
