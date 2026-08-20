@@ -19,6 +19,9 @@ import { HermesCard } from "@/components/HermesCard";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 import { cn, getAppBaseUrl } from "@/lib/utils";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * Edição de um imóvel já cadastrado.
@@ -124,7 +127,7 @@ const hhmm = (t: string | null | undefined) => (t ?? "").slice(0, 5);
 
 export default function Imovel() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<PropertyRow | null>(null);
@@ -170,6 +173,8 @@ export default function Imovel() {
   // celular, é clique acidental esperando acontecer.
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [duplicar, setDuplicar] = useState(false);
+  const [duplicando, setDuplicando] = useState(false);
 
   // Retrato do que está gravado. Com as seções separadas em etapas, dá para
   // digitar na primeira e sair pela sexta sem passar por um botão de salvar —
@@ -320,6 +325,35 @@ export default function Imovel() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não consegui remover");
       setDeleting(false);
+    }
+  };
+
+  const duplicarImovel = async () => {
+    setDuplicando(true);
+    try {
+      const r = await api.duplicarImovel(form!.id);
+
+      // O aviso vem antes da navegação: o token do feed do imóvel original é
+      // rotacionado para cruzar os dois calendários, e quem já tinha colado a
+      // URL antiga no canal precisa colar a nova. Descobrir isso depois seria
+      // descobrir por uma data vendida duas vezes.
+      if (r.cruzado) {
+        toast.success("Anúncio criado e calendários cruzados.", {
+          description:
+            "Atenção: o link de calendário do imóvel original foi renovado. " +
+            "Copie o novo na etapa Calendário e cole no anúncio.",
+          duration: 12_000,
+        });
+      } else {
+        toast.warning(r.aviso ?? "Duplicado, mas sem cruzar os calendários.");
+      }
+
+      setDuplicar(false);
+      navigate(`/imoveis/${r.id}`, { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não consegui duplicar");
+    } finally {
+      setDuplicando(false);
     }
   };
 
@@ -490,6 +524,32 @@ export default function Imovel() {
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <h1 className="min-w-0 truncate text-lg font-bold">{form.name}</h1>
+
+        {/* Duplicar e remover ficam aqui, no canto, fora da configuração.
+            Antes a remoção morava dentro da etapa "Imóvel", logo abaixo dos
+            campos: quem estava ajustando um horário de check-out esbarrava
+            numa caixa vermelha de excluir. Ação destrutiva não divide espaço
+            com o formulário do dia a dia. */}
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setDuplicar(true)}
+            aria-label="Duplicar imóvel"
+            title="Duplicar para um segundo anúncio"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            aria-label="Remover imóvel"
+            title="Remover imóvel"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       {/* Etapas — atalhos, não trilho. Rolam na horizontal no celular porque
@@ -638,53 +698,6 @@ export default function Imovel() {
 
           {stepFooter}
 
-          {/* Zona de perigo fica na etapa da identidade do imóvel, e depois do
-              rodapé: quem veio ajustar um horário não esbarra nela. */}
-          <section className="space-y-3 rounded-xl border border-destructive/30 p-5">
-            <div className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-destructive" />
-              <h2 className="font-semibold text-destructive">Remover imóvel</h2>
-            </div>
-
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Ele sai do app e para de gerar limpeza. O histórico de reservas fica
-              guardado, então nada de contabilidade se perde — mas as limpezas ainda não
-              feitas deste imóvel são canceladas e somem da agenda da diarista.
-            </p>
-
-            {confirmDelete ? (
-              <div className="flex gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="flex-1"
-                  onClick={archive}
-                  disabled={deleting}
-                >
-                  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Confirmar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setConfirmDelete(false)}
-                  disabled={deleting}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setConfirmDelete(true)}
-              >
-                Remover {form.name}
-              </Button>
-            )}
-          </section>
         </>
       )}
 
@@ -1398,20 +1411,122 @@ export default function Imovel() {
             </label>
           </section>
 
-          {/* Fora do formulário principal de propósito: salvar credencial de
-              terceiro é outra transação, com teste próprio, e não deve depender
-              do "Salvar alterações". */}
-          {/* A oferta vem ANTES do formulário técnico. Quem cai aqui e vê seis
-              campos de credencial de API fecha a tela; a maioria não sabe o que
-              é applicationKey nem tem como descobrir. A oferta oferece a saída
-              antes de a pessoa concluir que a portaria não é para ela. */}
+          {/* O formulário de credenciais NÃO aparece para o dono.
+              Colocar a oferta antes dele não resolveu: os seis campos de API
+              continuavam logo abaixo, e o efeito de deixá-los à vista é o
+              oposto do que o produto promete. A pessoa lê "applicationKey",
+              "totpSecret", "deviceId", conclui que precisa entender aquilo
+              antes de a portaria funcionar, e desiste da automação inteira —
+              ou pior, tenta preencher, erra, e passa a achar que o produto
+              não funciona.
+
+              Quem implanta é a equipe técnica, e é ela quem precisa do
+              formulário. Por isso ele fica atrás do papel de admin: mesma
+              tela, mesmo imóvel, sem exigir uma ferramenta separada. */}
           <PortariaOferta propertyId={form.id} />
 
-          <PorterConnect propertyId={form.id} />
+          {role === "admin" && (
+            <div className="space-y-2">
+              <p className="rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                Abaixo é a implantação técnica, visível só para a equipe. O dono do imóvel não vê
+                esta parte.
+              </p>
+              <PorterConnect propertyId={form.id} />
+            </div>
+          )}
 
           {stepFooter}
         </>
       )}
+
+      {/* ------------------------------------------------- remover imóvel */}
+      <Dialog open={confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remover {form.name}?</DialogTitle>
+            <DialogDescription>
+              Isto muda coisas que a diarista e o calendário vão sentir.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* A lista existe porque "tem certeza?" não informa nada. O que a
+              pessoa precisa saber antes de confirmar é o que ela não consegue
+              desfazer sozinha depois. */}
+          <ul className="space-y-2 text-sm">
+            {[
+              "O imóvel sai da sua lista e para de gerar limpeza.",
+              "As limpezas ainda não feitas são canceladas e somem da agenda da diarista.",
+              "Os calendários conectados param de trazer reservas novas.",
+              "O histórico de reservas e o financeiro dos meses passados ficam guardados — nada de contabilidade se perde.",
+            ].map((t) => (
+              <li key={t} className="flex gap-2 text-muted-foreground">
+                <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden />
+                <span className="leading-relaxed">{t}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={archive} disabled={deleting} className="min-h-[44px]">
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remover imóvel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------ duplicar imóvel */}
+      <Dialog open={duplicar} onOpenChange={(v) => !v && setDuplicar(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar um segundo anúncio</DialogTitle>
+            <DialogDescription>
+              Mesmo apartamento, outro anúncio — com os calendários travados um contra o outro.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <p className="leading-relaxed text-muted-foreground">
+              A cópia leva a configuração toda: endereço, horários, diarista, preço da limpeza e
+              as respostas do assistente. Ela não leva reservas nem limpezas — essas pertencem ao
+              anúncio que as gerou.
+            </p>
+
+            {/* O cruzamento é o motivo de existir este botão, e é o que ninguém
+                lembra de fazer na mão. Dito com o nome do problema, não com o
+                nome da funcionalidade. */}
+            <div className="rounded-lg border border-primary/25 bg-primary/[0.05] p-3">
+              <p className="text-xs font-semibold text-primary">Os dois calendários nascem ligados</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Reserva que entrar em um bloqueia a data no outro, automaticamente. É isso que
+                impede os dois anúncios de venderem a mesma noite e dois hóspedes chegarem na
+                mesma porta.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-warning/[0.08] p-3">
+              <p className="text-xs leading-relaxed text-warning">
+                O link de calendário <strong>deste</strong> imóvel será renovado para fazer a
+                ligação. Depois de duplicar, copie o novo na etapa Calendário e cole no seu
+                anúncio do Airbnb ou Booking — o antigo para de funcionar.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setDuplicar(false)} disabled={duplicando}>
+              Cancelar
+            </Button>
+            <Button onClick={duplicarImovel} disabled={duplicando} className="min-h-[44px]">
+              {duplicando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Criar segundo anúncio
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

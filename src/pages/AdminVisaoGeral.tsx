@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Loader2, TrendingUp } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -172,9 +172,21 @@ export default function AdminVisaoGeral() {
 
       {dados.saude && (
         <section className="glass-card space-y-2 rounded-xl p-5">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-semibold">Saúde do sistema</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Saúde do sistema</h2>
+            </div>
+            {/* Aqui os números são crus. A tela de Sistema é quem sabe qual
+                valor é ruim — e ela saiu da barra para o Pipeline entrar, que
+                é o que a equipe abre todo dia. */}
+            <Link
+              to="/admin/sistema"
+              className="inline-flex min-h-[36px] items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              Ver com os limites
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             {Object.entries(dados.saude).map(([chave, valor]) => (

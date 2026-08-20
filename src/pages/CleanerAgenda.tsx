@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { AssinarLimpeza } from "@/components/AssinarLimpeza";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { styleOf, type Provider } from "@/lib/channels";
@@ -408,18 +409,19 @@ export default function CleanerAgenda() {
                       <span className="font-semibold text-sm">Concluída</span>
                     </div>
                   ) : date === today ? (
-                    <Button
-                      onClick={() => complete(task.id)}
-                      disabled={saving === task.id}
-                      className="w-full h-14 mt-4 text-base font-bold"
-                    >
-                      {saving === task.id ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                      )}
-                      Marcar como concluída
-                    </Button>
+                    /* Assinar substituiu "marcar como concluída": o toque é o
+                       mesmo, e o que sai do outro lado deixou de ser um
+                       registro que o app criou sozinho e passou a ser uma
+                       declaração dela, com data, hora e assinatura. */
+                    <AssinarLimpeza
+                      taskId={task.id}
+                      imovel={properties.find((p) => p.id === task.property_id)?.name ?? "o imóvel"}
+                      onPronto={() =>
+                        setTasks((t) =>
+                          t.map((x) => (x.id === task.id ? { ...x, status: "completed" } : x)),
+                        )
+                      }
+                    />
                   ) : null}
 
                   <PhotoButton

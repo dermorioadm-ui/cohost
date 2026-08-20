@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Assinatura } from "@/components/Assinatura";
 import {
   ArrowLeft, Building2, CheckCircle2, ChevronRight, Loader2, MessageCircle,
   Plus, Send, Trash2, UserPlus,
@@ -46,8 +47,12 @@ const T = {
     term: "Termo de responsabilidade",
     termText:
       "Declaro que cadastrei <b>todas as pessoas</b> que irão se hospedar, respeitando o limite de ocupação. " +
-      "Estou ciente de que o imóvel estará sob minha responsabilidade durante a estadia e que será " +
-      "realizada uma <b>vistoria ao término</b>.",
+      "Assumo a responsabilidade pelo imóvel e <b>pelas demais pessoas que cadastrei</b> durante toda a estadia. " +
+      "Comprometo-me a <b>não receber pessoas que não estão neste check-in</b> sem autorização do anfitrião. " +
+      "Estou ciente de que será realizada uma <b>vistoria ao término</b>.",
+    signTitle: "Assine o termo",
+    signHint: "Assine com o dedo. O documento assinado é enviado ao anfitrião.",
+    signMissing: "Assine o termo antes de concluir",
     submit: "Cadastrar e liberar acesso", sending: "Cadastrando…",
     placeholder: "Escreva sua dúvida…", assistant: "Assistente do imóvel",
     hello: "Olá", helpYou: "Como posso te ajudar?",
@@ -69,6 +74,7 @@ export default function GuestChat() {
   const [checkout, setCheckout] = useState("");
   const [guests, setGuests] = useState<GuestInput[]>([emptyGuest()]);
   const [term, setTerm] = useState(false);
+  const [assinatura, setAssinatura] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -103,6 +109,7 @@ export default function GuestChat() {
     if (!checkin || !checkout) return setError("Informe as datas da estadia");
     if (checkout <= checkin) return setError("A saída precisa ser depois da entrada");
     if (!term) return setError("É necessário aceitar o termo de responsabilidade");
+    if (!assinatura) return setError(t.signMissing);
 
     for (const [i, g] of guests.entries()) {
       if (g.full_name.trim().split(" ").length < 2)
@@ -121,6 +128,7 @@ export default function GuestChat() {
         checkout_date: checkout,
         guests,
         term_accepted: true,
+        assinatura,
         locale: "pt",
       });
 
@@ -301,14 +309,24 @@ export default function GuestChat() {
             <Plus className="h-4 w-4 mr-1" /> {t.add}
           </Button>
 
-          <section className="rounded-2xl border bg-background p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
+          <section className="space-y-4 rounded-2xl border bg-background p-4">
+            <label className="flex cursor-pointer items-start gap-3">
               <Checkbox checked={term} onCheckedChange={(v) => setTerm(Boolean(v))} className="mt-0.5" />
               <span
                 className="text-xs leading-relaxed text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: t.termText }}
               />
             </label>
+
+            {/* A assinatura só aparece depois do aceite. Mostrar o quadro de
+                assinar acima da caixa que a pessoa ainda não marcou é pedir
+                que ela assine algo que ainda não disse ter lido. */}
+            {term && (
+              <div className="border-t pt-4">
+                <Assinatura onChange={setAssinatura} rotulo={t.signTitle} />
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t.signHint}</p>
+              </div>
+            )}
           </section>
 
           {error && (

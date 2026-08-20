@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck, CalendarDays, CalendarCheck, DoorOpen, Home, LayoutDashboard, LogOut,
-  MessageSquare, Shield, Sparkles, Users, Wallet,
+  MessageSquare, Sparkles, Target, Users, Wallet,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -29,10 +29,14 @@ const NAV: Record<AppRole, NavItem[]> = {
   // cabe: mais do que isso no celular vira coluna estreita demais para o dedo.
   admin: [
     { label: "Visão geral", short: "Geral", icon: LayoutDashboard, path: "/admin" },
+    // O Pipeline entrou no lugar do Sistema. Sistema se olha quando algo
+    // quebra; Pipeline é a fila de trabalho que a equipe abre toda manhã, e
+    // trabalho diário não pode estar dois cliques mais fundo que diagnóstico.
+    // Sistema continua a um clique, pelo cartão de saúde na visão geral.
+    { label: "Pipeline", short: "Vendas", icon: Target, path: "/admin/pipeline" },
     { label: "Financeiro", short: "Caixa", icon: Wallet, path: "/admin/financeiro" },
     { label: "Assinantes", short: "Clientes", icon: Users, path: "/admin/assinantes" },
     { label: "Diaristas", short: "Limpeza", icon: Sparkles, path: "/admin/diaristas" },
-    { label: "Sistema", short: "Saúde", icon: Shield, path: "/admin/sistema" },
   ],
   owner: [
     // `short` encolhe no celular: a barra é um grid de colunas iguais, e com
@@ -70,10 +74,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   // `/admin/portaria` não tem item próprio — cinco é o teto da barra no celular
   // e ela se entra pelo financeiro. Sem este apelido a barra ficaria toda apagada
   // lá dentro, e "não estou em lugar nenhum" é como o usuário lê isso.
-  const atual = location.pathname === "/admin/portaria" ? "/admin/financeiro" : location.pathname;
+  // Telas sem item proprio herdam o realce do item que leva ate elas. Sem isto
+  // a barra fica toda apagada lá dentro, e "não estou em lugar nenhum" é como
+  // o usuário lê isso.
+  const APELIDO: Record<string, string> = {
+    "/admin/portaria": "/admin/financeiro",
+    "/admin/sistema": "/admin",
+  };
 
-  const isActive = (path: string) =>
-    path === "/admin" ? atual === "/admin" : atual.startsWith(path);
+  const atual = APELIDO[location.pathname] ?? location.pathname;
+
+  const isActive = (path: string) => {
+    // A ficha de uma conta (/admin/conta/<id>) se abre tanto por Assinantes
+    // quanto por Diaristas ou Pipeline. Realçar um deles a esmo mentiria sobre
+    // de onde a pessoa veio, entao nenhum acende.
+    if (atual.startsWith("/admin/conta/")) return false;
+    return path === "/admin" ? atual === "/admin" : atual.startsWith(path);
+  };
 
   const alternador = roles.length > 1 && (
     <div

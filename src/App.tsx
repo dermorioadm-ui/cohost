@@ -32,6 +32,8 @@ const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
 const AdminAssinantes = lazy(() => import("@/pages/AdminAssinantes"));
 const AdminSistema = lazy(() => import("@/pages/AdminSistema"));
 const AdminPortaria = lazy(() => import("@/pages/AdminPortaria"));
+const AdminPipeline = lazy(() => import("@/pages/AdminPipeline"));
+const AdminConta = lazy(() => import("@/pages/AdminConta"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -278,6 +280,25 @@ export default function App() {
                         element={
                           <Protected allow={["admin"]}>
                             <AdminPortaria />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/admin/pipeline"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminPipeline />
+                          </Protected>
+                        }
+                      />
+                      {/* O painel de qualquer conta — host ou diarista. O id na
+                          URL, e não em estado da tela: quem atende no telefone
+                          precisa poder mandar o link para o colega. */}
+                      <Route
+                        path="/admin/conta/:userId"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminConta />
                           </Protected>
                         }
                       />

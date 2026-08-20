@@ -126,6 +126,114 @@ export interface PorterState {
   message?: string;
 }
 
+/** Onde este assinante travou, e o que a equipe faz a respeito. */
+export type Estagio =
+  | "pagamento_falhou"
+  | "calendario_quebrado"
+  | "sem_imovel"
+  | "sem_calendario"
+  | "calendario_sem_sincronizar"
+  | "sem_diarista"
+  | "sem_mensagem"
+  | "consolidado"
+  | "perdido";
+
+export interface PipelineLinha {
+  owner_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_e164: string | null;
+  plano: string | null;
+  assinatura: string | null;
+  estagio: Estagio;
+  prioridade: number;
+  /** Frase pronta para quem vai ligar — não o rótulo interno do estágio. */
+  acao: string;
+  porque: string;
+  imoveis: number;
+  imoveis_ativos: number;
+  ical_quebrado: number;
+  assinou_em: string | null;
+  ultima_atividade: string | null;
+  ultimo_contato_em: string | null;
+  ultimo_resultado: string | null;
+  proximo_passo: string | null;
+  proximo_passo_em: string | null;
+  contatos: number;
+  total_count: number;
+}
+
+export interface ContaImovel {
+  id: string;
+  nome: string;
+  cidade: string | null;
+  calendarios: number;
+  calendario_quebrado: number;
+  ultima_sincronia: string | null;
+  diarista: string | null;
+  self_clean: boolean;
+  mensagem_automatica: boolean;
+  portaria: boolean;
+  portaria_pedido: string | null;
+  reservas_futuras: number;
+}
+
+export interface ContaAdmin {
+  user_id: string;
+  papeis: string[];
+  nome: string | null;
+  email: string | null;
+  telefone: string | null;
+  plano: string | null;
+  ciclo: string | null;
+  assinatura: string | null;
+  assinou_em: string | null;
+  periodo_ate: string | null;
+  ultimo_acesso: string | null;
+  notas: string | null;
+  imoveis?: ContaImovel[];
+  saidas?: Array<{
+    data: string;
+    hora: string | null;
+    imovel: string;
+    status: string;
+    diarista: string | null;
+  }>;
+  ativacao?: {
+    travado_em: string | null;
+    ativado: boolean;
+    imoveis: number;
+    com_calendario: number;
+    sincronizando: number;
+    com_diarista: number;
+    com_mensagem: number;
+    convites_pendentes: number;
+  };
+  diarista?: {
+    hosts: number;
+    imoveis: number;
+    acordos_pendentes: number;
+    limpezas_30d: number;
+    a_receber_mes: number;
+  };
+  tarefas?: Array<{
+    data: string;
+    hora: string | null;
+    imovel: string;
+    status: string;
+    host: string | null;
+  }>;
+  contatos: Array<{
+    quando: string;
+    canal: string;
+    resultado: string;
+    notas: string | null;
+    proximo_passo: string | null;
+    proximo_passo_em: string | null;
+    autor: string | null;
+  }>;
+}
+
 /** Um pedido de implantação da portaria, como o admin vê na fila. */
 export interface PorterPedido {
   id: string;
@@ -390,6 +498,26 @@ export const api = {
       request<{ ok: boolean }>("hermes-credentials", { body: { action: "key-revoke", key_id } }),
   },
 
+  /** Duplica o imóvel para um segundo anúncio, com os calendários cruzados. */
+  duplicarImovel: (property_id: string, nome?: string) =>
+    request<{
+      ok: boolean;
+      id: string;
+      nome: string;
+      cruzado: boolean;
+      slug?: string;
+      aviso?: string;
+    }>("property-duplicate", { body: { property_id, nome } }),
+
+  /** A declaração de limpeza, assinada pela diarista. */
+  assinarLimpeza: (entrada: {
+    cleaning_task_id: string;
+    declarado_em: string;
+    signer_name: string;
+    signer_doc?: string;
+    assinatura: string;
+  }) => request<{ ok: boolean; id: string }>("assinar-termo", { body: entrada }),
+
   admin: {
     metrics: async (view: string, params: Record<string, string> = {}) => {
       const { data } = await supabase.auth.getSession();
@@ -459,6 +587,56 @@ export const api = {
         limpezas_30d: number;
         ultima_limpeza: string | null;
       }>;
+    },
+
+    /**
+     * O pipeline da equipe de vendas.
+     *
+     * A lista de assinantes diz QUEM assinou. Isso não organiza trabalho
+     * nenhum: não diz para quem ligar primeiro, o que falar, nem o que já foi
+     * tentado. Sem isso duas pessoas ligam para o mesmo cliente na mesma
+     * semana e ninguém liga para quem está prestes a cancelar.
+     */
+    pipeline: async (estagio?: string) => {
+      const { data, error } = await supabase.rpc("admin_pipeline", {
+        _estagio: estagio ?? null,
+        _limit: 200,
+        _offset: 0,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as PipelineLinha[];
+    },
+
+    registrarContato: async (entrada: {
+      target_user_id: string;
+      canal: string;
+      resultado: string;
+      notas?: string;
+      proximo_passo?: string;
+      proximo_passo_em?: string | null;
+    }) => {
+      const { error } = await supabase.rpc("admin_registra_contato", {
+        _target_user_id: entrada.target_user_id,
+        _canal: entrada.canal,
+        _resultado: entrada.resultado,
+        _notas: entrada.notas ?? null,
+        _proximo_passo: entrada.proximo_passo ?? null,
+        _proximo_passo_em: entrada.proximo_passo_em ?? null,
+      });
+      if (error) throw new ApiError("invalid_request", error.message, 400);
+    },
+
+    /**
+     * O painel de uma conta — dono, diarista, ou os dois.
+     *
+     * Registra a visita ANTES de ler. Se o log falhasse depois da leitura,
+     * existiria uma janela em que o admin vê a conta alheia sem deixar rastro.
+     */
+    conta: async (userId: string, motivo?: string) => {
+      await api.admin.registrarVisita(userId, motivo ?? "abriu o painel da conta");
+      const { data, error } = await supabase.rpc("admin_conta", { _user_id: userId });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return data as ContaAdmin;
     },
 
     /**
@@ -539,6 +717,8 @@ export const guestApi = {
     checkout_date: string;
     guests: GuestInput[];
     term_accepted: boolean;
+    /** PNG do canvas de assinatura. Obrigatório desde o termo 2.0. */
+    assinatura: string;
     locale: string;
   }) =>
     request<{

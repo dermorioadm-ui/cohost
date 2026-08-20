@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle, ArrowLeft, Check, Eye, Loader2, Search, X,
 } from "lucide-react";
@@ -57,7 +57,6 @@ export default function AdminAssinantes() {
   const [lista, setLista] = useState<Linha[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const aberto = params.get("id");
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -73,8 +72,6 @@ export default function AdminAssinantes() {
     }, 300);
     return () => clearTimeout(t);
   }, [busca, soTravados]);
-
-  if (aberto) return <Ficha ownerId={aberto} aoVoltar={() => setParams({})} />;
 
   if (erro) {
     return (
@@ -109,7 +106,14 @@ export default function AdminAssinantes() {
           />
         </div>
         <button
-          onClick={() => setSoTravados((v) => !v)}
+          onClick={() => {
+            // O filtro vai para a URL: a equipe passa link de "só os travados"
+            // um para o outro, e o botão voltar do navegador desfaz o filtro
+            // em vez de sair da tela.
+            const ligado = !soTravados;
+            setSoTravados(ligado);
+            setParams(ligado ? { travados: "1" } : {}, { replace: true });
+          }}
           aria-pressed={soTravados}
           className={cn(
             "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors",
@@ -145,10 +149,10 @@ export default function AdminAssinantes() {
           {lista.map((s) => {
             const selo = SELO[s.subscription_status] ?? SELO.expired;
             return (
-              <button
+              <Link
                 key={s.owner_id}
-                onClick={() => setParams({ id: s.owner_id })}
-                className="glass-card w-full rounded-xl p-4 text-left transition-colors hover:bg-white/[0.04]"
+                to={`/admin/conta/${s.owner_id}`}
+                className="glass-card block w-full rounded-xl p-4 text-left transition-colors hover:bg-white/[0.04]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -179,153 +183,11 @@ export default function AdminAssinantes() {
                     </span>
                   )}
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-/** A conta por dentro. Abrir isto é uma ação registrada. */
-function Ficha({ ownerId, aoVoltar }: { ownerId: string; aoVoltar: () => void }) {
-  const [dados, setDados] = useState<Record<string, unknown> | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // Registra ANTES de ler. Se o log falhar, a ficha não abre.
-        await api.admin.registrarVisita(ownerId, "abriu a ficha no painel");
-        const r = await api.admin.metrics("subscriber", { id: ownerId });
-        setDados(r.subscriber as Record<string, unknown>);
-      } catch (e) {
-        setErro(e instanceof Error ? e.message : "Não consegui abrir");
-      }
-    })();
-  }, [ownerId]);
-
-  if (erro) {
-    return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={aoVoltar}>
-          <ArrowLeft className="mr-1.5 h-4 w-4" /> Voltar
-        </Button>
-        <div className="rounded-xl border border-destructive/30 bg-destructive/[0.06] p-5">
-          <p className="text-sm text-destructive">{erro}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!dados) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const perfil = (dados.profile ?? {}) as Record<string, unknown>;
-  const ativacao = (dados.activation ?? {}) as Record<string, unknown>;
-  const imoveis = (dados.properties ?? []) as Array<Record<string, unknown>>;
-  const selo = SELO[String(perfil.subscription_status)] ?? SELO.expired;
-
-  return (
-    <div className="space-y-5">
-      <Button variant="ghost" size="sm" onClick={aoVoltar}>
-        <ArrowLeft className="mr-1.5 h-4 w-4" /> Todos os assinantes
-      </Button>
-
-      {/* O selo de leitura fica no topo e não sai. Sem ele, um admin cansado
-          esquece de qual conta está olhando e confunde com a própria. */}
-      <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-4 py-2.5">
-        <Eye className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-        <p className="text-xs leading-relaxed text-primary">
-          Você está <strong>vendo</strong> a conta de {String(perfil.full_name ?? perfil.email)}.
-          Esta visita ficou registrada. Alterações continuam saindo no seu nome.
-        </p>
-      </div>
-
-      <header className="glass-card rounded-xl p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate text-xl font-extrabold">
-              {String(perfil.full_name ?? "Sem nome")}
-            </h1>
-            <p className="truncate text-sm text-muted-foreground">{String(perfil.email ?? "")}</p>
-            {Boolean(perfil.phone_e164) && (
-              <p className="text-sm text-muted-foreground">{String(perfil.phone_e164)}</p>
-            )}
-          </div>
-          <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold", selo.classe)}>
-            {selo.texto}
-          </span>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-muted-foreground">Plano</dt>
-            <dd className="font-semibold">{String(perfil.plan ?? "—")}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Cliente desde</dt>
-            <dd className="font-semibold tabular-nums">{dia(perfil.created_at as string)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Imóveis</dt>
-            <dd className="font-semibold tabular-nums">{imoveis.length}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Configuração</dt>
-            <dd className={cn("font-semibold", ativacao.is_activated ? "text-success" : "text-warning")}>
-              {ativacao.is_activated ? "Completa" : String(ativacao.stuck_step ?? "Incompleta")}
-            </dd>
-          </div>
-        </dl>
-      </header>
-
-      <section className="space-y-2">
-        <h2 className="font-semibold">Imóveis</h2>
-        {imoveis.length === 0 ? (
-          <div className="glass-card rounded-xl p-5 text-center text-sm text-muted-foreground">
-            Assinou e nunca cadastrou um imóvel. É o travamento mais caro que existe: paga e não
-            usa.
-          </div>
-        ) : (
-          imoveis.map((im) => (
-            <div key={String(im.id)} className="glass-card space-y-2.5 rounded-xl p-4">
-              <p className="font-medium">{String(im.name)}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { ok: Boolean(im.has_ical), texto: "Calendário" },
-                  { ok: Boolean(im.has_cleaner), texto: "Diarista" },
-                  { ok: Boolean(im.auto_message), texto: "Mensagem automática" },
-                  { ok: Boolean(im.condo), texto: "Portaria" },
-                  { ok: Boolean(im.ai), texto: "Atendimento 24h" },
-                ].map((t) => (
-                  <span
-                    key={t.texto}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                      t.ok ? "bg-success/15 text-success" : "bg-white/[0.05] text-muted-foreground",
-                    )}
-                  >
-                    {t.ok ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    {t.texto}
-                  </span>
-                ))}
-              </div>
-              {Number(im.ical_failing ?? 0) > 0 && (
-                <p className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive">
-                  Calendário falhando. Reservas novas não estão virando limpeza.
-                </p>
-              )}
-            </div>
-          ))
-        )}
-      </section>
     </div>
   );
 }

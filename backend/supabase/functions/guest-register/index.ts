@@ -1,5 +1,6 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
 import { admin, appToday } from "../_shared/lib/db.ts";
+import { enviarTermoPorEmail, registrarTermo } from "../_shared/lib/termo.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -30,6 +31,8 @@ interface Body {
   checkout_date?: string;
   guests?: GuestInput[];
   term_accepted?: boolean;
+  /** PNG do canvas: data:image/png;base64,... */
+  assinatura?: string;
   locale?: string;
 }
 
@@ -70,6 +73,16 @@ export default handler(async (req) => {
   if (body.term_accepted !== true) {
     throw errors.invalid("É necessário aceitar o termo de responsabilidade");
   }
+  // A assinatura NÃO é exigida aqui, e isso é sequenciamento e não descuido.
+  //
+  // O backend sobe antes do frontend: entre um e outro existe uma janela em
+  // que o hóspede está na porta do prédio com a versão antiga da página, que
+  // não desenha o quadro de assinar. Exigir a assinatura nessa janela
+  // deixaria essa pessoa sem check-in por causa do nosso deploy.
+  //
+  // Quem manda a assinatura ganha o termo em PDF; quem não manda faz o
+  // cadastro como antes. Quando o frontend novo estiver no ar em todo lugar,
+  // trocar isto por um `throw` é uma linha.
 
   const guests = (body.guests ?? []).filter(Boolean);
   if (guests.length === 0) throw errors.invalid("Cadastre ao menos um hóspede");
@@ -261,6 +274,46 @@ export default handler(async (req) => {
     await db.from("porter_registrations").insert(rows);
   }
 
+  // ---- termo assinado ------------------------------------------------------
+  // Depois de gravar as pessoas, porque o documento lista quem foi cadastrado:
+  // é justamente por essa lista que o hóspede está assumindo responsabilidade.
+  //
+  // Uma falha aqui NÃO derruba o cadastro. O hóspede já preencheu tudo e está
+  // na porta do prédio; devolver erro agora o deixaria de fora por um problema
+  // que é nosso. O termo fica sem PDF e o log registra — é o único caminho em
+  // que alguém perde algo recuperável em vez de perder a entrada.
+  let termoId: string | null = null;
+  let termoPdf: string | null = null;
+
+  if (body.assinatura) {
+    try {
+      const assinado = await registrarTermo(db, {
+        kind: "cadastro_hospede",
+        propertyId: property.id,
+        registrationId: registration.id,
+        signerName: primary.full_name,
+        signerDoc: guests[0]?.document_number?.trim() || null,
+        assinaturaDataUrl: body.assinatura!,
+        locale,
+        ip,
+        userAgent: req.headers.get("user-agent"),
+        detalhes: [
+          ["Imóvel", property.name],
+          ["Check-in", body.checkin_date!],
+          ["Check-out", body.checkout_date!],
+          ["Pessoas cadastradas", String(insertedPeople!.length)],
+          ...insertedPeople!.map(
+            (pe, i) => [`Hóspede ${i + 1}`, pe.full_name] as [string, string],
+          ),
+        ],
+      });
+      termoId = assinado.id;
+      termoPdf = assinado.pdfPath;
+    } catch (e) {
+      console.error("Termo assinado falhou:", e instanceof Error ? e.message : e);
+    }
+  }
+
   // ---- e-mails -------------------------------------------------------------
   // Ao dono: quem se cadastrou.
   const { data: ownerProfile } = await db
@@ -287,6 +340,38 @@ export default handler(async (req) => {
       _entity: "guest_registrations",
       _entity_id: registration.id,
     });
+
+    // O termo vai num e-mail separado, com o PDF anexado. Junto do aviso de
+    // cadastro ele viraria "mais um anexo" de uma mensagem de rotina; sozinho,
+    // é o documento que o dono arquiva.
+    if (termoId && termoPdf) {
+      await enviarTermoPorEmail(db, {
+        assinaturaId: termoId,
+        pdfPath: termoPdf,
+        para: ownerProfile.email,
+        assunto: `Termo assinado — ${primary.full_name} em ${property.name}`,
+        titulo: "Termo de responsabilidade assinado",
+        linhas: [
+          ["Imóvel", property.name],
+          ["Hóspede responsável", primary.full_name],
+          ["Check-in", body.checkin_date!],
+          ["Check-out", body.checkout_date!],
+          ["Pessoas cadastradas", String(insertedPeople!.length)],
+          [
+            "Assinado em",
+            new Date().toLocaleString("pt-BR", {
+              timeZone: env.timezone(),
+              dateStyle: "short",
+              timeStyle: "short",
+            }),
+          ],
+        ],
+        fecho:
+          "Nele o hóspede assume a responsabilidade pelo imóvel, pelas demais pessoas que " +
+          "cadastrou, e se compromete a não receber quem não está no check-in sem sua autorização.",
+        nomeArquivo: "termo-de-responsabilidade.pdf",
+      });
+    }
   }
 
   // A cada hóspede: instruções de acesso + cópia do termo aceito.
