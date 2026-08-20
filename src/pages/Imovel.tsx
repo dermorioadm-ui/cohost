@@ -17,6 +17,7 @@ import { PortariaOferta } from "@/components/PortariaOferta";
 import { TermosAssinados } from "@/components/TermosAssinados";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
+import { mensagemAutomatica } from "@/lib/mensagemAutomatica";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 import { cn, getAppBaseUrl } from "@/lib/utils";
@@ -460,11 +461,7 @@ export default function Imovel() {
   };
 
   const chatUrl = form ? `${getAppBaseUrl()}/c/${form.public_slug}` : "";
-  const autoMessage =
-    `Olá! Seja muito bem-vindo(a) 😊\n\n` +
-    `Antes da sua chegada, faça seu cadastro obrigatório aqui — é rápido e ` +
-    `libera as instruções de acesso, Wi-Fi e tudo mais:\n\n${chatUrl}\n\n` +
-    `Qualquer dúvida, o assistente responde 24h nesse mesmo link.`;
+  const autoMessage = mensagemAutomatica(chatUrl);
 
   if (loading || !form) {
     return (
@@ -1300,8 +1297,9 @@ export default function Imovel() {
             </div>
 
             <p className="text-sm leading-relaxed text-muted-foreground">
-              É ela que leva o hóspede ao cadastro e ao assistente. Cole no Airbnb em Mensagens
-              programadas, na reserva confirmada.
+              É ela que leva o hóspede ao cadastro e ao atendimento. Cole no Airbnb em Mensagens
+              programadas e na Booking em mensagens automáticas, na reserva confirmada. Ela avisa
+              que o atendimento acontece no chat do link, e não na caixa da plataforma.
             </p>
 
             <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-relaxed">
@@ -1373,10 +1371,25 @@ export default function Imovel() {
 
           {stepFooter}
 
-          {/* Depois do rodapé de propósito: o cartão tem gravação própria (a
-              senha vai para o cofre por outro caminho) e, acima do botão, o
-              dono leria "Salvar alterações" como se salvasse a credencial. */}
-          <HermesCard propertyId={form.id} />
+          {/* Fora da vista do dono, pelo mesmo motivo do formulário da
+              portaria: conectar a conta do Airbnb ao agente pede código por
+              SMS, chave de VPS e um servidor para instalar. Isso é implantação
+              técnica, não configuração de imóvel — e um cartão pedindo "código
+              de verificação" no meio das opções do apartamento faz o dono achar
+              que o produto dele está com problema.
+
+              O atendimento do hóspede acontece no chat do link, que já está no
+              ar e não depende de nada disto. Continua visível para a equipe:
+              mesma tela, mesmo imóvel, sem precisar de ferramenta separada. */}
+          {role === "admin" && (
+            <div className="space-y-2">
+              <p className="rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                Abaixo é a integração técnica com o Airbnb, visível só para a equipe. O dono do
+                imóvel não vê esta parte.
+              </p>
+              <HermesCard propertyId={form.id} />
+            </div>
+          )}
         </>
       )}
 
