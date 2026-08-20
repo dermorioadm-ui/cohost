@@ -49,6 +49,7 @@ interface Textos {
   done: string;
   okTitle: string; okText: string;
   okDownload: string; okMore: string; okAsk: string;
+  leftBtn: string; leftHint: string; leftDone: string; leftError: string;
   errDates: string; errOrder: string; errTerm: string;
   errName: string; errEmail: string; errPhone: string;
   errCpf: string; errPassport: string; errNationality: string; errPhoto: string;
@@ -131,6 +132,10 @@ export const T: Record<Idioma, Textos> = {
     okDownload: "Baixar meu documento",
     okMore: "Cadastrar mais pessoas",
     okAsk: "Perguntar ao anfitrião",
+    leftBtn: "Já saí do apartamento",
+    leftHint: "Avisa a equipe de limpeza que o apartamento está livre.",
+    leftDone: "Saída registrada. Boa viagem!",
+    leftError: "Não consegui registrar a saída. Tente de novo.",
     done: "Cadastro concluído! As instruções de acesso foram enviadas para o seu e-mail.",
     errDates: "Informe as datas da estadia",
     errOrder: "A saída precisa ser depois da entrada",
@@ -220,6 +225,10 @@ export const T: Record<Idioma, Textos> = {
     okDownload: "Download my document",
     okMore: "Register more people",
     okAsk: "Ask the host",
+    leftBtn: "I've left the apartment",
+    leftHint: "Lets the cleaning team know the apartment is free.",
+    leftDone: "Departure recorded. Safe travels!",
+    leftError: "Couldn't record your departure. Please try again.",
     done: "All set! Your access instructions were sent to your email.",
     errDates: "Enter the stay dates",
     errOrder: "Check-out must be after check-in",
@@ -309,6 +318,10 @@ export const T: Record<Idioma, Textos> = {
     okDownload: "Descargar mi documento",
     okMore: "Registrar más personas",
     okAsk: "Preguntar al anfitrión",
+    leftBtn: "Ya salí del apartamento",
+    leftHint: "Avisa al equipo de limpieza que el apartamento está libre.",
+    leftDone: "Salida registrada. ¡Buen viaje!",
+    leftError: "No pude registrar la salida. Inténtalo de nuevo.",
     done: "¡Registro completado! Las instrucciones de acceso se enviaron a tu correo.",
     errDates: "Indica las fechas de la estancia",
     errOrder: "La salida debe ser después de la entrada",

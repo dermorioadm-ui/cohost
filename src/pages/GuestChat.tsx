@@ -8,7 +8,8 @@ import { Assinatura } from "@/components/Assinatura";
 import { CapturaFacial } from "@/components/CapturaFacial";
 import {
   AlertCircle, ArrowLeft, Building2, CalendarDays, Camera, Check, CheckCircle2,
-  ChevronRight, Download, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
+  ChevronRight, Download, Loader2, LogOut, MessageCircle, Plus, Send, Trash2,
+  UserPlus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { guestApi, guestSession, supabase, type GuestInput } from "@/lib/api";
@@ -108,6 +109,8 @@ export default function GuestChat() {
   const [termoUrl, setTermoUrl] = useState<string | null>(null);
   /** Texto integral do termo ATIVO, lido do banco. Ver `carregarTermo`. */
   const [termoCompleto, setTermoCompleto] = useState<string>("");
+  /** "ocioso" | "enviando" | "feito" — o aviso de saída na tela de escolha. */
+  const [saida, setSaida] = useState<"ocioso" | "enviando" | "feito">("ocioso");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -153,6 +156,23 @@ export default function GuestChat() {
     setSelfie(null);
     setTermoUrl(null);
     abrirCadastro();
+  }
+
+  /**
+   * O aviso "já saí". Sem confirmação de duas etapas: o servidor é idempotente
+   * e vale o primeiro toque, então a pior consequência de um toque acidental é
+   * a diarista saber cedo demais que pode ir — que não é dano.
+   */
+  async function avisarSaida() {
+    if (!token || saida !== "ocioso") return;
+    setSaida("enviando");
+    try {
+      await guestApi.checkout(token);
+      setSaida("feito");
+    } catch {
+      setSaida("ocioso");
+      setError(t.leftError);
+    }
   }
 
   function abrirChat() {
@@ -531,6 +551,53 @@ export default function GuestChat() {
                 </div>
               </button>
             ))}
+
+            {/* Só para quem se cadastrou: sem cadastro não há estadia para
+                encerrar. Aparece durante a estadia inteira, porque saída
+                antecipada é exatamente o caso em que o aviso mais vale. */}
+            {jaCadastrou && (
+              <button
+                onClick={avisarSaida}
+                disabled={saida !== "ocioso"}
+                className={cn(
+                  "glass-card w-full rounded-2xl p-5 text-left",
+                  saida === "feito" && "border border-success/30",
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <span
+                    className={cn(
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                      saida === "feito" ? "bg-success/15" : "bg-primary/10",
+                    )}
+                  >
+                    {saida === "enviando" ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
+                    ) : saida === "feito" ? (
+                      <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
+                    ) : (
+                      <LogOut className="h-5 w-5 text-primary" aria-hidden />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold leading-tight">
+                      {saida === "feito" ? t.leftDone : t.leftBtn}
+                    </p>
+                    {saida !== "feito" && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {t.leftHint}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {error && (
+              <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </p>
+            )}
           </div>
         </div>
       </div>

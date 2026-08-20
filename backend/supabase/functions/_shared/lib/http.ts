@@ -84,6 +84,32 @@ export function handler(fn: (req: Request) => Promise<Response>) {
         return json({ error: { code: e.code, message: e.message } }, e.status);
       }
       console.error("Erro não tratado:", e);
+      // O log da function some em horas; a linha no banco fica. É ela que faz
+      // o erro das 23h aparecer na tela de Sistema de manhã, em vez de chegar
+      // pelo WhatsApp do cliente. Fire-and-forget com catch vazio: registrar a
+      // falha nunca pode ser o motivo de uma segunda falha.
+      try {
+        const url = Deno.env.get("SUPABASE_URL");
+        const chave = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (url && chave) {
+          fetch(`${url}/rest/v1/system_log`, {
+            method: "POST",
+            headers: {
+              apikey: chave,
+              Authorization: `Bearer ${chave}`,
+              "Content-Type": "application/json",
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify({
+              origem: `edge:${new URL(req.url).pathname.split("/").pop() ?? "?"}`,
+              acao: "erro_interno",
+              detalhe: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+            }),
+          }).catch(() => {});
+        }
+      } catch {
+        /* nunca propaga */
+      }
       return json(
         { error: { code: "internal_error", message: "Erro interno. Tente novamente." } },
         500,

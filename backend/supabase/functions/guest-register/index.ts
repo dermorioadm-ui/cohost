@@ -257,6 +257,33 @@ export default handler(async (req) => {
     .limit(1)
     .maybeSingle();
 
+  // ---- as datas precisam bater com uma reserva -----------------------------
+  // O link circula por mensagem de plataforma e vaza — print, encaminhamento,
+  // hóspede antigo que guardou. Sem esta checagem, qualquer pessoa com o link
+  // escolhia datas, se cadastrava e entrava na fila da portaria com acesso ao
+  // prédio. Documento e rosto registram QUEM entrou; isto aqui é o que impede
+  // entrar quem não tem reserva.
+  //
+  // A regra falha ABERTA de propósito: só exige o casamento quando o imóvel
+  // tem reserva futura no calendário. Imóvel sem iCal conectado (ou com a
+  // sincronia quebrada) não tem reservas no banco, e exigir ali trancaria
+  // hóspede legítimo para fora por um problema que é nosso.
+  if (!reservation) {
+    const { count: futuras } = await db
+      .from("reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("property_id", property.id)
+      .eq("status", "confirmed")
+      .gte("checkout_date", appToday());
+
+    if ((futuras ?? 0) > 0) {
+      throw errors.invalid(
+        "Não encontrei uma reserva nessas datas. Confira as datas na sua reserva " +
+          "do Airbnb ou da Booking — precisam ser as mesmas.",
+      );
+    }
+  }
+
   const { data: registration, error: regError } = await db
     .from("guest_registrations")
     .insert({
