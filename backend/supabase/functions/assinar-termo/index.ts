@@ -1,6 +1,6 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
 import { admin, requireUser } from "../_shared/lib/db.ts";
-import { registrarTermo } from "../_shared/lib/termo.ts";
+import { enviarTermoPorEmail, registrarTermo } from "../_shared/lib/termo.ts";
 
 /**
  * Declaração de limpeza concluída, assinada pela diarista.
@@ -124,31 +124,27 @@ export default handler(async (req) => {
     .eq("user_id", imovel.owner_id)
     .maybeSingle();
 
+  let enviado = false;
   if (dono?.email) {
-    await db.rpc("enqueue_notification", {
-      _channel: "email",
-      _template: "termo-limpeza",
-      _payload: {
-        property_name: imovel.name,
-        cleaner_name: nome,
-        declarado_em: fmtBR(declarado.toISOString()),
-        checkout_date: tarefa.checkout_date,
-        __anexo_path: termo.pdfPath,
-        __anexo_nome: "declaracao-de-limpeza.pdf",
-      },
-      _to_email: dono.email,
-      _to_user_id: imovel.owner_id,
-      _idempotency_key: `termo-limpeza:${termo.id}`,
-      _locale: dono.locale ?? "pt",
-      _entity: "assinaturas",
-      _entity_id: termo.id,
+    enviado = await enviarTermoPorEmail(db, {
+      assinaturaId: termo.id,
+      pdfPath: termo.pdfPath,
+      para: dono.email,
+      assunto: `Declaração de limpeza assinada — ${imovel.name}`,
+      titulo: "Declaração de limpeza",
+      linhas: [
+        ["Imóvel", imovel.name],
+        ["Diarista", nome],
+        ["Declarou ter limpado em", fmtBR(declarado.toISOString())],
+        ["Saída do hóspede", tarefa.checkout_date],
+      ],
+      fecho: `${nome} assinou a declaração de que fez esta limpeza.`,
+      nomeArquivo: "declaracao-de-limpeza.pdf",
     });
-
-    await db
-      .from("assinaturas")
-      .update({ pdf_enviado_para: dono.email, pdf_enviado_em: new Date().toISOString() })
-      .eq("id", termo.id);
   }
 
-  return json({ ok: true, id: termo.id });
+  // `enviado: false` não é erro para a diarista — a limpeza foi concluída e a
+  // declaração está gravada. Quem precisa saber que o e-mail não saiu é o
+  // painel, não ela.
+  return json({ ok: true, id: termo.id, email_enviado: enviado });
 });

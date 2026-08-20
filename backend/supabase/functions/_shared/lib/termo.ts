@@ -76,6 +76,32 @@ function pngDoDataUrl(dataUrl: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * Deixa o texto no que a fonte padrão do PDF consegue escrever.
+ *
+ * As fontes StandardFonts do pdf-lib codificam em WinAnsi. Acentos do
+ * português cabem; travessão, aspas curvas e reticências não — e `drawText`
+ * não ignora o caractere, ele LANÇA. Na prática isso significa que um imóvel
+ * chamado "Cobertura — Icaraí" derrubaria a geração do termo inteiro, e o
+ * hóspede veria o cadastro falhar por causa de um traço.
+ *
+ * Traduzir para o equivalente ASCII é melhor que remover: "Cobertura - Icaraí"
+ * continua legível, "CobreturaIcaraí" não.
+ */
+function winAnsi(texto: string): string {
+  return (texto ?? "")
+    .replace(/[\u2013\u2014]/g, "-")      // – —
+    .replace(/[\u2018\u2019\u201B]/g, "'") // ' ' ‛
+    .replace(/[\u201C\u201D\u201F]/g, '"') // " " ‟
+    .replace(/\u2026/g, "...")             // …
+    .replace(/\u00A0/g, " ")               // espaço fixo
+    .replace(/[\u2022\u00B7]/g, "-")       // • ·
+    // O que sobrar fora da faixa que a WinAnsi cobre vira "?" em vez de
+    // derrubar o documento. Perder um caractere exótico é aceitável; perder o
+    // termo inteiro, não.
+    .replace(/[^\x20-\x7E\u00A1-\u00FF\n]/g, "?");
+}
+
 const fmtBR = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -159,7 +185,7 @@ async function montarPdf(opts: {
     cor = PRETO,
     entrelinha = 1.45,
   ) => {
-    for (const linha of quebrar(texto, fonte, tamanho, LARGURA)) {
+    for (const linha of quebrar(winAnsi(texto), fonte, tamanho, LARGURA)) {
       espaco(tamanho * entrelinha);
       if (linha) pagina.drawText(linha, { x: MARGEM, y, size: tamanho, font: fonte, color: cor });
       y -= tamanho * entrelinha;
@@ -175,8 +201,8 @@ async function montarPdf(opts: {
 
   for (const [rotulo, valor] of opts.detalhes) {
     espaco(15);
-    pagina.drawText(`${rotulo}:`, { x: MARGEM, y, size: 9.5, font: negrito, color: CINZA });
-    pagina.drawText(valor, { x: MARGEM + 130, y, size: 9.5, font: normal, color: PRETO });
+    pagina.drawText(winAnsi(`${rotulo}:`), { x: MARGEM, y, size: 9.5, font: negrito, color: CINZA });
+    pagina.drawText(winAnsi(valor), { x: MARGEM + 130, y, size: 9.5, font: normal, color: PRETO });
     y -= 15;
   }
 
@@ -331,6 +357,120 @@ export async function registrarTermo(
   }
 
   return { id: linha.id, pdfPath, assinaturaPath };
+}
+
+/**
+ * Manda o termo assinado para o dono, com o PDF anexado.
+ *
+ * Este envio NÃO passa pela fila de notificações, e a razão é de contenção:
+ * o worker da fila carrega o registro dos catorze templates transacionais do
+ * produto, e mexer nele para acrescentar anexo colocaria em risco e-mails que
+ * já funcionam — recuperação de senha, confirmação de cadastro, aviso de
+ * calendário quebrado. Um documento assinado não vale esse risco.
+ *
+ * O preço é não ter o backoff da fila. Ele é pago de duas formas: a falha fica
+ * gravada na própria linha (`pdf_enviado_em` continua nulo, e o painel do dono
+ * mostra o termo mesmo assim), e o PDF nunca depende do e-mail para existir.
+ *
+ * Anexo e não link: documento que mora atrás de uma URL temporária deixa de
+ * existir no dia em que a URL vence — normalmente o dia em que alguém precisou
+ * dele.
+ */
+export async function enviarTermoPorEmail(
+  db: SupabaseClient,
+  opts: {
+    assinaturaId: string;
+    pdfPath: string;
+    para: string;
+    assunto: string;
+    titulo: string;
+    linhas: Array<[string, string]>;
+    fecho: string;
+    nomeArquivo: string;
+  },
+): Promise<boolean> {
+  const chave = Deno.env.get("RESEND_API_KEY")?.trim();
+  if (!chave) {
+    console.error("Termo sem envio: RESEND_API_KEY ausente");
+    return false;
+  }
+
+  try {
+    const { data: arquivo, error } = await db.storage.from(BUCKET).download(opts.pdfPath);
+    if (error || !arquivo) throw new Error(error?.message ?? "PDF ausente");
+
+    const bytes = new Uint8Array(await arquivo.arrayBuffer());
+
+    // btoa em pedaços: `String.fromCharCode(...bytes)` estoura a pilha de
+    // chamadas em arquivos de algumas centenas de KB, e o erro que aparece não
+    // se parece com um erro de tamanho.
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+
+    const esc = (v: string) =>
+      v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const linhasHtml = opts.linhas
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:6px 0;color:#8a9199;width:42%;">${esc(k)}</td>` +
+          `<td style="padding:6px 0;font-weight:600;">${esc(v)}</td></tr>`,
+      )
+      .join("");
+
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(opts.titulo)}</title></head>
+<body style="margin:0;padding:24px 12px;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+<tr><td style="padding:24px 28px 8px;">
+<div style="font-size:13px;font-weight:700;letter-spacing:.04em;color:#0f6d5f;text-transform:uppercase;">HospedePay</div>
+<h1 style="margin:10px 0 0;font-size:20px;line-height:1.3;font-weight:700;">${esc(opts.titulo)}</h1>
+</td></tr>
+<tr><td style="padding:8px 28px 24px;font-size:15px;line-height:1.6;color:#33383d;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;font-size:14px;">${linhasHtml}</table>
+<p>${esc(opts.fecho)}</p>
+<p style="font-size:13px;color:#66707a;">O documento assinado vai anexado a este e-mail, em PDF. Ele também fica guardado no aplicativo.</p>
+</td></tr>
+<tr><td style="padding:16px 28px 22px;border-top:1px solid #eceef0;font-size:11px;line-height:1.5;color:#a4abb3;">
+Esta mensagem foi enviada automaticamente de uma caixa que não é lida. Não responda a este e-mail.
+</td></tr></table></body></html>`;
+
+    const texto =
+      `${opts.titulo}\n\n` +
+      opts.linhas.map(([k, v]) => `${k}: ${v}`).join("\n") +
+      `\n\n${opts.fecho}\nO PDF assinado está anexado a este e-mail.`;
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${chave}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: `${Deno.env.get("EMAIL_FROM_NAME")?.trim() || "HospedePay"} <${
+          Deno.env.get("EMAIL_FROM_ADDRESS")?.trim() || "nao-responda@hospedepay.org"
+        }>`,
+        to: [opts.para],
+        subject: opts.assunto,
+        html,
+        text: texto,
+        attachments: [{ filename: opts.nomeArquivo, content: btoa(bin) }],
+      }),
+    });
+
+    if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+
+    await db
+      .from("assinaturas")
+      .update({ pdf_enviado_para: opts.para, pdf_enviado_em: new Date().toISOString() })
+      .eq("id", opts.assinaturaId);
+
+    return true;
+  } catch (e) {
+    // Não propaga: o termo existe, está gravado e aparece no app. O e-mail é a
+    // entrega, não o documento.
+    console.error("Termo não foi enviado por e-mail:", e instanceof Error ? e.message : e);
+    return false;
+  }
 }
 
 /** Link temporário do PDF, para anexar ou mandar por e-mail. */
