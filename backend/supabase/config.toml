@@ -76,6 +76,12 @@ verify_jwt = false
 [functions.cleaner-accept]
 verify_jwt = false
 
+# Calendário de saída (.ics). Quem chama é o robô do Airbnb/Booking: não tem
+# login, não manda header. Autoriza pelo token na URL, e responde text/calendar
+# — nunca JSON, que o canal leria como feed inválido.
+[functions.ical-feed]
+verify_jwt = false
+
 # ---------- Webhooks (validam assinatura) ----------
 [functions.stripe-webhook]
 verify_jwt = false

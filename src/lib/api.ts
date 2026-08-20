@@ -29,6 +29,18 @@ export const supabase = createClient(url, key, {
 
 const FUNCTIONS = `${url}/functions/v1`;
 
+/**
+ * URL do calendário de saída de um imóvel, para colar na importação do canal.
+ *
+ * `para` não é enfeite: ele diz ao feed QUEM está importando, e o backend
+ * devolve tudo menos as reservas daquele mesmo canal. Sem isso o Airbnb
+ * reimportaria as próprias reservas como bloqueio externo — e um bloqueio
+ * importado pode sobreviver ao cancelamento da reserva que o originou,
+ * travando uma data que voltou a estar livre.
+ */
+export const icalFeedUrl = (token: string, para: "airbnb" | "booking") =>
+  `${FUNCTIONS}/ical-feed?t=${encodeURIComponent(token)}&para=${para}`;
+
 /** Erro vindo do backend, já com o código estável para o frontend testar. */
 export class ApiError extends Error {
   constructor(readonly code: string, message: string, readonly status: number) {
@@ -163,6 +175,24 @@ export const api = {
   },
 
   ical: {
+    /**
+     * Emite (ou rotaciona) a URL do calendário DE SAÍDA — o .ics que o Airbnb e
+     * o Booking importam para bloquear as datas um do outro.
+     *
+     * Devolve o token em claro uma vez só: o banco guarda apenas o hash. Quem
+     * perder a URL emite outra, e a anterior deixa de valer no mesmo instante.
+     * Por isso o botão diz "gerar de novo" e avisa que o link antigo morre — um
+     * link morto dentro do Airbnb significa datas deixando de ser bloqueadas,
+     * e ninguém percebe isso até a dupla reserva.
+     */
+    issueFeedToken: async (property_id: string) => {
+      const { data, error } = await supabase.rpc("issue_ical_feed_token", {
+        _property_id: property_id,
+      });
+      if (error) throw new ApiError("invalid_request", error.message, 400);
+      return data as unknown as string;
+    },
+
     // `provider` vai explícito: o backend sabe adivinhar pela URL, mas quem
     // colou o link na caixa do Booking já disse qual é, e um link encurtado
     // ou de domínio próprio seria arquivado como "other" — criando uma

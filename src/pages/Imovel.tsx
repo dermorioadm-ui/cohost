@@ -8,10 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Copy, DoorOpen, Home,
   Link as LinkIcon, Loader2, MessageCircle, ShoppingBasket, Sparkles, Trash2,
-  UserPlus, Users,
+  Share2, UserPlus, Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase, api } from "@/lib/api";
+import { supabase, api, icalFeedUrl } from "@/lib/api";
 import { PorterConnect } from "@/components/PorterConnect";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
@@ -157,6 +157,10 @@ export default function Imovel() {
   // (UNIQUE property_id, provider); era a tela que só enxergava uma.
   const [icals, setIcals] = useState<IcalSource[]>([]);
   const [icalUrl, setIcalUrl] = useState<Record<string, string>>({});
+  // Token do calendário de saída. Só existe em memória, e só depois de o dono
+  // pedir: o banco guarda o hash, então não há como "carregar o link salvo".
+  const [feedToken, setFeedToken] = useState<string | null>(null);
+  const [feedBusy, setFeedBusy] = useState(false);
   const [checkingIcal, setCheckingIcal] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
@@ -772,6 +776,91 @@ export default function Imovel() {
               Dá para conectar os dois ao mesmo tempo. Cada canal sincroniza sozinho a cada 15
               minutos, e no calendário as reservas aparecem com a cor do canal de origem.
             </p>
+          </section>
+
+          {/* ------------------------------------------- Calendário de saída */}
+          <section className="space-y-4 rounded-xl glass-card p-5">
+            <div className="flex items-center gap-2">
+              <Share2 className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Bloquear as datas entre os canais</h2>
+            </div>
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Colar os links acima faz as reservas <strong>entrarem</strong>. Isto aqui faz elas{" "}
+              <strong>saírem</strong>: cada canal passa a enxergar as datas ocupadas nos outros. Sem
+              este passo, Airbnb e Booking continuam vendendo as mesmas noites — e a dupla reserva
+              só aparece quando dois hóspedes chegam no mesmo dia.
+            </p>
+
+            {!feedToken ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={feedBusy}
+                onClick={async () => {
+                  setFeedBusy(true);
+                  try {
+                    setFeedToken(await api.ical.issueFeedToken(form!.id));
+                  } catch {
+                    toast.error("Não consegui gerar o link agora.");
+                  } finally {
+                    setFeedBusy(false);
+                  }
+                }}
+              >
+                {feedBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Gerar os links de saída
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                {ICAL_CHANNELS.map((channel) => {
+                  const link = icalFeedUrl(feedToken, channel.provider);
+                  return (
+                    <div
+                      key={channel.provider}
+                      className="space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn("h-2.5 w-2.5 rounded-full", channel.swatch)}
+                          aria-hidden
+                        />
+                        <h3 className="text-sm font-semibold">Cole no {channel.label}</h3>
+                      </div>
+                      <p className="break-all rounded-lg bg-black/20 p-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                        {link}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          navigator.clipboard.writeText(link);
+                          toast.success(`Link do ${channel.label} copiado`);
+                        }}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                <p className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                  Guarde os dois links agora — eles não aparecem de novo. Gerar outra vez cria links
+                  novos e <strong>derruba estes</strong>: dentro do canal isso vira um calendário que
+                  parou de bloquear, sem aviso.
+                </p>
+
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Cada link é o do canal onde ele vai ser colado, e leva só as reservas dos{" "}
+                  <strong>outros</strong> canais — nome de hóspede não vai junto. No Airbnb:
+                  Calendário → Disponibilidade → Conectar a outro site → Importar calendário.
+                </p>
+              </div>
+            )}
           </section>
 
           {stepFooter}
