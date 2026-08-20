@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Assinatura } from "@/components/Assinatura";
+import { CapturaFacial } from "@/components/CapturaFacial";
 import {
   AlertCircle, ArrowLeft, Building2, CalendarDays, Camera, Check, CheckCircle2,
-  ChevronRight, Image as ImageIcon, Loader2, MessageCircle, Plus, Send, Trash2,
-  UserPlus,
+  ChevronRight, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { guestApi, guestSession, type GuestInput } from "@/lib/api";
@@ -103,6 +103,7 @@ export default function GuestChat() {
   const t = T[idioma];
   const [term, setTerm] = useState(false);
   const [assinatura, setAssinatura] = useState<string | null>(null);
+  const [selfie, setSelfie] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -200,12 +201,18 @@ export default function GuestChat() {
         } else if (!cpfValido(g.cpf)) {
           return `${quem}: ${t.errCpf}`;
         }
+
+        // A foto do documento passou a ser obrigatória. Sem ela, o termo
+        // assinado prova que ALGUÉM assinou com aquele nome e aquele número —
+        // e é exatamente essa a parte que se contesta depois.
+        if (!g.fotoDataUrl) return `${quem}: ${t.photo}`;
       }
       return null;
     }
 
     if (!term) return t.errTerm;
     if (!assinatura) return t.signMissing;
+    if (!selfie) return t.errFace;
     return null;
   };
 
@@ -318,6 +325,7 @@ export default function GuestChat() {
         })),
         term_accepted: true,
         assinatura,
+        selfie: selfie ?? undefined,
         locale: idioma,
       });
 
@@ -774,42 +782,44 @@ export default function GuestChat() {
                       </div>
                     )}
 
-                    {/* Foto do documento */}
-                    <div className="space-y-1.5 border-t border-white/[0.06] pt-2">
-                      <Label className="text-xs">{t.photo}</Label>
+                    {/* Foto do documento — obrigatória, e com peso de campo
+                        obrigatório. Antes eram dois retângulos tracejados,
+                        cinza sobre cinza, do tamanho de uma legenda: quem
+                        olhava a tela lia aquilo como enfeite e passava direto.
 
-                      {/* DUAS entradas, e não uma.
-                          Com `capture` o navegador abre a câmera direto e não
-                          oferece a galeria — quem já fotografou o RG na semana
-                          passada não consegue usar a foto que tem. Sem
-                          `capture`, parte dos Android vai direto para o
-                          gerenciador de arquivos e esconde a câmera. Nenhum dos
-                          dois sozinho atende os dois sistemas, então os dois
-                          ficam à vista. */}
+                        E eram DOIS por precaução mal calibrada. O seletor
+                        genérico do sistema já traz a câmera junto: no iPhone
+                        ele abre "Fototeca / Tirar Foto / Escolher Ficheiro", e
+                        no Android o seletor de `image/*` lista a câmera entre
+                        as origens. O segundo botão só fazia falta porque o
+                        `accept` misturava PDF, e o Android com `accept`
+                        misturado manda direto para o gerenciador de arquivos —
+                        sem câmera. Tirado o PDF, um botão faz o trabalho dos
+                        dois. */}
+                    <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+                      <Label className="text-xs">{t.photo}<Obrigatorio /></Label>
+
                       {g.fotoDataUrl && fotoOcupada !== i ? (
-                        <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-success/50 bg-success/[0.06] px-3 text-sm">
-                          <Check className="h-4 w-4 shrink-0 text-success" />
-                          <span className="min-w-0 flex-1 truncate">{g.fotoNome}</span>
-                          <button
-                            type="button"
-                            onClick={() => trocar(i, { fotoDataUrl: "", fotoNome: "" })}
-                            className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
-                          >
-                            {t.photoRemove}
-                          </button>
-                        </div>
-                      ) : fotoOcupada === i ? (
-                        <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          {t.photoSending}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
+                        <div className="flex items-center gap-3 rounded-xl border border-success/40 bg-success/[0.07] p-2.5">
+                          {/* A miniatura, e não só o nome do arquivo: é ela que
+                              deixa a pessoa ver que fotografou o documento
+                              certo, e não a mesa embaixo dele. */}
+                          <img
+                            src={g.fotoDataUrl}
+                            alt=""
+                            className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+                              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              {t.photoDone}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">{g.fotoNome}</p>
+                          </div>
+                          <label className="shrink-0 cursor-pointer rounded-lg px-2.5 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10">
                             <input
                               type="file"
                               accept="image/*"
-                              capture="environment"
                               className="hidden"
                               onChange={(e) => {
                                 const f = e.target.files?.[0];
@@ -817,28 +827,32 @@ export default function GuestChat() {
                                 e.target.value = "";
                               }}
                             />
-                            <Camera className="h-4 w-4 shrink-0" aria-hidden />
-                            {t.photoCamera}
-                          </label>
-
-                          <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-                            <input
-                              type="file"
-                              // Sem `capture`: o iPhone abre "Fototeca / Tirar
-                              // foto / Escolher ficheiro" e o Android abre o
-                              // seletor com galeria e arquivos. PDF entra aqui.
-                              accept="image/*,application/pdf"
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) pegarFoto(i, f);
-                                e.target.value = "";
-                              }}
-                            />
-                            <ImageIcon className="h-4 w-4 shrink-0" aria-hidden />
-                            {t.photoGallery}
+                            {t.photoRemove}
                           </label>
                         </div>
+                      ) : fotoOcupada === i ? (
+                        <div className="flex min-h-[56px] items-center justify-center gap-2 rounded-xl border border-input text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          {t.photoSending}
+                        </div>
+                      ) : (
+                        <label className="flex min-h-[56px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-[0.98]">
+                          <input
+                            type="file"
+                            // Sem `capture` e sem PDF: é esta combinação que
+                            // faz os dois sistemas oferecerem câmera E galeria
+                            // na mesma folha.
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) pegarFoto(i, f);
+                              e.target.value = "";
+                            }}
+                          />
+                          <Camera className="h-4 w-4 shrink-0" aria-hidden />
+                          {t.photoOpen}
+                        </label>
                       )}
 
                       <p className="text-xs text-muted-foreground">{t.photoHint}</p>
@@ -927,6 +941,16 @@ export default function GuestChat() {
                   </div>
                 )}
               </section>
+
+              {/* A confirmação facial vem DEPOIS da assinatura, e só existe
+                  depois dela. Pedir o rosto antes seria pedir o rosto de quem
+                  ainda não se comprometeu com nada — e é justamente o vínculo
+                  entre o rosto e o traço que dá valor aos dois. */}
+              {term && assinatura && (
+                <section className="glass-card rounded-2xl p-4">
+                  <CapturaFacial onChange={setSelfie} textos={t.face} obrigatorio />
+                </section>
+              )}
             </>
           )}
 

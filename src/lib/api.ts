@@ -789,6 +789,14 @@ export const guestApi = {
     term_accepted: boolean;
     /** PNG do canvas de assinatura. Obrigatório desde o termo 2.0. */
     assinatura: string;
+    /**
+     * JPEG do rosto de quem assinou, tirado logo depois da assinatura.
+     *
+     * Opcional no tipo por sequenciamento de deploy, não por escolha: o
+     * backend sobe antes do frontend, e nessa janela existe hóspede na porta
+     * do prédio com a página anterior, que não pede o rosto.
+     */
+    selfie?: string;
     locale: string;
   }) =>
     request<{
