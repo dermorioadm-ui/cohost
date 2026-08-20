@@ -498,6 +498,26 @@ export const api = {
       request<{ ok: boolean }>("hermes-credentials", { body: { action: "key-revoke", key_id } }),
   },
 
+  /** Duplica o imóvel para um segundo anúncio, com os calendários cruzados. */
+  duplicarImovel: (property_id: string, nome?: string) =>
+    request<{
+      ok: boolean;
+      id: string;
+      nome: string;
+      cruzado: boolean;
+      slug?: string;
+      aviso?: string;
+    }>("property-duplicate", { body: { property_id, nome } }),
+
+  /** A declaração de limpeza, assinada pela diarista. */
+  assinarLimpeza: (entrada: {
+    cleaning_task_id: string;
+    declarado_em: string;
+    signer_name: string;
+    signer_doc?: string;
+    assinatura: string;
+  }) => request<{ ok: boolean; id: string }>("assinar-termo", { body: entrada }),
+
   admin: {
     metrics: async (view: string, params: Record<string, string> = {}) => {
       const { data } = await supabase.auth.getSession();
@@ -697,6 +717,8 @@ export const guestApi = {
     checkout_date: string;
     guests: GuestInput[];
     term_accepted: boolean;
+    /** PNG do canvas de assinatura. Obrigatório desde o termo 2.0. */
+    assinatura: string;
     locale: string;
   }) =>
     request<{

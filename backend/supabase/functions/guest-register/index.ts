@@ -1,5 +1,6 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
 import { admin, appToday } from "../_shared/lib/db.ts";
+import { registrarTermo } from "../_shared/lib/termo.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -30,6 +31,8 @@ interface Body {
   checkout_date?: string;
   guests?: GuestInput[];
   term_accepted?: boolean;
+  /** PNG do canvas: data:image/png;base64,... */
+  assinatura?: string;
   locale?: string;
 }
 
@@ -69,6 +72,12 @@ export default handler(async (req) => {
   }
   if (body.term_accepted !== true) {
     throw errors.invalid("É necessário aceitar o termo de responsabilidade");
+  }
+  // A assinatura é obrigatória, e não um extra do aceite. Um checkbox prova
+  // que alguém clicou; a assinatura com o traço da pessoa é o que o dono
+  // consegue mostrar depois, se precisar.
+  if (!body.assinatura) {
+    throw errors.invalid("Assine o termo antes de concluir o cadastro");
   }
 
   const guests = (body.guests ?? []).filter(Boolean);
@@ -261,6 +270,43 @@ export default handler(async (req) => {
     await db.from("porter_registrations").insert(rows);
   }
 
+  // ---- termo assinado ------------------------------------------------------
+  // Depois de gravar as pessoas, porque o documento lista quem foi cadastrado:
+  // é justamente por essa lista que o hóspede está assumindo responsabilidade.
+  //
+  // Uma falha aqui NÃO derruba o cadastro. O hóspede já preencheu tudo e está
+  // na porta do prédio; devolver erro agora o deixaria de fora por um problema
+  // que é nosso. O termo fica sem PDF e o log registra — é o único caminho em
+  // que alguém perde algo recuperável em vez de perder a entrada.
+  let termoId: string | null = null;
+  let termoPdf: string | null = null;
+  try {
+    const assinado = await registrarTermo(db, {
+      kind: "cadastro_hospede",
+      propertyId: property.id,
+      registrationId: registration.id,
+      signerName: primary.full_name,
+      signerDoc: guests[0]?.document_number?.trim() || null,
+      assinaturaDataUrl: body.assinatura!,
+      locale,
+      ip,
+      userAgent: req.headers.get("user-agent"),
+      detalhes: [
+        ["Imóvel", property.name],
+        ["Check-in", body.checkin_date!],
+        ["Check-out", body.checkout_date!],
+        ["Pessoas cadastradas", String(insertedPeople!.length)],
+        ...insertedPeople!.map(
+          (pe, i) => [`Hóspede ${i + 1}`, pe.full_name] as [string, string],
+        ),
+      ],
+    });
+    termoId = assinado.id;
+    termoPdf = assinado.pdfPath;
+  } catch (e) {
+    console.error("Termo assinado falhou:", e instanceof Error ? e.message : e);
+  }
+
   // ---- e-mails -------------------------------------------------------------
   // Ao dono: quem se cadastrou.
   const { data: ownerProfile } = await db
@@ -287,6 +333,44 @@ export default handler(async (req) => {
       _entity: "guest_registrations",
       _entity_id: registration.id,
     });
+
+    // O termo vai num e-mail separado, com o PDF anexado. Junto do aviso de
+    // cadastro ele viraria "mais um anexo" de uma mensagem de rotina; sozinho,
+    // é o documento que o dono arquiva.
+    if (termoId && termoPdf) {
+      await db.rpc("enqueue_notification", {
+        _channel: "email",
+        _template: "termo-hospede",
+        _payload: {
+          property_name: property.name,
+          guest_name: primary.full_name,
+          guest_count: insertedPeople!.length,
+          checkin_date: body.checkin_date,
+          checkout_date: body.checkout_date,
+          assinado_em: new Date().toLocaleString("pt-BR", {
+            timeZone: env.timezone(),
+            dateStyle: "short",
+            timeStyle: "short",
+          }),
+          __anexo_path: termoPdf,
+          __anexo_nome: "termo-de-responsabilidade.pdf",
+        },
+        _to_email: ownerProfile.email,
+        _to_user_id: property.owner_id,
+        _idempotency_key: `termo-hospede:${termoId}`,
+        _locale: ownerProfile.locale ?? "pt",
+        _entity: "assinaturas",
+        _entity_id: termoId,
+      });
+
+      await db
+        .from("assinaturas")
+        .update({
+          pdf_enviado_para: ownerProfile.email,
+          pdf_enviado_em: new Date().toISOString(),
+        })
+        .eq("id", termoId);
+    }
   }
 
   // A cada hóspede: instruções de acesso + cópia do termo aceito.

@@ -31,6 +31,43 @@ interface Notification {
 // E-mail
 // ---------------------------------------------------------------------------
 
+interface Anexo {
+  filename: string;
+  content: string;
+}
+
+/**
+ * Baixa o anexo declarado no payload e devolve no formato do provedor.
+ *
+ * Falhar em anexar NÃO derruba o e-mail. A mensagem em si já diz o que
+ * aconteceu, e um documento faltando é melhor do que o dono não ficar sabendo
+ * que a limpeza foi declarada. O erro fica no log para quem for investigar.
+ */
+async function carregarAnexo(payload: Record<string, unknown>): Promise<Anexo[] | null> {
+  const caminho = typeof payload.__anexo_path === "string" ? payload.__anexo_path : "";
+  if (!caminho) return null;
+
+  try {
+    const { data, error } = await admin().storage.from("termos").download(caminho);
+    if (error || !data) throw new Error(error?.message ?? "arquivo ausente");
+
+    const bytes = new Uint8Array(await data.arrayBuffer());
+
+    // btoa em pedaços: `String.fromCharCode(...bytes)` estoura a pilha em
+    // arquivos de algumas centenas de KB, e o erro não parece de tamanho.
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+
+    const nome = typeof payload.__anexo_nome === "string" ? payload.__anexo_nome : "documento.pdf";
+    return [{ filename: nome, content: btoa(bin) }];
+  } catch (e) {
+    console.error(`Anexo ${caminho} não foi lido:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 async function sendEmail(n: Notification): Promise<string> {
   if (!n.to_email) throw new Error("destinatário de e-mail ausente");
   if (!hasTemplate(n.template)) throw new Error(`template desconhecido: ${n.template}`);
@@ -38,6 +75,13 @@ async function sendEmail(n: Notification): Promise<string> {
   const { subject, html, text } = renderEmail(n.template, n.payload, n.locale);
   const provider = env.emailProvider();
   const from = `${env.emailFromName()} <${env.emailFrom()}>`;
+
+  // Anexo opcional, declarado no payload por quem enfileirou.
+  //
+  // Vai anexado e não como link: um termo assinado é documento, e documento
+  // que mora atrás de uma URL temporária deixa de existir no dia em que a URL
+  // vence — normalmente o dia em que alguém precisou dele.
+  const anexos = await carregarAnexo(n.payload);
 
   if (provider === "resend") {
     const res = await fetch("https://api.resend.com/emails", {
@@ -53,6 +97,7 @@ async function sendEmail(n: Notification): Promise<string> {
         html,
         text,
         reply_to: env.emailReplyTo() || undefined,
+        ...(anexos ? { attachments: anexos } : {}),
       }),
     });
     const body = await res.json().catch(() => ({}));

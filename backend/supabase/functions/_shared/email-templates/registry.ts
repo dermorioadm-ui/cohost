@@ -194,6 +194,57 @@ ${rows([["Concluída em", s(p.completed_at)], ["Foto do imóvel", p.has_photo ? 
     };
   },
 
+  /**
+   * Dono: a diarista assinou a declaração de que fez a limpeza.
+   *
+   * O PDF vai anexado (`__anexo_path` no payload). O corpo do e-mail repete os
+   * dados principais porque muita gente lê o e-mail no celular e não abre o
+   * anexo — e o que importa saber na hora é: quem, qual imóvel, quando.
+   */
+  "termo-limpeza": (p) => {
+    const body = `<p><strong>${esc(p.cleaner_name)}</strong> assinou a declaração de limpeza de <strong>${esc(p.property_name)}</strong>.</p>
+${rows([
+  ["Imóvel", s(p.property_name)],
+  ["Declarou ter limpado em", s(p.declarado_em)],
+  ["Saída do hóspede", brDate(p.checkout_date)],
+])}
+<p>O documento assinado está anexado a este e-mail, em PDF. Ele também fica guardado no aplicativo, na página do imóvel.</p>`;
+    return {
+      subject: `Declaração de limpeza assinada — ${s(p.property_name)}`,
+      html: layout("Declaração de limpeza", body),
+      text:
+        `${s(p.cleaner_name)} assinou a declaração de limpeza de ${s(p.property_name)}.\n` +
+        `Declarou ter limpado em ${s(p.declarado_em)}.\n` +
+        `O PDF assinado está anexado a este e-mail.`,
+    };
+  },
+
+  /**
+   * Dono: o hóspede assinou o termo de responsabilidade.
+   *
+   * Este é o e-mail que o dono guarda. Se um dia entrar gente que não estava no
+   * check-in, é este PDF que diz que o hóspede se comprometeu a não fazer isso.
+   */
+  "termo-hospede": (p) => {
+    const body = `<p><strong>${esc(p.guest_name)}</strong> assinou o termo de responsabilidade da estadia em <strong>${esc(p.property_name)}</strong>.</p>
+${rows([
+  ["Imóvel", s(p.property_name)],
+  ["Check-in", brDate(p.checkin_date)],
+  ["Check-out", brDate(p.checkout_date)],
+  ["Pessoas cadastradas", s(p.guest_count)],
+  ["Assinado em", s(p.assinado_em)],
+])}
+<p>O termo assinado está anexado em PDF. Nele o hóspede assume a responsabilidade pelo imóvel, pelas demais pessoas que cadastrou, e se compromete a não receber quem não está no check-in sem sua autorização.</p>`;
+    return {
+      subject: `Termo assinado — ${s(p.guest_name)} em ${s(p.property_name)}`,
+      html: layout("Termo de responsabilidade assinado", body),
+      text:
+        `${s(p.guest_name)} assinou o termo de responsabilidade de ${s(p.property_name)}.\n` +
+        `Estadia: ${brDate(p.checkin_date)} a ${brDate(p.checkout_date)} — ${s(p.guest_count)} pessoa(s).\n` +
+        `O PDF assinado está anexado a este e-mail.`,
+    };
+  },
+
   /** Diarista: convite (plano B do WhatsApp). */
   "cleaner-invite": (p) => {
     const body = `<p>Olá, ${esc(s(p.cleaner_name).split(" ")[0])}!</p>

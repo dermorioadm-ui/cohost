@@ -59,7 +59,24 @@ export function PortariaOferta({ propertyId }: { propertyId: string }) {
     })();
   }, [propertyId]);
 
-  if (estado.fase === "carregando" || estado.fase === "pronto") return null;
+  if (estado.fase === "carregando") return null;
+
+  if (estado.fase === "pronto") {
+    return (
+      <section className="rounded-xl border border-success/25 bg-success/[0.05] p-4">
+        <div className="flex gap-3">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+          <div>
+            <p className="text-sm font-semibold text-success">Portaria conectada</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              O hóspede que preenche o cadastro já entra liberado no prédio. Você não precisa
+              mandar nome e documento para o porteiro.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (estado.fase === "fila") {
     return (
@@ -69,9 +86,10 @@ export function PortariaOferta({ propertyId }: { propertyId: string }) {
           <div>
             <p className="text-sm font-semibold text-primary">Implantação em andamento</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Recebemos seu pagamento. Nossa equipe técnica entra em contato para pegar as
-              credenciais do prédio — normalmente em até um dia útil. Você não precisa fazer nada
-              agora.
+              Recebemos seu pagamento. <strong className="text-foreground">Nossa equipe entra em
+              contato em até 1 dia útil</strong> para pegar as credenciais do prédio com o síndico
+              ou com a administradora. Você não precisa fazer nada agora — e pode continuar
+              cadastrando o hóspede normalmente até a portaria entrar no ar.
             </p>
           </div>
         </div>
@@ -107,14 +125,24 @@ export function PortariaOferta({ propertyId }: { propertyId: string }) {
             sistema do prédio. Você para de mandar nome e documento para o porteiro a cada
             chegada, e ninguém fica parado na recepção esperando alguém achar você no WhatsApp.
           </p>
+          {/* Dito antes do preço, e não depois: quem mora em prédio com
+              porteiro de caderninho não tem o que comprar aqui, e descobrir
+              isso depois de pagar é a pior forma de descobrir. */}
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Vale para prédios que já têm <strong className="text-foreground">portaria digital ou
+            sistema de controle de acesso</strong> (Kiper, Control iD, Intelbras e outros). Se o
+            seu prédio ainda usa caderno na recepção, não há o que conectar — e a gente te avisa
+            antes de cobrar.
+          </p>
         </div>
       </div>
 
       <ul className="space-y-1.5 pl-8 text-sm">
         {[
-          "Nossa equipe técnica faz a integração com o sistema do seu prédio",
-          "Cada portaria é diferente — por isso é serviço, e não um botão",
-          "Depois de pronto, funciona sozinho para sempre",
+          "Nossa equipe entra em contato em até 1 dia útil depois do pagamento",
+          "Ela fala com o síndico ou a administradora e faz a integração inteira",
+          "Você não precisa de senha, credencial nem nada técnico",
+          "Depois de pronto, funciona sozinho — o cadastro vai direto para o prédio",
         ].map((t) => (
           <li key={t} className="flex gap-2 text-muted-foreground">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />

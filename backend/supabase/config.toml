@@ -121,3 +121,11 @@ verify_jwt = false
 # Autoriza pelo segredo de cron; roda por private.call_job.
 [functions.billing-sync-plans]
 verify_jwt = false
+
+# Diarista assinando a declaracao de limpeza. Exige sessao.
+[functions.assinar-termo]
+verify_jwt = true
+
+# Duplicar imovel: roda no contexto do usuario, a funcao no banco autoriza.
+[functions.property-duplicate]
+verify_jwt = true
