@@ -126,6 +126,27 @@ export interface PorterState {
   message?: string;
 }
 
+/** Um pedido de implantação da portaria, como o admin vê na fila. */
+export interface PorterPedido {
+  id: string;
+  status: "interessado" | "pago" | "em_andamento" | "implantado" | "cancelado";
+  property_id: string;
+  property_name: string;
+  owner_id: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  owner_phone: string | null;
+  condo_name: string | null;
+  condo_system: string | null;
+  amount_cents: number;
+  paid_at: string | null;
+  contacted_at: string | null;
+  implanted_at: string | null;
+  notes: string | null;
+  created_at: string;
+  total_count: number;
+}
+
 export interface HermesCredential {
   // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
   // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
@@ -438,6 +459,34 @@ export const api = {
         limpezas_30d: number;
         ultima_limpeza: string | null;
       }>;
+    },
+
+    /**
+     * A fila da implantação da portaria.
+     *
+     * O financeiro já contava quantos pagaram. Contar não atende ninguém: o
+     * cliente paga R$ 197 e o único aviso é um e-mail que depende de um
+     * segredo estar configurado. Serviço cobrado precisa de fila dentro do
+     * produto — e-mail é notificação, fila é onde o trabalho fica até alguém
+     * fazer.
+     */
+    portariaFila: async (status?: string) => {
+      const { data, error } = await supabase.rpc("admin_porter_fila", {
+        _status: status ?? null,
+        _limit: 100,
+        _offset: 0,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as PorterPedido[];
+    },
+
+    portariaAvanca: async (id: string, status: string, notas?: string) => {
+      const { error } = await supabase.rpc("admin_porter_avanca", {
+        _id: id,
+        _status: status,
+        _notes: notas ?? null,
+      });
+      if (error) throw new ApiError("invalid_request", error.message, 400);
     },
 
     // Registra a visita ANTES de mostrar os dados. Se o log falhar, a tela não

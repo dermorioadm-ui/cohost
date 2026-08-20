@@ -1,6 +1,6 @@
 import Stripe from "npm:stripe@^18.5.0";
 import { corsHeaders, json } from "../_shared/lib/http.ts";
-import { admin } from "../_shared/lib/db.ts";
+import { admin, adminNotifyEmails } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -112,10 +112,10 @@ async function notifyNewSubscriber(
     _entity_id: userId,
   });
 
-  // Sem endereço configurado, o aviso interno simplesmente não sai — não é
+  // Sem ninguém para avisar, o aviso interno simplesmente não sai — não é
   // motivo para derrubar o webhook nem para segurar o e-mail do cliente.
-  const adminEmail = env.adminNotifyEmail();
-  if (!adminEmail) return;
+  const destinos = await adminNotifyEmails(db);
+  if (destinos.length === 0) return;
 
   const { count } = await db
     .from("properties")
@@ -123,25 +123,30 @@ async function notifyNewSubscriber(
     .eq("owner_id", userId)
     .is("archived_at", null);
 
-  await db.rpc("enqueue_notification", {
-    _channel: "email",
-    _template: "admin-new-subscriber",
-    _payload: {
-      owner_name: profile.full_name ?? "",
-      owner_email: profile.email,
-      owner_phone: profile.phone_e164 ?? "",
-      plan: tier ?? "",
-      plan_label: planLabel,
-      billing_cycle: cycle,
-      status: info.status,
-      property_count: count ?? 0,
-    },
-    _to_email: adminEmail,
-    _idempotency_key: `sub-admin:${info.subscriptionId}`,
-    _locale: "pt",
-    _entity: "profiles",
-    _entity_id: userId,
-  });
+  // A chave de idempotência leva o destinatário junto. Sem isso, com dois
+  // admins no banco a segunda chamada seria descartada como repetida e só um
+  // deles receberia o aviso.
+  for (const destino of destinos) {
+    await db.rpc("enqueue_notification", {
+      _channel: "email",
+      _template: "admin-new-subscriber",
+      _payload: {
+        owner_name: profile.full_name ?? "",
+        owner_email: profile.email,
+        owner_phone: profile.phone_e164 ?? "",
+        plan: tier ?? "",
+        plan_label: planLabel,
+        billing_cycle: cycle,
+        status: info.status,
+        property_count: count ?? 0,
+      },
+      _to_email: destino,
+      _idempotency_key: `sub-admin:${info.subscriptionId}:${destino}`,
+      _locale: "pt",
+      _entity: "profiles",
+      _entity_id: userId,
+    });
+  }
 }
 
 /** Descobre o tier a partir do price id gravado na tabela plans. */
@@ -224,10 +229,10 @@ Deno.serve(async (req) => {
             .eq("id", setupId)
             .eq("status", "interessado");
 
-          // Avisa quem vai executar. Sem isso o cliente paga e fica esperando
-          // um contato que depende de alguém lembrar de abrir o painel.
-          const destino = env.adminNotifyEmail();
-          if (destino) {
+          // Avisa quem vai executar. O pedido já está na fila do painel
+          // (/admin/portaria) faça o e-mail o que fizer — este aviso é para
+          // encurtar a espera, não para ser o único registro dela.
+          for (const destino of await adminNotifyEmails(db)) {
             await db.rpc("enqueue_notification", {
               _channel: "email",
               _template: "admin-new-subscriber",
@@ -240,7 +245,7 @@ Deno.serve(async (req) => {
                 property_count: "1",
               },
               _to_email: destino,
-              _idempotency_key: `porter-setup-pago:${setupId}`,
+              _idempotency_key: `porter-setup-pago:${setupId}:${destino}`,
               _locale: "pt",
             });
           }

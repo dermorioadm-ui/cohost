@@ -175,7 +175,8 @@ BEGIN
   SELECT _r || jsonb_build_object(
     'portaria_pagos_nao_implantados', count(*) FILTER (WHERE status IN ('pago','em_andamento')),
     'portaria_receita_cents', COALESCE(sum(amount_cents) FILTER (WHERE paid_at IS NOT NULL), 0),
-    'portaria_interessados', count(*) FILTER (WHERE status = 'interessado')
+    'portaria_interessados', count(*) FILTER (WHERE status = 'interessado'),
+    'portaria_implantados', count(*) FILTER (WHERE status = 'implantado')
   ) INTO _r
   FROM public.porter_setup_requests;
 

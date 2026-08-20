@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { DoorOpen, Info, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, DoorOpen, Info, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -159,9 +160,20 @@ export default function AdminFinanceiro() {
 
       {/* Portaria: receita de serviço, e fila de trabalho da equipe. */}
       <section className="glass-card space-y-3 rounded-xl p-5">
-        <div className="flex items-center gap-2">
-          <DoorOpen className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Implantação de portaria</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold">Implantação de portaria</h2>
+          </div>
+          {/* O número precisa levar a algum lugar. "3 pagos na fila" sem link é
+              um problema que a tela mostra e não deixa resolver. */}
+          <Link
+            to="/admin/portaria"
+            className="inline-flex min-h-[36px] items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            Abrir a fila
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
@@ -189,11 +201,14 @@ export default function AdminFinanceiro() {
           </div>
         </div>
         {d.portaria_pagos_nao_implantados > 0 && (
-          <p className="rounded-lg bg-warning/[0.08] p-3 text-xs leading-relaxed text-warning">
+          <Link
+            to="/admin/portaria"
+            className="block rounded-lg bg-warning/[0.08] p-3 text-xs leading-relaxed text-warning hover:bg-warning/[0.12]"
+          >
             {d.portaria_pagos_nao_implantados} cliente
             {d.portaria_pagos_nao_implantados === 1 ? "" : "s"} pagou e ainda espera. É serviço
             vendido e não entregue — a fila mais cara que existe.
-          </p>
+          </Link>
         )}
       </section>
     </div>

@@ -66,8 +66,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // `/admin` casa com `/admin/financeiro` num startsWith. Sem a exatidão aqui,
   // "Visão geral" ficaria aceso em todas as telas do admin ao mesmo tempo.
+  //
+  // `/admin/portaria` não tem item próprio — cinco é o teto da barra no celular
+  // e ela se entra pelo financeiro. Sem este apelido a barra ficaria toda apagada
+  // lá dentro, e "não estou em lugar nenhum" é como o usuário lê isso.
+  const atual = location.pathname === "/admin/portaria" ? "/admin/financeiro" : location.pathname;
+
   const isActive = (path: string) =>
-    path === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(path);
+    path === "/admin" ? atual === "/admin" : atual.startsWith(path);
 
   const alternador = roles.length > 1 && (
     <div

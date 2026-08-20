@@ -31,6 +31,7 @@ const AdminFinanceiro = lazy(() => import("@/pages/AdminFinanceiro"));
 const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
 const AdminAssinantes = lazy(() => import("@/pages/AdminAssinantes"));
 const AdminSistema = lazy(() => import("@/pages/AdminSistema"));
+const AdminPortaria = lazy(() => import("@/pages/AdminPortaria"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -266,6 +267,17 @@ export default function App() {
                         element={
                           <Protected allow={["admin"]}>
                             <AdminDiaristas />
+                          </Protected>
+                        }
+                      />
+                      {/* Fora da barra de navegação de propósito: cinco itens é
+                          o teto do Material no celular. A fila se entra pelo
+                          número dela no financeiro, que é onde ela é notada. */}
+                      <Route
+                        path="/admin/portaria"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminPortaria />
                           </Protected>
                         }
                       />
