@@ -10,6 +10,7 @@ import { supabase, api, type ActivationState } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { styleOf, type Provider } from "@/lib/channels";
 import { cn } from "@/lib/utils";
+import { DicasCard } from "@/components/DicasCard";
 
 interface Task {
   id: string;
@@ -133,6 +134,10 @@ export default function Dashboard() {
           </Link>
         </Button>
       </header>
+
+      {/* A sugestão vem DEPOIS dos problemas e ANTES dos números: quem tem
+          calendário fora do ar não precisa de dica, precisa de conserto. */}
+      <DicasCard />
 
       {/* Problemas primeiro — antes de qualquer número */}
       {failing.length > 0 && (

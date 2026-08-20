@@ -26,6 +26,9 @@ const CleanerGanhos = lazy(() => import("@/pages/CleanerGanhos"));
 const Financeiro = lazy(() => import("@/pages/Financeiro"));
 const Hospedes = lazy(() => import("@/pages/Hospedes"));
 const Plano = lazy(() => import("@/pages/Plano"));
+const AdminVisaoGeral = lazy(() => import("@/pages/AdminVisaoGeral"));
+const AdminFinanceiro = lazy(() => import("@/pages/AdminFinanceiro"));
+const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,7 +80,14 @@ function Home() {
   const { user, role, loading } = useAuth();
   if (loading) return <Splash />;
   if (!user) return <Landing />;
-  return <Navigate to={role === "cleaner" ? "/agenda" : "/painel"} replace />;
+  // Cada papel entra na sua casa. Sem o caso do admin aqui, quem alternasse
+  // para "Plataforma" e clicasse no logo voltaria para o painel de host.
+  return (
+    <Navigate
+      to={role === "admin" ? "/admin" : role === "cleaner" ? "/agenda" : "/painel"}
+      replace
+    />
+  );
 }
 
 export default function App() {
@@ -209,6 +219,35 @@ export default function App() {
                         element={
                           <Protected allow={["cleaner"]}>
                             <CleanerGanhos />
+                          </Protected>
+                        }
+                      />
+
+                      {/* Administração. `allow={["admin"]}` é conforto de
+                          navegação: quem digitar a rota sem ser admin recebe
+                          erro do Postgres, porque toda leitura passa por
+                          assert_admin() no banco. */}
+                      <Route
+                        path="/admin"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminVisaoGeral />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/admin/financeiro"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminFinanceiro />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/admin/diaristas"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminDiaristas />
                           </Protected>
                         }
                       />

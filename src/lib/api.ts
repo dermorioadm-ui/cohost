@@ -370,6 +370,91 @@ export const api = {
       }
       return res.json();
     },
+
+    visaoGeral: async () => {
+      const [kpis, funil, saude] = await Promise.all([
+        supabase.rpc("admin_kpis"),
+        supabase.rpc("admin_activation_funnel"),
+        supabase.rpc("admin_system_health"),
+      ]);
+      if (kpis.error) throw new ApiError("forbidden", kpis.error.message, 403);
+      return {
+        kpis: kpis.data as Record<string, number>,
+        funil: (funil.data ?? []) as Array<Record<string, unknown>>,
+        saude: saude.data as Record<string, unknown>,
+      };
+    },
+
+    financeiro: async (meses = 12) => {
+      const { data, error } = await supabase.rpc("admin_financeiro", { _meses: meses });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return data as {
+        receita_total_cents: number;
+        clientes_pagantes: number;
+        ltv_realizado_cents: number;
+        ltv_projetado_cents: number | null;
+        churn_mensal_pct: number;
+        vida_media_meses: number | null;
+        amostra_confiavel: boolean;
+        por_plano: Array<{ tier: string; nome: string; assinantes: number; mrr_cents: number }>;
+        serie_mensal: Array<{ mes: string; receita_cents: number; cobrancas: number }>;
+        portaria_pagos_nao_implantados: number;
+        portaria_receita_cents: number;
+        portaria_interessados: number;
+        portaria_implantados: number;
+      };
+    },
+
+    diaristas: async (busca?: string) => {
+      const { data, error } = await supabase.rpc("admin_cleaners", {
+        _search: busca ?? null,
+        _limit: 100,
+        _offset: 0,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as Array<{
+        cleaner_id: string;
+        full_name: string | null;
+        email: string | null;
+        phone_e164: string | null;
+        entrou_em: string;
+        hosts: number;
+        imoveis: number;
+        limpezas_30d: number;
+        ultima_limpeza: string | null;
+      }>;
+    },
+
+    // Registra a visita ANTES de mostrar os dados. Se o log falhar, a tela não
+    // abre — auditoria que só grava quando dá tudo certo não é auditoria.
+    registrarVisita: async (userId: string, motivo?: string) => {
+      const { error } = await supabase.rpc("admin_registra_visita", {
+        _target_user_id: userId,
+        _motivo: motivo ?? null,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+    },
+  },
+
+  /** As dicas do próximo passo. Sem id, são as de quem está logado. */
+  dicas: async (ownerId?: string) => {
+    const { data, error } = await supabase.rpc("owner_next_steps", {
+      _owner_id: ownerId ?? null,
+    });
+    if (error) throw new ApiError("invalid_request", error.message, 400);
+    return data as {
+      dicas: Array<{
+        chave: string;
+        peso: number;
+        titulo: string;
+        porque: string;
+        destino: string;
+        oferta?: boolean;
+      }>;
+      total: number;
+      ativado: boolean;
+      travado_em: string | null;
+    };
   },
 };
 
