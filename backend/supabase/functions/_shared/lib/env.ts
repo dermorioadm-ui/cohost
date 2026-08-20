@@ -31,7 +31,13 @@ export const env = {
   serviceRoleKey: () => required("SUPABASE_SERVICE_ROLE_KEY"),
   anonKey: () => optional("SUPABASE_ANON_KEY"),
 
-  appBaseUrl: () => optional("APP_BASE_URL", "https://cohost-ten.vercel.app"),
+  // O padrão é o domínio do produto, não a URL de preview da Vercel. Ele vaza
+  // para lugares visíveis: o link do assistente no e-mail do hóspede, o link
+  // do painel da diarista, o redirect da recuperação de senha e o retorno do
+  // checkout da Stripe — tudo saindo de uma mensagem assinada @hospedepay.org.
+  // Em produção quem manda é o secret APP_BASE_URL; este valor é a rede de
+  // segurança para quando ele não estiver preenchido.
+  appBaseUrl: () => optional("APP_BASE_URL", "https://hospedepay.org"),
   timezone: () => optional("APP_TIMEZONE", "America/Sao_Paulo"),
   defaultLocale: () => optional("APP_DEFAULT_LOCALE", "pt"),
   isProduction: () => optional("APP_ENV", "production") === "production",
@@ -45,9 +51,14 @@ export const env = {
   aiMaxTokens: () => num("AI_MAX_OUTPUT_TOKENS", 800),
 
   emailProvider: () => optional("EMAIL_PROVIDER", "resend"),
-  emailFrom: () => optional("EMAIL_FROM_ADDRESS", "nao-responda@hospedepay.com.br"),
+  emailFrom: () => optional("EMAIL_FROM_ADDRESS", "nao-responda@hospedepay.org"),
   emailFromName: () => optional("EMAIL_FROM_NAME", "HospedePay"),
+  // Sem valor por padrão, e é intencional: todo e-mail do produto sai de uma
+  // caixa não monitorada. Preencher isto aponta as respostas para algum lugar
+  // — e aí alguém precisa lê-las.
   emailReplyTo: () => optional("EMAIL_REPLY_TO"),
+  /** Caixa interna que recebe os avisos da plataforma (assinatura nova). */
+  adminNotifyEmail: () => optional("ADMIN_NOTIFY_EMAIL"),
 
   whatsappEnabled: () => flag("WHATSAPP_ENABLED", false),
 

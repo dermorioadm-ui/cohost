@@ -66,6 +66,84 @@ async function resolveUserId(
   return null;
 }
 
+/**
+ * Assinatura nova no ar: avisa o cliente e avisa a plataforma.
+ *
+ * Os dois e-mails saem juntos de propósito. O do cliente é a lista dos três
+ * passos que fazem o produto funcionar — quem assina e não conecta o
+ * calendário não vê valor nenhum e cancela no primeiro mês. O interno existe
+ * para que esse silêncio não passe despercebido: se dias depois o cliente
+ * continuar com zero imóvel, alguém sabe para quem ligar.
+ */
+async function notifyNewSubscriber(
+  db: ReturnType<typeof admin>,
+  userId: string,
+  info: { status: string; plan: string | null; cycle: string | null; subscriptionId: string },
+): Promise<void> {
+  const { data: profile } = await db
+    .from("profiles")
+    .select("email, full_name, phone_e164, locale, plan, billing_cycle")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!profile?.email) return;
+
+  const tier = info.plan ?? profile.plan ?? null;
+  const { data: planRow } = tier
+    ? await db.from("plans").select("name").eq("tier", tier).maybeSingle()
+    : { data: null };
+
+  const planLabel = planRow?.name ?? tier ?? "";
+  const cycle = info.cycle ?? profile.billing_cycle ?? "monthly";
+
+  await db.rpc("enqueue_notification", {
+    _channel: "email",
+    _template: "welcome-subscriber",
+    _payload: {
+      owner_name: profile.full_name ?? "",
+      plan_label: planLabel,
+      dashboard_url: `${env.appBaseUrl()}/imoveis`,
+    },
+    _to_email: profile.email,
+    _to_user_id: userId,
+    _idempotency_key: `sub-welcome:${info.subscriptionId}`,
+    _locale: profile.locale ?? "pt",
+    _entity: "profiles",
+    _entity_id: userId,
+  });
+
+  // Sem endereço configurado, o aviso interno simplesmente não sai — não é
+  // motivo para derrubar o webhook nem para segurar o e-mail do cliente.
+  const adminEmail = env.adminNotifyEmail();
+  if (!adminEmail) return;
+
+  const { count } = await db
+    .from("properties")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", userId)
+    .is("archived_at", null);
+
+  await db.rpc("enqueue_notification", {
+    _channel: "email",
+    _template: "admin-new-subscriber",
+    _payload: {
+      owner_name: profile.full_name ?? "",
+      owner_email: profile.email,
+      owner_phone: profile.phone_e164 ?? "",
+      plan: tier ?? "",
+      plan_label: planLabel,
+      billing_cycle: cycle,
+      status: info.status,
+      property_count: count ?? 0,
+    },
+    _to_email: adminEmail,
+    _idempotency_key: `sub-admin:${info.subscriptionId}`,
+    _locale: "pt",
+    _entity: "profiles",
+    _entity_id: userId,
+  });
+}
+
 /** Descobre o tier a partir do price id gravado na tabela plans. */
 async function resolvePlan(
   db: ReturnType<typeof admin>,
@@ -204,6 +282,22 @@ Deno.serve(async (req) => {
               _entity_id: userId,
             });
           }
+        }
+
+        // Assinatura entrando no ar: dois e-mails, um para cada lado.
+        //
+        // A chave de idempotência é a ASSINATURA, sem o status: o Stripe manda
+        // `created` e logo em seguida um ou mais `updated` para a mesma
+        // assinatura, e sem isso o cliente receberia as boas-vindas duas ou
+        // três vezes seguidas. Renovação mensal não passa por aqui — ela chega
+        // como `invoice.paid`, tratado mais abaixo.
+        if (status === "active" || status === "trialing") {
+          await notifyNewSubscriber(db, userId, {
+            status,
+            plan: plan?.tier ?? null,
+            cycle: plan?.cycle ?? null,
+            subscriptionId: sub.id,
+          });
         }
         break;
       }

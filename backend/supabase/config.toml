@@ -61,6 +61,17 @@ verify_jwt = false
 [functions.guest-chat]
 verify_jwt = false
 
+# "Esqueci minha senha": quem chama não está logado, por definição. Autoriza
+# devolvendo sempre a mesma resposta e limitando por destinatário.
+[functions.password-reset]
+verify_jwt = false
+
+# Criação de conta. Também não há usuário logado — é o endpoint que o cria.
+# Mesma defesa da recuperação de senha: resposta única exista a conta ou não,
+# e limite por destinatário.
+[functions.signup]
+verify_jwt = false
+
 # Diarista entrando pelo link mágico. Autoriza pelo token do convite.
 [functions.cleaner-accept]
 verify_jwt = false
@@ -92,4 +103,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.job-porter-sync]
+verify_jwt = false
+
+# Manutenção: reconcilia produtos e preços da Stripe com a tabela `plans`.
+# Autoriza pelo segredo de cron; roda por private.call_job.
+[functions.billing-sync-plans]
 verify_jwt = false

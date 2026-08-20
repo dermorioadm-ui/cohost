@@ -38,7 +38,7 @@ const brl = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const STATUS_LABEL: Record<Profile["subscription_status"], string> = {
-  trialing: "Em teste grátis",
+  trialing: "Em teste",
   active: "Assinatura ativa",
   past_due: "Pagamento atrasado",
   canceled: "Assinatura cancelada",
@@ -124,7 +124,6 @@ export default function Plano() {
     );
   }
 
-  const emTeste = profile?.subscription_status === "trialing";
   const pagando = profile?.subscription_status === "active";
   const comProblema =
     profile?.subscription_status === "past_due" ||
@@ -168,13 +167,6 @@ export default function Plano() {
             {current.annual_cents > 0 && (
               <> · {brl(current.annual_cents)} no anual</>
             )}
-          </p>
-        )}
-
-        {emTeste && profile?.trial_ends_at && (
-          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-            Seu teste termina em <strong>{daysLeft(profile.trial_ends_at)} dia(s)</strong>.
-            Assine antes disso para não perder o acesso.
           </p>
         )}
 

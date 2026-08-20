@@ -255,9 +255,27 @@ export const api = {
   },
 
   billing: {
-    checkout: (body: { tier: string; cycle: string; trial?: boolean }) =>
+    checkout: (body: { tier: string; cycle: string }) =>
       request<{ url: string }>("billing-checkout", { body }),
     portal: () => request<{ url: string }>("billing-portal", {}),
+  },
+
+  // Recuperação de senha. A resposta é a mesma exista a conta ou não — a tela
+  // precisa refletir isso e nunca dizer "e-mail não encontrado".
+  auth: {
+    resetPassword: (email: string) =>
+      request<{ ok: boolean; message: string }>("password-reset", {
+        body: { email },
+        auth: false,
+      }),
+
+    // Cadastro pelo backend, e não pelo `supabase.auth.signUp`. O signUp manda
+    // a confirmação pelo e-mail padrão do Supabase, cujo link aponta para o
+    // Site URL do projeto — campo de dashboard que, em branco, mandava todo
+    // cliente novo para localhost. Aqui o link é nosso, e o e-mail sai com a
+    // mesma cara dos outros. A resposta também não distingue conta existente.
+    signup: (body: { email: string; password: string; full_name: string; phone?: string }) =>
+      request<{ ok: boolean; message: string }>("signup", { body, auth: false }),
   },
 
   // Atendimento automático 24h. Repare que não existe `get` da senha: ela vai

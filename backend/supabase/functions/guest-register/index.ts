@@ -128,9 +128,15 @@ export default handler(async (req) => {
     ? body.locale!
     : env.defaultLocale();
 
+  // O filtro por `kind` não é enfeite: esta consulta nasceu quando existia um
+  // termo só no sistema, e a 0025 acrescentou o do Hermes. A partir dali havia
+  // DOIS termos ativos em `pt`, `maybeSingle()` passou a devolver nulo (mais de
+  // uma linha), e todo cadastro de hóspede morria em "Termo de responsabilidade
+  // indisponível". Publicar um terceiro assunto sem este filtro quebraria de novo.
   const { data: term } = await db
     .from("term_versions")
     .select("id, version")
+    .eq("kind", "cadastro_hospede")
     .eq("locale", locale)
     .eq("active", true)
     .maybeSingle();
@@ -171,11 +177,23 @@ export default handler(async (req) => {
     throw errors.upstream("Não foi possível concluir o cadastro. Tente novamente.");
   }
 
+  // A coluna se chama `phone_e164` e por muito tempo guardou o que a pessoa
+  // digitou — "21988978322", "(21) 98897-8322", "+55 21…". Quem consome isso
+  // depois (a portaria) confiava no nome da coluna, montava "+21988978322" e
+  // a Kiper recusava por DDI inexistente. Normalizar aqui é o conserto na
+  // origem: `normalize_phone` é a mesma função que o convite da diarista usa.
+  const normalizedPhones = await Promise.all(
+    guests.map(async (g) => {
+      const { data } = await db.rpc("normalize_phone", { _phone: g.phone ?? null });
+      return (data as unknown as string | null) ?? (g.phone ?? null);
+    }),
+  );
+
   const people = guests.map((g, i) => ({
     registration_id: registration.id,
     full_name: g.full_name!.trim(),
     email: g.email!.trim().toLowerCase(),
-    phone_e164: g.phone,
+    phone_e164: normalizedPhones[i],
     document_type: g.document_type ?? null,
     document_number: g.document_number ?? null,
     is_primary: i === 0,
@@ -287,6 +305,14 @@ export default handler(async (req) => {
         checkin_time: property.checkin_time,
         checkout_time: property.checkout_time,
         term_version: term.version,
+        // Este e-mail é o comprovante do aceite, então leva a data em que ele
+        // aconteceu — sem isso o hóspede tem um recibo sem quando.
+        term_accepted_at: new Date().toLocaleString("pt-BR", {
+          timeZone: env.timezone(),
+          dateStyle: "short",
+          timeStyle: "short",
+        }),
+        guest_count: insertedPeople!.length,
         has_porter: Boolean(porter),
       },
       _to_email: person.email,

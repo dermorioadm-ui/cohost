@@ -5,54 +5,63 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/api";
+import { api, supabase } from "@/lib/api";
 
 /**
- * Entrada do dono. Cadastro e login na mesma tela — o modo alterna sem
- * navegar, porque quem erra a senha não deveria ter que descobrir onde fica
- * o outro botão.
+ * Entrada do dono. Cadastro, login e recuperação na mesma tela — o modo
+ * alterna sem navegar, porque quem erra a senha não deveria ter que descobrir
+ * onde fica o outro botão.
  */
 export default function Auth() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">(
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">(
     params.get("modo") === "cadastro" ? "signup" : "signin",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
 
     try {
+      if (mode === "reset") {
+        // A resposta do servidor é a mesma exista a conta ou não, e a tela
+        // repete essa neutralidade: dizer "não achei esse e-mail" transformaria
+        // o formulário em ferramenta de descoberta de quem é cliente.
+        const res = await api.auth.resetPassword(form.email.trim().toLowerCase());
+        setResetSent(true);
+        toast.success(res.message);
+        return;
+      }
+
       if (mode === "signup") {
         if (form.name.trim().length < 3) throw new Error("Informe seu nome completo");
         if (form.password.length < 8) throw new Error("A senha precisa de ao menos 8 caracteres");
 
-        const { data, error } = await supabase.auth.signUp({
+        // Quem cria a conta é o backend, não o `supabase.auth.signUp`.
+        //
+        // O signUp dispara a confirmação pelo e-mail padrão do Supabase, e o
+        // link dele aponta para o Site URL do projeto. Com esse campo no padrão
+        // de fábrica, todo cadastro recebia um link para `http://localhost:3000`
+        // e a conta ficava presa em "confirme seu e-mail" para sempre — sem
+        // erro em tela nenhuma. A function `signup` monta o link no nosso
+        // domínio e manda pela nossa fila, com o mesmo template dos outros.
+        //
+        // O papel do usuário continua sendo gravado pelo gatilho
+        // on_auth_user_created, no banco: aqui não haveria sessão para escrever.
+        const res = await api.auth.signup({
           email: form.email.trim().toLowerCase(),
           password: form.password,
-          options: {
-            data: { full_name: form.name.trim(), whatsapp: form.phone },
-          },
+          full_name: form.name.trim(),
+          phone: form.phone,
         });
-        if (error) throw error;
 
-        // O papel do usuário é gravado pelo gatilho on_auth_user_created, no
-        // banco. Aqui não dá: com confirmação de e-mail ligada, o cadastro não
-        // devolve sessão, então qualquer escrita daqui sairia sem autenticação
-        // e a RLS recusaria — sem erro visível, deixando a conta sem papel.
-
-        // Sem sessão, o cadastro só termina depois que o e-mail é confirmado.
-        if (!data.session) {
-          toast.success("Conta criada! Confirme o e-mail que enviamos para entrar.");
-          setMode("signin");
-          return;
-        }
-
-        toast.success("Conta criada! Vamos configurar seu primeiro imóvel.");
-        navigate("/comecar");
+        toast.success(res.message);
+        setMode("signin");
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: form.email.trim().toLowerCase(),
@@ -74,15 +83,43 @@ export default function Auth() {
         <div className="text-center mb-8">
           <p className="text-xs font-bold tracking-widest uppercase text-primary">HospedePay</p>
           <h1 className="mt-2 text-2xl font-extrabold leading-tight">
-            {mode === "signup" ? "Criar sua conta" : "Entrar"}
+            {mode === "signup"
+              ? "Criar sua conta"
+              : mode === "reset"
+                ? "Recuperar senha"
+                : "Entrar"}
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {mode === "signup"
               ? "Em poucos minutos seu checkout roda sozinho."
-              : "Bem-vindo de volta."}
+              : mode === "reset"
+                ? "Enviamos um link para você criar uma senha nova."
+                : "Bem-vindo de volta."}
           </p>
         </div>
 
+        {mode === "reset" && resetSent ? (
+          <div className="space-y-4 rounded-2xl border bg-background p-5 shadow-sm">
+            <p className="text-sm leading-relaxed">
+              Se existir uma conta com <strong>{form.email.trim().toLowerCase()}</strong>, o link
+              de recuperação chega em instantes. Ele vale por 1 hora e só funciona uma vez.
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Não chegou? Confira a caixa de spam. O e-mail sai de uma caixa que não é lida —
+              responder a ele não chega em ninguém.
+            </p>
+            <Button
+              variant="outline"
+              className="h-11 w-full"
+              onClick={() => {
+                setMode("signin");
+                setResetSent(false);
+              }}
+            >
+              Voltar para o login
+            </Button>
+          </div>
+        ) : (
         <form onSubmit={submit} className="space-y-4 bg-background rounded-2xl border p-5 shadow-sm">
           {mode === "signup" && (
             <>
@@ -123,30 +160,53 @@ export default function Auth() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              required
-            />
-          </div>
+          {mode !== "reset" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                required
+              />
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={() => setMode("reset")}
+                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
+            </div>
+          )}
 
           <Button type="submit" className="w-full h-11" disabled={busy}>
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === "signup" ? "Criar conta" : "Entrar"}
+            {mode === "signup"
+              ? "Criar conta"
+              : mode === "reset"
+                ? "Enviar link de recuperação"
+                : "Entrar"}
           </Button>
         </form>
+        )}
 
         <button
           type="button"
-          onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+          onClick={() => {
+            setResetSent(false);
+            setMode(mode === "signup" ? "signin" : mode === "reset" ? "signin" : "signup");
+          }}
           className="mt-5 w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          {mode === "signup" ? "Já tenho conta — entrar" : "Não tenho conta — criar agora"}
+          {mode === "signup"
+            ? "Já tenho conta — entrar"
+            : mode === "reset"
+              ? "Lembrei a senha — voltar ao login"
+              : "Não tenho conta — criar agora"}
         </button>
       </div>
     </div>
