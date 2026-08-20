@@ -77,7 +77,7 @@ export default function CleanerAccept() {
 
   if (state === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="mesh-gradient flex min-h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -85,10 +85,13 @@ export default function CleanerAccept() {
 
   if (state === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-6 text-center">
-        <div className="max-w-xs">
+      <div className="mesh-gradient flex min-h-screen items-center justify-center px-6 text-center">
+        {/* `role="alert"` porque este é o conteúdo inteiro da tela e ele chega
+            depois do carregamento: quem usa leitor de tela precisa ouvir o
+            motivo sem ter de varrer uma página que mudou sozinha. */}
+        <div role="alert" className="glass-card max-w-xs rounded-2xl p-5">
           <p className="font-semibold">{error}</p>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="mt-2 text-sm text-muted-foreground">
             Peça um link novo para quem te convidou.
           </p>
         </div>
@@ -97,10 +100,12 @@ export default function CleanerAccept() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 bg-muted/30">
+    <div className="mesh-gradient flex min-h-screen items-center justify-center px-6 py-10">
+      <div className="mesh-blob-3 animate-blob" aria-hidden />
+
       <div className="w-full max-w-xs text-center">
-        <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <CalendarCheck className="h-7 w-7 text-primary" />
+        <div className="glass-accent mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
+          <CalendarCheck className="h-7 w-7 text-primary-foreground" aria-hidden />
         </div>
 
         <h1 className="mt-5 text-xl font-bold leading-tight">
@@ -126,14 +131,14 @@ export default function CleanerAccept() {
           )}
         </p>
 
-        <div className="mt-5 rounded-2xl border bg-background p-4 text-left space-y-2.5">
+        <div className="glass-card mt-5 space-y-2.5 rounded-2xl p-4 text-left">
           {[
             "Você vê os horários de saída no celular",
             "Não precisa ser avisada toda vez",
             "Marca a limpeza como feita em um toque",
           ].map((line) => (
             <p key={line} className="flex gap-2.5 text-sm">
-              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
               <span className="text-muted-foreground">{line}</span>
             </p>
           ))}
@@ -155,7 +160,7 @@ export default function CleanerAccept() {
           </div>
         )}
 
-        <Button onClick={accept} disabled={busy} className="w-full h-12 mt-4">
+        <Button onClick={accept} disabled={busy} className="mt-4 h-12 w-full font-semibold">
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Entrar
         </Button>

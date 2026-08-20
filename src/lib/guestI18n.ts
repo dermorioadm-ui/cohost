@@ -24,12 +24,19 @@ interface Textos {
   register: string; registerDone: string;
   support: string; required: string; requiredDone: string; supportHint: string;
   back: string;
-  dates: string; checkin: string; checkout: string;
+  dates: string; checkin: string; checkout: string; datePick: string;
   guests: string; add: string; guest: string; responsible: string;
+  removeGuest: string;
   name: string; email: string; phone: string; phoneSearch: string;
   docTitle: string; cpf: string; foreign: string; foreignHint: string;
   nationality: string; passport: string; nationalityPick: string;
-  photo: string; photoHint: string; photoChange: string; photoSending: string;
+  photo: string; photoHint: string; photoSending: string;
+  photoCamera: string; photoGallery: string; photoRemove: string;
+  requiredHint: string;
+  stepDates: string; stepGuests: string; stepTerm: string;
+  stepOf: (n: number, total: number) => string;
+  next: string; edit: string; reviewCount: (n: number) => string;
+  nights: (n: number) => string;
   term: string; termText: string;
   signTitle: string; signHint: string; signMissing: string;
   submit: string; sending: string;
@@ -52,7 +59,9 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, acesso, regras da casa — 24 horas",
     back: "Voltar",
     dates: "Datas da estadia", checkin: "Entrada", checkout: "Saída",
+    datePick: "Escolher",
     guests: "Hóspedes", add: "Adicionar hóspede", guest: "Hóspede",
+    removeGuest: "Remover hóspede",
     responsible: "responsável",
     name: "Nome completo", email: "E-mail", phone: "Telefone",
     phoneSearch: "Buscar país",
@@ -63,9 +72,19 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nacionalidade", passport: "Número do passaporte",
     nationalityPick: "Escolher país",
     photo: "Foto do documento",
-    photoHint: "Tire uma foto ou envie o arquivo. Ajuda a portaria a liberar sua entrada.",
-    photoChange: "Trocar",
+    photoHint: "Ajuda a portaria a liberar sua entrada. Aceita foto ou PDF.",
     photoSending: "Preparando…",
+    photoCamera: "Tirar foto",
+    photoGallery: "Galeria / arquivo",
+    photoRemove: "Remover",
+    requiredHint: "Campos com * são obrigatórios",
+    stepDates: "Datas",
+    stepGuests: "Hóspedes",
+    stepTerm: "Termo",
+    stepOf: (n, total) => `Passo ${n} de ${total}`,
+    next: "Continuar", edit: "Editar",
+    reviewCount: (n) => (n === 1 ? "1 hóspede" : `${n} hóspedes`),
+    nights: (n) => (n === 1 ? "1 noite" : `${n} noites`),
     term: "Termo de responsabilidade",
     termText:
       "Declaro que cadastrei <b>todas as pessoas</b> que irão se hospedar, respeitando o limite de ocupação. " +
@@ -102,7 +121,9 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, access, house rules — 24 hours",
     back: "Back",
     dates: "Stay dates", checkin: "Check-in", checkout: "Check-out",
+    datePick: "Select",
     guests: "Guests", add: "Add guest", guest: "Guest",
+    removeGuest: "Remove guest",
     responsible: "responsible",
     name: "Full name", email: "Email", phone: "Phone",
     phoneSearch: "Search country",
@@ -113,9 +134,19 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nationality", passport: "Passport number",
     nationalityPick: "Choose country",
     photo: "Photo of your ID",
-    photoHint: "Take a photo or upload the file. It helps the front desk let you in.",
-    photoChange: "Change",
+    photoHint: "Helps the front desk let you in. Photo or PDF.",
     photoSending: "Preparing…",
+    photoCamera: "Take photo",
+    photoGallery: "Gallery / file",
+    photoRemove: "Remove",
+    requiredHint: "Fields marked * are required",
+    stepDates: "Dates",
+    stepGuests: "Guests",
+    stepTerm: "Statement",
+    stepOf: (n, total) => `Step ${n} of ${total}`,
+    next: "Continue", edit: "Edit",
+    reviewCount: (n) => (n === 1 ? "1 guest" : `${n} guests`),
+    nights: (n) => (n === 1 ? "1 night" : `${n} nights`),
     term: "Statement of responsibility",
     termText:
       "I declare that I have registered <b>every person</b> who will be staying, within the occupancy limit. " +
@@ -152,7 +183,9 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, acceso, normas de la casa — 24 horas",
     back: "Volver",
     dates: "Fechas de la estancia", checkin: "Entrada", checkout: "Salida",
+    datePick: "Elegir",
     guests: "Huéspedes", add: "Añadir huésped", guest: "Huésped",
+    removeGuest: "Quitar huésped",
     responsible: "responsable",
     name: "Nombre completo", email: "Correo electrónico", phone: "Teléfono",
     phoneSearch: "Buscar país",
@@ -163,9 +196,19 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nacionalidad", passport: "Número de pasaporte",
     nationalityPick: "Elegir país",
     photo: "Foto del documento",
-    photoHint: "Haz una foto o sube el archivo. Ayuda a la portería a dejarte entrar.",
-    photoChange: "Cambiar",
+    photoHint: "Ayuda a la portería a dejarte entrar. Foto o PDF.",
     photoSending: "Preparando…",
+    photoCamera: "Hacer foto",
+    photoGallery: "Galería / archivo",
+    photoRemove: "Quitar",
+    requiredHint: "Los campos con * son obligatorios",
+    stepDates: "Fechas",
+    stepGuests: "Huéspedes",
+    stepTerm: "Término",
+    stepOf: (n, total) => `Paso ${n} de ${total}`,
+    next: "Continuar", edit: "Editar",
+    reviewCount: (n) => (n === 1 ? "1 huésped" : `${n} huéspedes`),
+    nights: (n) => (n === 1 ? "1 noche" : `${n} noches`),
     term: "Término de responsabilidad",
     termText:
       "Declaro que registré a <b>todas las personas</b> que se hospedarán, respetando el límite de ocupación. " +

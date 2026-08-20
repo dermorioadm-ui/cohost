@@ -125,16 +125,13 @@ export default handler(async (req) => {
   if (body.term_accepted !== true) {
     throw errors.invalid("É necessário aceitar o termo de responsabilidade");
   }
-  // A assinatura NÃO é exigida aqui, e isso é sequenciamento e não descuido.
-  //
-  // O backend sobe antes do frontend: entre um e outro existe uma janela em
-  // que o hóspede está na porta do prédio com a versão antiga da página, que
-  // não desenha o quadro de assinar. Exigir a assinatura nessa janela
-  // deixaria essa pessoa sem check-in por causa do nosso deploy.
-  //
-  // Quem manda a assinatura ganha o termo em PDF; quem não manda faz o
-  // cadastro como antes. Quando o frontend novo estiver no ar em todo lugar,
-  // trocar isto por um `throw` é uma linha.
+  // A assinatura era opcional enquanto o frontend antigo ainda estava no ar —
+  // não se deixa hóspede na porta do prédio por causa do nosso deploy. Com o
+  // formulário novo publicado, essa janela fechou: um cadastro sem assinatura
+  // agora só vem de chamada direta ao endpoint.
+  if (!body.assinatura) {
+    throw errors.invalid("Assine o termo antes de concluir o cadastro");
+  }
 
   const guests = (body.guests ?? []).filter(Boolean);
   if (guests.length === 0) throw errors.invalid("Cadastre ao menos um hóspede");
@@ -171,12 +168,15 @@ export default handler(async (req) => {
       }
     } else if (tipo === "cpf") {
       if (!cpfValido(numero)) throw errors.invalid(`Hóspede ${i + 1}: CPF inválido`);
-    } else if (tipo || numero) {
-      throw errors.invalid(`Hóspede ${i + 1}: tipo de documento não aceito`);
+    } else {
+      // A janela de transição fechou: o formulário com CPF está no ar, então
+      // um cadastro sem documento não é mais "frontend antigo" — é chamada
+      // direta ao endpoint, contornando a única coisa que dá validade ao
+      // termo assinado.
+      throw errors.invalid(
+        `Hóspede ${i + 1}: informe o CPF, ou marque estrangeiro e informe o passaporte`,
+      );
     }
-    // Sem tipo e sem número o cadastro passa: é o frontend antigo, que sobe
-    // depois deste backend. Mesma razão do termo assinado — não se deixa
-    // hóspede na porta do prédio por causa do nosso deploy.
   });
 
   // ---- rate limit ----------------------------------------------------------
@@ -411,42 +411,40 @@ export default handler(async (req) => {
   let termoId: string | null = null;
   let termoPdf: string | null = null;
 
-  if (body.assinatura) {
-    try {
-      const assinado = await registrarTermo(db, {
-        kind: "cadastro_hospede",
-        propertyId: property.id,
-        registrationId: registration.id,
-        signerName: primary.full_name,
-        // O documento do responsável no rodapé da assinatura: é ele que
-        // transforma o traço numa identificação.
-        signerDoc: rotuloDoc(guests[0]),
-        assinaturaDataUrl: body.assinatura!,
-        locale,
-        ip,
-        userAgent: req.headers.get("user-agent"),
-        detalhes: [
-          ["Imóvel", property.name],
-          ["Check-in", body.checkin_date!],
-          ["Check-out", body.checkout_date!],
-          ["Pessoas cadastradas", String(insertedPeople!.length)],
-          // Cada hóspede com o documento ao lado do nome. O termo diz
-          // "cadastrei todas as pessoas, com nome e documento de cada uma" —
-          // um PDF que lista só os nomes não sustenta a própria cláusula.
-          ...insertedPeople!.map(
-            (pe, i) =>
-              [
-                `Hóspede ${i + 1}`,
-                [pe.full_name, rotuloDoc(guests[i])].filter(Boolean).join(" — "),
-              ] as [string, string],
-          ),
-        ],
-      });
-      termoId = assinado.id;
-      termoPdf = assinado.pdfPath;
-    } catch (e) {
-      console.error("Termo assinado falhou:", e instanceof Error ? e.message : e);
-    }
+  try {
+    const assinado = await registrarTermo(db, {
+      kind: "cadastro_hospede",
+      propertyId: property.id,
+      registrationId: registration.id,
+      signerName: primary.full_name,
+      // O documento do responsável no rodapé da assinatura: é ele que
+      // transforma o traço numa identificação.
+      signerDoc: rotuloDoc(guests[0]),
+      assinaturaDataUrl: body.assinatura!,
+      locale,
+      ip,
+      userAgent: req.headers.get("user-agent"),
+      detalhes: [
+        ["Imóvel", property.name],
+        ["Check-in", body.checkin_date!],
+        ["Check-out", body.checkout_date!],
+        ["Pessoas cadastradas", String(insertedPeople!.length)],
+        // Cada hóspede com o documento ao lado do nome. O termo diz
+        // "cadastrei todas as pessoas, com nome e documento de cada uma" —
+        // um PDF que lista só os nomes não sustenta a própria cláusula.
+        ...insertedPeople!.map(
+          (pe, i) =>
+            [
+              `Hóspede ${i + 1}`,
+              [pe.full_name, rotuloDoc(guests[i])].filter(Boolean).join(" — "),
+            ] as [string, string],
+        ),
+      ],
+    });
+    termoId = assinado.id;
+    termoPdf = assinado.pdfPath;
+  } catch (e) {
+    console.error("Termo assinado falhou:", e instanceof Error ? e.message : e);
   }
 
   // ---- e-mails -------------------------------------------------------------

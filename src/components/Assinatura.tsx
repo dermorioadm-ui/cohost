@@ -34,10 +34,12 @@ export function Assinatura({
   onChange,
   className,
   rotulo = "Assine no quadro abaixo",
+  obrigatorio = false,
 }: {
   onChange: (dataUrl: string | null) => void;
   className?: string;
   rotulo?: string;
+  obrigatorio?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const desenhando = useRef(false);
@@ -81,12 +83,17 @@ export function Assinatura({
     if (!canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
 
-    // Com o canvas girado por CSS, o retângulo do elemento vem com os lados
-    // trocados. As dimensões de desenho vêm do estilo, não do rect.
-    const larguraCss = parseFloat(canvas.style.width) || rect.width;
-    const alturaCss = parseFloat(canvas.style.height) || rect.height;
+    // `offsetWidth/Height` é a CAIXA DE LAYOUT do elemento: não sofre com o
+    // `transform` do modo girado, e não depende de ler a string do estilo.
+    //
+    // Ler o estilo era o bug do quadro pequeno. Lá a largura é "100%", e
+    // `parseFloat("100%")` devolve 100 — então o canvas desenhava numa área de
+    // 100px enquanto aparecia com uns 350px, e o traço saía deslocado e fora
+    // de escala. Em tela cheia a largura é um `calc(...)`, que vira NaN e caía
+    // no fallback certo; era por isso que só lá funcionava.
+    const larguraCss = canvas.offsetWidth;
+    const alturaCss = canvas.offsetHeight;
     if (larguraCss === 0 || alturaCss === 0) return;
 
     const igual =
@@ -114,9 +121,19 @@ export function Assinatura({
     ajustar();
     window.addEventListener("resize", ajustar);
     window.addEventListener("orientationchange", ajustar);
+
+    // O quadro vive dentro de um diálogo que abre com animação. No primeiro
+    // render a caixa ainda pode ter largura zero, e `ajustar` sai sem fazer
+    // nada — sem o observador, ela nunca mais seria chamada e o canvas ficaria
+    // com o tamanho errado pelo resto da sessão.
+    const observador =
+      typeof ResizeObserver === "function" ? new ResizeObserver(() => ajustar()) : null;
+    if (observador && ref.current) observador.observe(ref.current);
+
     return () => {
       window.removeEventListener("resize", ajustar);
       window.removeEventListener("orientationchange", ajustar);
+      observador?.disconnect();
     };
   }, [ajustar, cheia, girado]);
 
@@ -130,10 +147,11 @@ export function Assinatura({
   const ponto = (e: { clientX: number; clientY: number }): Ponto => {
     const canvas = ref.current!;
     const rect = canvas.getBoundingClientRect();
-    const larguraCss = parseFloat(canvas.style.width) || rect.width;
-    const alturaCss = parseFloat(canvas.style.height) || rect.height;
+    const larguraCss = canvas.offsetWidth;
+    const alturaCss = canvas.offsetHeight;
 
     if (!girado) {
+      // Sem rotação o rect já é a própria caixa: subtrair o canto basta.
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
 
@@ -278,7 +296,10 @@ export function Assinatura({
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900">
         <div className="flex items-center justify-between gap-2 px-4 py-3">
-          <p className="text-sm font-medium text-white">{rotulo}</p>
+          <p className="text-sm font-medium text-white">
+            {rotulo}
+            {obrigatorio && <span aria-hidden className="ml-0.5 text-red-400">*</span>}
+          </p>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -337,7 +358,10 @@ export function Assinatura({
   return (
     <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{rotulo}</p>
+        <p className="text-sm font-medium">
+          {rotulo}
+          {obrigatorio && <span aria-hidden className="ml-0.5 text-destructive">*</span>}
+        </p>
         <div className="flex items-center gap-1">
           <button
             type="button"
