@@ -576,27 +576,64 @@ export default function GuestChat() {
                 <p className="mt-0.5 text-xs text-muted-foreground">{t.required}</p>
               </div>
 
+              {/* `min-w-0` na célula, e não só `w-full` no campo.
+                  Célula de grid não encolhe abaixo do conteúdo, e o campo de
+                  data nativo do iPhone tem largura intrínseca maior que metade
+                  da tela: sem isto os dois campos empurram a coluna, encostam
+                  um no outro e vazam para fora do cartão. */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t.checkin}<Obrigatorio /></Label>
-                  <Input
-                    type="date"
-                    min={today}
-                    value={checkin}
-                    onChange={(e) => setCheckin(e.target.value)}
-                    className="min-h-[44px]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t.checkout}<Obrigatorio /></Label>
-                  <Input
-                    type="date"
-                    min={checkin || today}
-                    value={checkout}
-                    onChange={(e) => setCheckout(e.target.value)}
-                    className="min-h-[44px]"
-                  />
-                </div>
+                {(
+                  [
+                    {
+                      chave: "checkin" as const,
+                      rotulo: t.checkin,
+                      valor: checkin,
+                      minimo: today,
+                      set: setCheckin,
+                    },
+                    {
+                      chave: "checkout" as const,
+                      rotulo: t.checkout,
+                      valor: checkout,
+                      minimo: checkin || today,
+                      set: setCheckout,
+                    },
+                  ]
+                ).map(({ chave, rotulo, valor, minimo, set }) => (
+                  <div key={chave} className="min-w-0 space-y-1.5">
+                    <Label htmlFor={chave} className="text-xs">
+                      {rotulo}
+                      <Obrigatorio />
+                    </Label>
+
+                    <div className="relative min-w-0">
+                      <Input
+                        id={chave}
+                        type="date"
+                        min={minimo}
+                        value={valor}
+                        onChange={(e) => set(e.target.value)}
+                        className="min-h-[44px] w-full min-w-0"
+                      />
+
+                      {/* O campo de data vazio não desenha nada no Safari do
+                          iPhone — fica uma caixa em branco, e a pessoa não
+                          sabe que aquilo se toca. A tampa cobre também o
+                          "dd/mm/aaaa" que o Android desenha, para o convite
+                          ser o mesmo nos dois. `pointer-events-none` deixa o
+                          toque passar direto para o campo. */}
+                      {!valor && (
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-y-px left-px flex items-center gap-1.5 rounded-l-md bg-background pl-3 pr-2 text-sm text-muted-foreground"
+                        >
+                          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                          {t.datePick}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* A conta aparece assim que as duas datas existem. Ver "3

@@ -24,7 +24,7 @@ interface Textos {
   register: string; registerDone: string;
   support: string; required: string; requiredDone: string; supportHint: string;
   back: string;
-  dates: string; checkin: string; checkout: string;
+  dates: string; checkin: string; checkout: string; datePick: string;
   guests: string; add: string; guest: string; responsible: string;
   removeGuest: string;
   name: string; email: string; phone: string; phoneSearch: string;
@@ -59,6 +59,7 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, acesso, regras da casa — 24 horas",
     back: "Voltar",
     dates: "Datas da estadia", checkin: "Entrada", checkout: "Saída",
+    datePick: "Escolher",
     guests: "Hóspedes", add: "Adicionar hóspede", guest: "Hóspede",
     removeGuest: "Remover hóspede",
     responsible: "responsável",
@@ -120,6 +121,7 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, access, house rules — 24 hours",
     back: "Back",
     dates: "Stay dates", checkin: "Check-in", checkout: "Check-out",
+    datePick: "Select",
     guests: "Guests", add: "Add guest", guest: "Guest",
     removeGuest: "Remove guest",
     responsible: "responsible",
@@ -181,6 +183,7 @@ export const T: Record<Idioma, Textos> = {
     supportHint: "Wi-Fi, acceso, normas de la casa — 24 horas",
     back: "Volver",
     dates: "Fechas de la estancia", checkin: "Entrada", checkout: "Salida",
+    datePick: "Elegir",
     guests: "Huéspedes", add: "Añadir huésped", guest: "Huésped",
     removeGuest: "Quitar huésped",
     responsible: "responsable",

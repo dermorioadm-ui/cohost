@@ -292,6 +292,30 @@
   animation: shimmer 3s ease-in-out infinite;
 }
 
+/**
+ * Campo de data nativo.
+ *
+ * O Safari do iPhone centraliza o valor dentro do campo e dá a ele uma
+ * largura intrínseca própria — dois campos lado a lado saem desalinhados do
+ * resto do formulário e estouram a caixa que os contém. As três regras abaixo
+ * devolvem o campo ao alinhamento das outras entradas.
+ */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Sem isto o WebKit reserva a altura da linha do valor e o texto sobe. */
+input[type="date"]::-webkit-datetime-edit {
+  display: flex;
+  align-items: center;
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
