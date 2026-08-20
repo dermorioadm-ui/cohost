@@ -17,6 +17,7 @@ import { PortariaOferta } from "@/components/PortariaOferta";
 import { TermosAssinados } from "@/components/TermosAssinados";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
+import { FechamentoFatura } from "@/components/FechamentoFatura";
 import { mensagemAutomatica } from "@/lib/mensagemAutomatica";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
@@ -550,11 +551,15 @@ export default function Imovel() {
         </div>
       </header>
 
-      {/* Etapas — atalhos, não trilho. Rolam na horizontal no celular porque
-          seis rótulos legíveis não cabem em 375px de largura. */}
+      {/* Etapas — atalhos, não trilho.
+          Grade de três colunas, e não rolagem horizontal. Rolando de lado,
+          metade das etapas ficava fora da tela e nada anunciava que havia mais:
+          quem não arrastasse por acaso nunca descobria "Portaria". Em duas
+          linhas as seis aparecem de uma vez, que é o que uma barra de etapas
+          existe para fazer. No desktop volta a ser uma fila só. */}
       <nav
         aria-label="Etapas da configuração"
-        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
       >
         {STEPS.map((s) => {
           const active = s.key === step;
@@ -566,14 +571,14 @@ export default function Imovel() {
               onClick={() => goTo(s.key)}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+                "flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-medium transition-colors sm:shrink-0 sm:justify-start sm:px-3.5",
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-white/[0.07] text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <s.icon className="h-4 w-4 shrink-0" />
-              {s.label}
+              <span className="truncate">{s.label}</span>
               <span
                 aria-hidden
                 className={cn(
@@ -987,6 +992,17 @@ export default function Imovel() {
                           </>
                         )}
                       </div>
+                    )}
+
+                    {/* O acerto do mês. Depois do combinado e antes do link
+                        do painel: a ordem é a da conversa real — quanto, quando
+                        fecha, e por onde ela acompanha. */}
+                    {form.cleaner_id && user && (
+                      <FechamentoFatura
+                        ownerId={user.id}
+                        cleanerId={form.cleaner_id}
+                        cleanerName={cleanerName(form.cleaner_id)}
+                      />
                     )}
 
                     {/* Link do painel dela. Some quando ninguém está vinculado,
