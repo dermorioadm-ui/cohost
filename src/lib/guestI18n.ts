@@ -110,6 +110,8 @@ export const T: Record<Idioma, Textos> = {
       "Declaro que cadastrei <b>todas as pessoas</b> que irão se hospedar, respeitando o limite de ocupação. " +
       "Assumo a responsabilidade pelo imóvel e <b>pelas demais pessoas que cadastrei</b> durante toda a estadia. " +
       "Comprometo-me a <b>não receber pessoas que não estão neste check-in</b> sem autorização do anfitrião. " +
+      "Declaro que <b>respeito as regras do condomínio</b>, inclusive horários de silêncio e uso das áreas " +
+      "comuns, e que respondo pelas multas aplicadas por descumprimento meu ou dos meus acompanhantes. " +
       "Em caso de dano, <b>autorizo o anfitrião a pedir o ressarcimento pela plataforma da reserva</b> " +
       "(Airbnb, Booking) e a cobrança no meio de pagamento que registrei nela. " +
       "Estou ciente de que <b>o anfitrião não se responsabiliza por objetos esquecidos</b>, que ficam " +
@@ -197,6 +199,8 @@ export const T: Record<Idioma, Textos> = {
       "I declare that I have registered <b>every person</b> who will be staying, within the occupancy limit. " +
       "I take responsibility for the property and <b>for the other people I registered</b> for the whole stay. " +
       "I undertake <b>not to let in anyone who is not on this check-in</b> without the host's authorization. " +
+      "I declare that I <b>comply with the building rules</b>, including quiet hours and use of common areas, " +
+      "and that I am liable for fines applied for breaches by me or by my companions. " +
       "In case of damage, I <b>authorize the host to claim reimbursement through the booking platform</b> " +
       "(Airbnb, Booking) and the charge to the payment method I registered there. " +
       "I understand that the <b>host is not liable for items left behind</b>, which are kept for 30 days, " +
@@ -284,6 +288,8 @@ export const T: Record<Idioma, Textos> = {
       "Declaro que registré a <b>todas las personas</b> que se hospedarán, respetando el límite de ocupación. " +
       "Asumo la responsabilidad por el inmueble y <b>por las demás personas que registré</b> durante toda la estancia. " +
       "Me comprometo a <b>no recibir a personas que no constan en este check-in</b> sin autorización del anfitrión. " +
+      "Declaro que <b>respeto las normas del edificio</b>, incluidos los horarios de silencio y el uso de las " +
+      "áreas comunes, y que respondo por las multas aplicadas por incumplimiento mío o de mis acompañantes. " +
       "En caso de daño, <b>autorizo al anfitrión a pedir el resarcimiento por la plataforma de la reserva</b> " +
       "(Airbnb, Booking) y el cobro en el medio de pago que registré en ella. " +
       "Soy consciente de que <b>el anfitrión no se responsabiliza por objetos olvidados</b>, que se guardan " +
