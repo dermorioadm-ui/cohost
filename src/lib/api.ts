@@ -126,6 +126,23 @@ export interface PorterState {
   message?: string;
 }
 
+/** Um termo assinado a dedo — do hóspede ou da diarista. */
+export interface TermoAssinado {
+  id: string;
+  kind: "cadastro_hospede" | "limpeza_concluida";
+  property_id: string;
+  registration_id: string | null;
+  cleaning_task_id: string | null;
+  signer_name: string;
+  signer_doc: string | null;
+  /** Quando o fato aconteceu, segundo quem assinou. */
+  declarado_em: string | null;
+  assinado_em: string;
+  term_titulo: string;
+  pdf_path: string | null;
+  pdf_enviado_em: string | null;
+}
+
 /** Onde este assinante travou, e o que a equipe faz a respeito. */
 export type Estagio =
   | "pagamento_falhou"
@@ -517,6 +534,49 @@ export const api = {
     signer_doc?: string;
     assinatura: string;
   }) => request<{ ok: boolean; id: string }>("assinar-termo", { body: entrada }),
+
+  /**
+   * Termos assinados.
+   *
+   * O PDF vive num bucket privado; o acesso é decidido pelas policies do
+   * storage (0045) e não por esta camada. `createSignedUrl` só devolve link
+   * para quem a policy já deixaria ler.
+   */
+  termos: {
+    /** Os termos de um imóvel, ou de um cadastro de hóspede específico. */
+    listar: async (filtro: { propertyId?: string; registrationId?: string } = {}) => {
+      let q = supabase
+        .from("assinaturas")
+        .select(
+          "id, kind, property_id, registration_id, cleaning_task_id, signer_name, " +
+            "signer_doc, declarado_em, assinado_em, term_titulo, pdf_path, pdf_enviado_em",
+        )
+        .order("assinado_em", { ascending: false });
+
+      if (filtro.propertyId) q = q.eq("property_id", filtro.propertyId);
+      if (filtro.registrationId) q = q.eq("registration_id", filtro.registrationId);
+
+      const { data, error } = await q;
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as unknown as TermoAssinado[];
+    },
+
+    /**
+     * Link temporário para abrir o PDF.
+     *
+     * Curto de propósito: é para clicar agora, não para colar num grupo de
+     * WhatsApp. Quem precisa guardar o documento baixa o arquivo.
+     */
+    link: async (pdfPath: string) => {
+      const { data, error } = await supabase.storage
+        .from("termos")
+        .createSignedUrl(pdfPath, 120, { download: true });
+      if (error || !data?.signedUrl) {
+        throw new ApiError("not_found", "Não consegui abrir esse documento", 404);
+      }
+      return data.signedUrl;
+    },
+  },
 
   admin: {
     metrics: async (view: string, params: Record<string, string> = {}) => {

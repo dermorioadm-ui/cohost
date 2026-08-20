@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { supabase, api, icalFeedUrl } from "@/lib/api";
 import { PorterConnect } from "@/components/PorterConnect";
 import { PortariaOferta } from "@/components/PortariaOferta";
+import { TermosAssinados } from "@/components/TermosAssinados";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
 import { AI_FIELDS } from "@/lib/propertyFields";
@@ -1159,6 +1160,11 @@ export default function Imovel() {
               </>
             )}
           </section>
+
+          {/* Os termos ficam na etapa da limpeza porque é aqui que a
+              declaração da diarista nasce — e o do hóspede vem junto porque o
+              dono procura "os documentos", não "os documentos de cada tipo". */}
+          <TermosAssinados propertyId={form.id} />
 
           {stepFooter}
         </>
