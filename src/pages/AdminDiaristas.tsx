@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronRight, Loader2, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 
@@ -90,8 +91,14 @@ export default function AdminDiaristas() {
         <>
           {/* Celular: cartões */}
           <div className="space-y-2 md:hidden">
+            {/* O cartão inteiro é o alvo, e não um link de três letras no
+                canto: no celular o dedo acerta o cartão, não a palavra. */}
             {lista.map((c) => (
-              <div key={c.cleaner_id} className="glass-card space-y-2 rounded-xl p-4">
+              <Link
+                key={c.cleaner_id}
+                to={`/admin/conta/${c.cleaner_id}`}
+                className="glass-card block space-y-2 rounded-xl p-4 transition-colors hover:bg-white/[0.03]"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{c.full_name ?? "Sem nome"}</p>
@@ -103,12 +110,13 @@ export default function AdminDiaristas() {
                     {c.limpezas_30d} limpezas
                   </span>
                 </div>
-                <div className="flex gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>{c.hosts} host(s)</span>
                   <span>{c.imoveis} imóvel(is)</span>
                   <span>última {data(c.ultima_limpeza)}</span>
+                  <ChevronRight className="ml-auto h-4 w-4 shrink-0" aria-hidden />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -123,6 +131,7 @@ export default function AdminDiaristas() {
                   <th scope="col" className="px-4 py-3 text-right font-medium">Imóveis</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">Limpezas 30d</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">Última</th>
+                  <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Abrir</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -142,6 +151,14 @@ export default function AdminDiaristas() {
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                       {data(c.ultima_limpeza)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        to={`/admin/conta/${c.cleaner_id}`}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Abrir painel
+                      </Link>
                     </td>
                   </tr>
                 ))}
