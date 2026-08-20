@@ -110,9 +110,20 @@ export function CapturaFacial({
 
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, LADO, LADO);
-    // A pré-visualização é espelhada porque é assim que a pessoa se reconhece;
-    // o ARQUIVO não é. Documento com o rosto invertido confunde quem confere.
+
+    // Espelhado, igual à pré-visualização.
+    //
+    // A primeira versão gravava sem espelho, pelo argumento de que a imagem
+    // "correta" é a não invertida. Na prática o que acontece é pior: a pessoa
+    // se enquadra olhando um espelho, dispara, e a foto que aparece é o lado
+    // trocado — ela não reconhece o próprio rosto e refaz. Salvar o que estava
+    // na tela é a única versão que ninguém precisa conferir duas vezes, e o
+    // espelhamento não atrapalha a comparação com o documento: rosto humano
+    // não é texto, e quem confere olha traços, não a mão em que está o anel.
+    ctx.translate(LADO, 0);
+    ctx.scale(-1, 1);
     ctx.drawImage(video, sx, sy, lado, lado, 0, 0, LADO, LADO);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const dataUrl = canvas.toDataURL("image/jpeg", QUALIDADE);
     desligar();
@@ -157,8 +168,9 @@ export function CapturaFacial({
               ref={videoRef}
               playsInline
               muted
-              // `-scale-x-100` só na pré-visualização: espelho é como a pessoa
-              // se enxerga, e sem ele ela move a cabeça para o lado errado.
+              // Espelho: é como a pessoa se enxerga, e sem ele ela move a
+              // cabeça para o lado errado. A foto gravada usa o mesmo espelho,
+              // para o resultado ser o que estava na tela.
               className={cn(
                 "h-full w-full -scale-x-100 object-cover",
                 fase === "ao_vivo" ? "opacity-100" : "opacity-0",
