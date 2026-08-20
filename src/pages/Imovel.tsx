@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { supabase, api, icalFeedUrl } from "@/lib/api";
 import { PorterConnect } from "@/components/PorterConnect";
+import { PortariaOferta } from "@/components/PortariaOferta";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
 import { AI_FIELDS } from "@/lib/propertyFields";
@@ -1400,6 +1401,12 @@ export default function Imovel() {
           {/* Fora do formulário principal de propósito: salvar credencial de
               terceiro é outra transação, com teste próprio, e não deve depender
               do "Salvar alterações". */}
+          {/* A oferta vem ANTES do formulário técnico. Quem cai aqui e vê seis
+              campos de credencial de API fecha a tela; a maioria não sabe o que
+              é applicationKey nem tem como descobrir. A oferta oferece a saída
+              antes de a pessoa concluir que a portaria não é para ela. */}
+          <PortariaOferta propertyId={form.id} />
+
           <PorterConnect propertyId={form.id} />
 
           {stepFooter}

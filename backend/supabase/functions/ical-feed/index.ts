@@ -22,6 +22,11 @@ import { admin } from "../_shared/lib/db.ts";
  * SEM IDENTIDADE DE HÓSPEDE. Todo evento é "Ocupado". A URL vai parar dentro do
  * sistema de um terceiro, e nome de hóspede não tem o que fazer lá — o próprio
  * Airbnb faz assim nos feeds dele.
+ *
+ * UM LINK POR ANÚNCIO. O parâmetro `exceto` carrega o id do anúncio que está
+ * importando, e o feed devolve tudo menos o que aquele anúncio mesmo trouxe.
+ * Excluir por canal seria mais simples e estaria errado: dois anúncios do mesmo
+ * apartamento no Airbnb deixariam de se bloquear.
  */
 
 interface Row {
@@ -118,8 +123,16 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const token = (url.searchParams.get("t") ?? "").trim();
-  const paraBruto = (url.searchParams.get("para") ?? "").trim().toLowerCase();
-  const para = ["airbnb", "booking", "vrbo", "other"].includes(paraBruto) ? paraBruto : null;
+
+  // `exceto` é o id do ANÚNCIO que está importando, não o nome do canal.
+  //
+  // A primeira versão excluía por canal, e isso abria um buraco assim que o
+  // mesmo imóvel ganhava dois anúncios no Airbnb: o anúncio B receberia o feed
+  // sem nenhuma reserva do Airbnb — inclusive as do anúncio A, que é o mesmo
+  // apartamento. Os dois seguiriam vendendo a mesma noite.
+  const exceto = (url.searchParams.get("exceto") ?? "").trim();
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const excetoId = UUID.test(exceto) ? exceto : null;
 
   const cabecalho = {
     ...corsHeaders,
@@ -142,7 +155,7 @@ Deno.serve(async (req) => {
   try {
     const { data, error } = await admin().rpc("ical_feed_rows", {
       _token: token,
-      _para: para,
+      _exceto: excetoId,
     });
 
     if (error) {

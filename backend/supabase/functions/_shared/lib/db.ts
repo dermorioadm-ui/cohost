@@ -86,6 +86,45 @@ export async function requireCron(req: Request): Promise<void> {
   if (!ok) throw errors.forbidden("Segredo de cron inválido");
 }
 
+/**
+ * Para onde mandar aviso interno.
+ *
+ * Antes isto era só o segredo ADMIN_NOTIFY_EMAIL, e um segredo que ninguém
+ * configurou vira aviso que nunca sai — sem erro, sem log, sem ninguém
+ * perceber. Foi o que aconteceu com o pagamento da portaria: o cliente paga
+ * R$ 197 e o único sinal depende de uma variável de ambiente.
+ *
+ * O segredo continua valendo quando existe (dá para apontar para um e-mail de
+ * time que não é conta de ninguém). Sem ele, cai para os admins do banco: se
+ * há alguém com poder de resolver, há para quem avisar.
+ */
+export async function adminNotifyEmails(db: SupabaseClient): Promise<string[]> {
+  const configurado = env.adminNotifyEmail();
+  if (configurado) return [configurado];
+
+  // Duas consultas, e não um embed: `user_roles.user_id` aponta para
+  // `auth.users`, não para `profiles`. Sem a chave estrangeira entre as duas,
+  // o PostgREST não sabe montar o join sozinho.
+  const { data: papeis } = await db
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+
+  const ids = (papeis ?? []).map((r) => r.user_id as string);
+  if (ids.length === 0) return [];
+
+  const { data: perfis } = await db
+    .from("profiles")
+    .select("email")
+    .in("user_id", ids);
+
+  const lista = (perfis ?? [])
+    .map((p) => (p.email as string | null) ?? "")
+    .filter((e) => e.includes("@"));
+
+  return [...new Set(lista)];
+}
+
 /** Data de hoje no fuso da aplicação — espelha public.app_today() no banco. */
 export function appToday(): string {
   return new Intl.DateTimeFormat("en-CA", {

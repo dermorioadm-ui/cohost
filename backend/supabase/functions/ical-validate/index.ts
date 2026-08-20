@@ -20,6 +20,8 @@ interface Body {
   property_id?: string;
   provider?: "airbnb" | "booking" | "vrbo" | "other";
   save?: boolean;
+  /** Apelido do anúncio. Só faz diferença quando há mais de um no mesmo canal. */
+  label?: string;
 }
 
 export default handler(async (req) => {
@@ -69,6 +71,16 @@ export default handler(async (req) => {
 
   const provider = body.provider ?? guessProvider(url);
 
+  // O conflito é pela URL, e não pelo canal.
+  //
+  // Era `property_id,provider`, e isso significava um anúncio por canal: colar
+  // o link do segundo anúncio do Airbnb SOBRESCREVIA o primeiro. O link antigo
+  // sumia sem aviso e as reservas dele paravam de entrar — pior que recusar,
+  // porque ninguém percebe até faltar reserva na agenda.
+  //
+  // Pela URL, colar o mesmo link de novo revalida a fonte que já existe (é o
+  // caminho de quem regerou o link e quer religar), e um link diferente cria um
+  // anúncio novo. Quantos o dono quiser, no mesmo canal.
   const { error } = await db
     .from("property_ical_sources")
     .upsert(
@@ -76,11 +88,12 @@ export default handler(async (req) => {
         property_id: property.id,
         provider,
         url,
+        label: (body.label ?? "").trim() || null,
         active: true,
         last_error: null,
         consecutive_fails: 0,
       },
-      { onConflict: "property_id,provider" },
+      { onConflict: "property_id,url" },
     );
 
   if (error) throw errors.upstream(`Falha ao salvar o calendário: ${error.message}`);

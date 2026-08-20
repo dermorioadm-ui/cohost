@@ -26,6 +26,12 @@ verify_jwt = true
 [functions.porter-connect]
 verify_jwt = true
 
+# Implantacao da portaria (taxa avulsa). O preco vem do banco, nunca do corpo
+# da requisicao: aceitar valor do cliente num endpoint de pagamento e deixa-lo
+# escolher quanto pagar.
+[functions.porter-setup]
+verify_jwt = true
+
 [functions.billing-checkout]
 verify_jwt = true
 

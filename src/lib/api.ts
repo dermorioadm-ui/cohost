@@ -126,6 +126,27 @@ export interface PorterState {
   message?: string;
 }
 
+/** Um pedido de implantação da portaria, como o admin vê na fila. */
+export interface PorterPedido {
+  id: string;
+  status: "interessado" | "pago" | "em_andamento" | "implantado" | "cancelado";
+  property_id: string;
+  property_name: string;
+  owner_id: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  owner_phone: string | null;
+  condo_name: string | null;
+  condo_system: string | null;
+  amount_cents: number;
+  paid_at: string | null;
+  contacted_at: string | null;
+  implanted_at: string | null;
+  notes: string | null;
+  created_at: string;
+  total_count: number;
+}
+
 export interface HermesCredential {
   // Sem property_id: a credencial é da CONTA do Airbnb, que hospeda todos os
   // anúncios daquele anfitrião. Quem liga por imóvel é `hermes_enabled`.
@@ -212,6 +233,21 @@ export const api = {
         saved?: boolean;
       }>("ical-validate", { body }),
   },
+
+  /**
+   * Implantação da portaria (serviço avulso).
+   *
+   * Devolve a URL do checkout da Stripe, ou o estado do pedido quando já
+   * existe um vivo. O preço não viaja daqui: quem decide é o banco.
+   */
+  porterSetup: (body: { property_id: string; condo_name?: string; condo_system?: string }) =>
+    request<{
+      ok: boolean;
+      checkout_url?: string;
+      ja_existe?: boolean;
+      status?: string;
+      message?: string;
+    }>("porter-setup", { body }),
 
   // Portaria digital. As credenciais só viajam daqui para o backend — a
   // tabela não tem policy de SELECT, então nunca voltam. Por isso o formulário
@@ -370,6 +406,119 @@ export const api = {
       }
       return res.json();
     },
+
+    visaoGeral: async () => {
+      const [kpis, funil, saude] = await Promise.all([
+        supabase.rpc("admin_kpis"),
+        supabase.rpc("admin_activation_funnel"),
+        supabase.rpc("admin_system_health"),
+      ]);
+      if (kpis.error) throw new ApiError("forbidden", kpis.error.message, 403);
+      return {
+        kpis: kpis.data as Record<string, number>,
+        funil: (funil.data ?? []) as Array<Record<string, unknown>>,
+        saude: saude.data as Record<string, unknown>,
+      };
+    },
+
+    financeiro: async (meses = 12) => {
+      const { data, error } = await supabase.rpc("admin_financeiro", { _meses: meses });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return data as {
+        receita_total_cents: number;
+        clientes_pagantes: number;
+        ltv_realizado_cents: number;
+        ltv_projetado_cents: number | null;
+        churn_mensal_pct: number;
+        vida_media_meses: number | null;
+        amostra_confiavel: boolean;
+        por_plano: Array<{ tier: string; nome: string; assinantes: number; mrr_cents: number }>;
+        serie_mensal: Array<{ mes: string; receita_cents: number; cobrancas: number }>;
+        portaria_pagos_nao_implantados: number;
+        portaria_receita_cents: number;
+        portaria_interessados: number;
+        portaria_implantados: number;
+      };
+    },
+
+    diaristas: async (busca?: string) => {
+      const { data, error } = await supabase.rpc("admin_cleaners", {
+        _search: busca ?? null,
+        _limit: 100,
+        _offset: 0,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as Array<{
+        cleaner_id: string;
+        full_name: string | null;
+        email: string | null;
+        phone_e164: string | null;
+        entrou_em: string;
+        hosts: number;
+        imoveis: number;
+        limpezas_30d: number;
+        ultima_limpeza: string | null;
+      }>;
+    },
+
+    /**
+     * A fila da implantação da portaria.
+     *
+     * O financeiro já contava quantos pagaram. Contar não atende ninguém: o
+     * cliente paga R$ 197 e o único aviso é um e-mail que depende de um
+     * segredo estar configurado. Serviço cobrado precisa de fila dentro do
+     * produto — e-mail é notificação, fila é onde o trabalho fica até alguém
+     * fazer.
+     */
+    portariaFila: async (status?: string) => {
+      const { data, error } = await supabase.rpc("admin_porter_fila", {
+        _status: status ?? null,
+        _limit: 100,
+        _offset: 0,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+      return (data ?? []) as PorterPedido[];
+    },
+
+    portariaAvanca: async (id: string, status: string, notas?: string) => {
+      const { error } = await supabase.rpc("admin_porter_avanca", {
+        _id: id,
+        _status: status,
+        _notes: notas ?? null,
+      });
+      if (error) throw new ApiError("invalid_request", error.message, 400);
+    },
+
+    // Registra a visita ANTES de mostrar os dados. Se o log falhar, a tela não
+    // abre — auditoria que só grava quando dá tudo certo não é auditoria.
+    registrarVisita: async (userId: string, motivo?: string) => {
+      const { error } = await supabase.rpc("admin_registra_visita", {
+        _target_user_id: userId,
+        _motivo: motivo ?? null,
+      });
+      if (error) throw new ApiError("forbidden", error.message, 403);
+    },
+  },
+
+  /** As dicas do próximo passo. Sem id, são as de quem está logado. */
+  dicas: async (ownerId?: string) => {
+    const { data, error } = await supabase.rpc("owner_next_steps", {
+      _owner_id: ownerId ?? null,
+    });
+    if (error) throw new ApiError("invalid_request", error.message, 400);
+    return data as {
+      dicas: Array<{
+        chave: string;
+        peso: number;
+        titulo: string;
+        porque: string;
+        destino: string;
+        oferta?: boolean;
+      }>;
+      total: number;
+      ativado: boolean;
+      travado_em: string | null;
+    };
   },
 };
 
