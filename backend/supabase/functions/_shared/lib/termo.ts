@@ -472,13 +472,3 @@ Esta mensagem foi enviada automaticamente de uma caixa que não é lida. Não re
     return false;
   }
 }
-
-/** Link temporário do PDF, para anexar ou mandar por e-mail. */
-export async function linkDoPdf(
-  db: SupabaseClient,
-  pdfPath: string,
-  segundos = 60 * 60 * 24 * 30,
-): Promise<string | null> {
-  const { data } = await db.storage.from(BUCKET).createSignedUrl(pdfPath, segundos);
-  return data?.signedUrl ?? null;
-}
