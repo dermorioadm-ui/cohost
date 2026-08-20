@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
+import { mensagemAutomatica } from "@/lib/mensagemAutomatica";
 
 /**
  * Onboarding guiado — a tela que decide se o cliente ativa ou cancela.
@@ -155,11 +156,7 @@ export default function Onboarding() {
   };
 
   // ---- passo 5: mensagem automática ---------------------------------------
-  const autoMessage =
-    `Olá! Seja muito bem-vindo(a) 😊\n\n` +
-    `Antes da sua chegada, faça seu cadastro obrigatório aqui — é rápido e ` +
-    `libera as instruções de acesso, Wi-Fi e tudo mais:\n\n${chatUrl}\n\n` +
-    `Qualquer dúvida, o assistente responde 24h nesse mesmo link.`;
+  const autoMessage = mensagemAutomatica(chatUrl);
 
   const finish = async () => {
     setBusy(true);

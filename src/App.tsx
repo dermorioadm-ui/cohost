@@ -12,6 +12,7 @@ const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
 const Confirmar = lazy(() => import("@/pages/Confirmar"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const Faturas = lazy(() => import("@/pages/Faturas"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Calendario = lazy(() => import("@/pages/Calendario"));
 const Imoveis = lazy(() => import("@/pages/Imoveis"));
@@ -184,6 +185,17 @@ export default function App() {
                         element={
                           <Protected allow={["owner"]}>
                             <Financeiro />
+                          </Protected>
+                        }
+                      />
+                      {/* A mesma tela para os dois lados do acerto. Duas rotas
+                          separadas produziriam duas leituras da mesma fatura, e
+                          é justamente disso que a discussão do mês nasce. */}
+                      <Route
+                        path="/faturas"
+                        element={
+                          <Protected allow={["owner", "cleaner"]}>
+                            <Faturas />
                           </Protected>
                         }
                       />

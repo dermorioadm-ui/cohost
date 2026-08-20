@@ -17,6 +17,8 @@ import { PortariaOferta } from "@/components/PortariaOferta";
 import { TermosAssinados } from "@/components/TermosAssinados";
 import { useAuth } from "@/hooks/useAuth";
 import { HermesCard } from "@/components/HermesCard";
+import { FechamentoFatura } from "@/components/FechamentoFatura";
+import { mensagemAutomatica } from "@/lib/mensagemAutomatica";
 import { AI_FIELDS } from "@/lib/propertyFields";
 import { ICAL_CHANNELS, type IcalChannel } from "@/lib/icalChannels";
 import { cn, getAppBaseUrl } from "@/lib/utils";
@@ -75,6 +77,9 @@ interface PropertyRow {
   supplies_monthly_price: number;
   supplies_items: string[] | null;
   supplies_notes: string | null;
+  em_condominio: boolean;
+  /** Preenchido quando este anúncio é cópia de outro. Ver `Duplicata`. */
+  parent_property_id: string | null;
 }
 
 /** Sugestão inicial, para o dono não encarar uma caixa vazia ao ligar. */
@@ -115,7 +120,7 @@ interface Agreement {
 
 type StepKey = "imovel" | "calendario" | "limpeza" | "insumos" | "atendimento" | "portaria";
 
-const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
+const TODAS: { key: StepKey; label: string; icon: typeof Home }[] = [
   { key: "imovel", label: "Imóvel", icon: Home },
   { key: "calendario", label: "Calendário", icon: CalendarDays },
   { key: "limpeza", label: "Limpeza", icon: Users },
@@ -123,6 +128,17 @@ const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
   { key: "atendimento", label: "Atendimento", icon: MessageCircle },
   { key: "portaria", label: "Portaria", icon: DoorOpen },
 ];
+
+/**
+ * As etapas deste imóvel.
+ *
+ * Casa, sítio e kitnet de porta para a rua não têm síndico, não têm e-mail de
+ * condomínio e não têm portaria para integrar. Deixar a etapa lá, vazia e para
+ * sempre incompleta, ensina o dono a ignorar as bolinhas de pendência — e a
+ * partir daí ele ignora também as que importam.
+ */
+const etapasDe = (emCondominio: boolean) =>
+  emCondominio ? TODAS : TODAS.filter((s) => s.key !== "portaria");
 
 const hhmm = (t: string | null | undefined) => (t ?? "").slice(0, 5);
 
@@ -251,6 +267,17 @@ export default function Imovel() {
     setStep(key);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Depende do imóvel, então é calculado aqui e não no módulo.
+  const STEPS = etapasDe(form?.em_condominio ?? true);
+
+  // Marcar "sem condomínio" estando DENTRO da etapa Portaria tirava a etapa da
+  // barra e deixava o conteúdo dela na tela, com a barra toda apagada. Quem
+  // fica sem lugar volta para o começo.
+  useEffect(() => {
+    if (form && !STEPS.some((s) => s.key === step)) setStep("imovel");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form?.em_condominio, step]);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
@@ -395,6 +422,7 @@ export default function Imovel() {
         condo_name: form.condo_name ?? "",
         condo_email: form.condo_email ?? "",
         condo_notify: form.condo_notify,
+        em_condominio: form.em_condominio,
         checkin_time: hhmm(form.checkin_time),
         checkout_time: hhmm(form.checkout_time),
         turnover_price: Number(form.turnover_price),
@@ -460,11 +488,7 @@ export default function Imovel() {
   };
 
   const chatUrl = form ? `${getAppBaseUrl()}/c/${form.public_slug}` : "";
-  const autoMessage =
-    `Olá! Seja muito bem-vindo(a) 😊\n\n` +
-    `Antes da sua chegada, faça seu cadastro obrigatório aqui — é rápido e ` +
-    `libera as instruções de acesso, Wi-Fi e tudo mais:\n\n${chatUrl}\n\n` +
-    `Qualquer dúvida, o assistente responde 24h nesse mesmo link.`;
+  const autoMessage = mensagemAutomatica(chatUrl);
 
   if (loading || !form) {
     return (
@@ -553,11 +577,15 @@ export default function Imovel() {
         </div>
       </header>
 
-      {/* Etapas — atalhos, não trilho. Rolam na horizontal no celular porque
-          seis rótulos legíveis não cabem em 375px de largura. */}
+      {/* Etapas — atalhos, não trilho.
+          Grade de três colunas, e não rolagem horizontal. Rolando de lado,
+          metade das etapas ficava fora da tela e nada anunciava que havia mais:
+          quem não arrastasse por acaso nunca descobria "Portaria". Em duas
+          linhas as seis aparecem de uma vez, que é o que uma barra de etapas
+          existe para fazer. No desktop volta a ser uma fila só. */}
       <nav
         aria-label="Etapas da configuração"
-        className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
       >
         {STEPS.map((s) => {
           const active = s.key === step;
@@ -569,14 +597,14 @@ export default function Imovel() {
               onClick={() => goTo(s.key)}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors",
+                "flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-medium transition-colors sm:shrink-0 sm:justify-start sm:px-3.5",
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-white/[0.07] text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <s.icon className="h-4 w-4 shrink-0" />
-              {s.label}
+              <span className="truncate">{s.label}</span>
               <span
                 aria-hidden
                 className={cn(
@@ -598,12 +626,50 @@ export default function Imovel() {
       {/* ---------------------------------------------------------- Imóvel */}
       {step === "imovel" && (
         <>
+          {/* Se este anúncio é cópia, a primeira coisa da tela diz isso.
+              Sem esse aviso, quem abre a cópia vê um imóvel igual ao outro com
+              nome levemente diferente e conclui que duplicou por engano — e
+              apaga, levando junto o cruzamento de calendário que impede
+              reserva dupla no MESMO apartamento. */}
+          {form.parent_property_id && <Duplicata paiId={form.parent_property_id} />}
+
           <section className="space-y-4 rounded-xl glass-card p-5">
             <h2 className="font-semibold">Identificação</h2>
 
             <div className="space-y-1.5">
               <Label>Nome do imóvel</Label>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </div>
+
+            {/* Onde o imóvel fica muda o que o produto pede depois: sem
+                condomínio não há síndico para avisar nem portaria para
+                integrar, e a etapa Portaria some da barra. */}
+            <div className="space-y-2">
+              <Label>Onde fica</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: true, rotulo: "Em condomínio", apoio: "Prédio, vila ou conjunto" },
+                  { v: false, rotulo: "Sem condomínio", apoio: "Casa, sítio, porta para a rua" },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => set("em_condominio", o.v)}
+                    aria-pressed={form.em_condominio === o.v}
+                    className={cn(
+                      "min-h-[56px] rounded-xl border p-2.5 text-left transition-colors",
+                      form.em_condominio === o.v
+                        ? "border-primary bg-primary/10"
+                        : "border-white/[0.07] hover:bg-accent",
+                    )}
+                  >
+                    <span className="block text-xs font-semibold">{o.rotulo}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                      {o.apoio}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -992,6 +1058,17 @@ export default function Imovel() {
                       </div>
                     )}
 
+                    {/* O acerto do mês. Depois do combinado e antes do link
+                        do painel: a ordem é a da conversa real — quanto, quando
+                        fecha, e por onde ela acompanha. */}
+                    {form.cleaner_id && user && (
+                      <FechamentoFatura
+                        ownerId={user.id}
+                        cleanerId={form.cleaner_id}
+                        cleanerName={cleanerName(form.cleaner_id)}
+                      />
+                    )}
+
                     {/* Link do painel dela. Some quando ninguém está vinculado,
                         porque sem vínculo não há agenda para o link abrir. */}
                     {form.cleaner_id && (
@@ -1300,8 +1377,9 @@ export default function Imovel() {
             </div>
 
             <p className="text-sm leading-relaxed text-muted-foreground">
-              É ela que leva o hóspede ao cadastro e ao assistente. Cole no Airbnb em Mensagens
-              programadas, na reserva confirmada.
+              É ela que leva o hóspede ao cadastro e ao atendimento. Cole no Airbnb em Mensagens
+              programadas e na Booking em mensagens automáticas, na reserva confirmada. Ela avisa
+              que o atendimento acontece no chat do link, e não na caixa da plataforma.
             </p>
 
             <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-relaxed">
@@ -1373,10 +1451,25 @@ export default function Imovel() {
 
           {stepFooter}
 
-          {/* Depois do rodapé de propósito: o cartão tem gravação própria (a
-              senha vai para o cofre por outro caminho) e, acima do botão, o
-              dono leria "Salvar alterações" como se salvasse a credencial. */}
-          <HermesCard propertyId={form.id} />
+          {/* Fora da vista do dono, pelo mesmo motivo do formulário da
+              portaria: conectar a conta do Airbnb ao agente pede código por
+              SMS, chave de VPS e um servidor para instalar. Isso é implantação
+              técnica, não configuração de imóvel — e um cartão pedindo "código
+              de verificação" no meio das opções do apartamento faz o dono achar
+              que o produto dele está com problema.
+
+              O atendimento do hóspede acontece no chat do link, que já está no
+              ar e não depende de nada disto. Continua visível para a equipe:
+              mesma tela, mesmo imóvel, sem precisar de ferramenta separada. */}
+          {role === "admin" && (
+            <div className="space-y-2">
+              <p className="rounded-lg bg-muted px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                Abaixo é a integração técnica com o Airbnb, visível só para a equipe. O dono do
+                imóvel não vê esta parte.
+              </p>
+              <HermesCard propertyId={form.id} />
+            </div>
+          )}
         </>
       )}
 
@@ -1550,4 +1643,53 @@ function snapshot(p: PropertyRow, ai: Record<string, string>): string {
     Number(p.supplies_monthly_price), p.supplies_items ?? [], p.supplies_notes ?? "",
     ai,
   ]);
+}
+
+/**
+ * O aviso de que este anúncio é cópia de outro.
+ *
+ * A cópia existe para o mesmo apartamento aparecer em dois lugares — dois
+ * anúncios, dois links de hóspede, dois calendários cruzados. O que ela NÃO é
+ * é um segundo apartamento: o estoque é o mesmo, a chave é a mesma, e a
+ * limpeza acontece uma vez. Por isso a taxa fixa de insumos é cobrada uma vez
+ * só pelo par, e a fatura agrupa os dois no mesmo bloco.
+ */
+function Duplicata({ paiId }: { paiId: string }) {
+  const [nome, setNome] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    supabase
+      .from("properties")
+      .select("name")
+      .eq("id", paiId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (vivo) setNome((data?.name as string | undefined) ?? null);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [paiId]);
+
+  return (
+    <section className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-4">
+      <Copy className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      <div className="min-w-0 text-xs leading-relaxed">
+        <p className="text-sm font-semibold text-primary">Outro anúncio do mesmo apartamento</p>
+        <p className="mt-1 text-muted-foreground">
+          Este é o mesmo imóvel de{" "}
+          <Link to={`/imoveis/${paiId}`} className="font-medium text-foreground underline">
+            {nome ?? "outro anúncio"}
+          </Link>
+          , com link de hóspede, calendário e atendimento próprios. Os dois calendários se travam
+          entre si, então reservar aqui bloqueia lá.
+        </p>
+        <p className="mt-1.5 text-muted-foreground">
+          Como o apartamento é um só, a <strong className="text-foreground">taxa fixa de insumos é
+          cobrada uma vez</strong> pelos dois, e a fatura da diarista soma os dois no mesmo bloco.
+        </p>
+      </div>
+    </section>
+  );
 }

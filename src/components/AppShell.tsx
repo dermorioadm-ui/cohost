@@ -1,8 +1,8 @@
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  BadgeCheck, CalendarDays, CalendarCheck, DoorOpen, Home, LayoutDashboard, LogOut,
-  MessageSquare, Sparkles, Target, Users, Wallet,
+  BadgeCheck, CalendarDays, CalendarCheck, DoorOpen, FileText, Home, LayoutDashboard,
+  LogOut, MessageSquare, MoreHorizontal, Sparkles, Target, Users, Wallet, X,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ const NAV: Record<AppRole, NavItem[]> = {
     { label: "Portaria", short: "Portaria", icon: DoorOpen, path: "/portaria" },
     { label: "Conversas", short: "Chat", icon: MessageSquare, path: "/conversas" },
     { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
+    { label: "Faturas da limpeza", short: "Faturas", icon: FileText, path: "/faturas" },
   ],
   // A diarista tinha uma tela só e nenhuma barra. Agora tem quatro: o dia
   // (agenda), o mês (calendário), o que ela precisa responder (aprovações) e
@@ -58,8 +59,23 @@ const NAV: Record<AppRole, NavItem[]> = {
     { label: "Calendário", short: "Datas", icon: CalendarDays, path: "/calendario" },
     { label: "Aprovações", short: "Aprovar", icon: BadgeCheck, path: "/aprovacoes" },
     { label: "Ganhos", short: "Ganhos", icon: Wallet, path: "/ganhos" },
+    { label: "Faturas", short: "Faturas", icon: FileText, path: "/faturas" },
   ],
 };
+
+/**
+ * Teto da barra inferior no celular.
+ *
+ * Cinco é o limite do Material, e o motivo é físico: abaixo disso a coluna
+ * fica estreita demais para o dedo e o rótulo encolhe até deixar de ser lido.
+ * O painel do dono passou de sete itens, e o resultado foi o que se vê no
+ * celular — ícones espremidos com texto de 10px que ninguém distingue.
+ *
+ * Acima do teto, os quatro primeiros ficam na barra e o resto vai para "Mais".
+ * A ordem do array é a ordem de prioridade: quem está no fim é quem se abre
+ * por um toque a mais.
+ */
+const MAX_BARRA = 5;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { role, roles, switchRole, signOut } = useAuth();
@@ -67,6 +83,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   const items = NAV[role ?? "owner"];
+  const [maisAberto, setMaisAberto] = useState(false);
+
+  const naBarra = items.length <= MAX_BARRA ? items : items.slice(0, MAX_BARRA - 1);
+  const emMais = items.length <= MAX_BARRA ? [] : items.slice(MAX_BARRA - 1);
+
+  // Fecha o painel ao trocar de tela. Sem isto ele continuaria aberto por cima
+  // da página nova, tapando justamente o que a pessoa acabou de escolher.
+  useEffect(() => setMaisAberto(false), [location.pathname]);
 
   // `/admin` casa com `/admin/financeiro` num startsWith. Sem a exatidão aqui,
   // "Visão geral" ficaria aceso em todas as telas do admin ao mesmo tempo.
@@ -191,16 +215,67 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
+      {/* Painel do "Mais" — sobe de baixo, por cima da barra.
+          O fundo escuro não é enfeite: é ele que devolve o toque de fechar em
+          qualquer lugar da tela, que é como se sai de uma folha assim no
+          celular sem procurar o X. */}
+      {maisAberto && (
+        <div className="md:hidden fixed inset-0 z-30" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={() => setMaisAberto(false)}
+            className="absolute inset-0 bg-black/60"
+          />
+
+          <div
+            className="glass-nav absolute inset-x-0 bottom-0 rounded-t-2xl p-3"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+          >
+            <div className="mb-1 flex items-center justify-between px-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Mais
+              </span>
+              <button
+                type="button"
+                onClick={() => setMaisAberto(false)}
+                aria-label="Fechar"
+                className="rounded-lg p-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {emMais.map((item) => {
+              const active = isActive(item.path);
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={cn(
+                    "flex min-h-[52px] w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
+                    active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-white/[0.05]",
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Barra inferior — só no celular */}
       {items.length > 1 && (
         <nav
           className="glass-nav md:hidden fixed inset-x-0 bottom-0 z-20 grid"
           style={{
-            gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${naBarra.length + (emMais.length ? 1 : 0)}, minmax(0, 1fr))`,
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
         >
-          {items.map((item) => {
+          {naBarra.map((item) => {
             const active = isActive(item.path);
             return (
               <button
@@ -216,6 +291,25 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             );
           })}
+
+          {emMais.length > 0 && (
+            <button
+              onClick={() => setMaisAberto((v) => !v)}
+              aria-expanded={maisAberto}
+              className={cn(
+                "flex flex-col items-center gap-1 py-2.5 transition-colors",
+                // Aceso também quando a tela atual mora dentro do "Mais": sem
+                // isso a barra fica toda apagada em Faturas, e "não estou em
+                // lugar nenhum" é como o usuário lê isso.
+                maisAberto || emMais.some((i) => isActive(i.path))
+                  ? "text-primary"
+                  : "text-muted-foreground",
+              )}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="text-[10px] font-medium">Mais</span>
+            </button>
+          )}
         </nav>
       )}
     </div>

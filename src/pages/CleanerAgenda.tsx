@@ -24,6 +24,7 @@ import {
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { AssinarLimpeza } from "@/components/AssinarLimpeza";
+import { AssinaturasPendentes } from "@/components/AssinaturasPendentes";
 import { supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { styleOf, type Provider } from "@/lib/channels";
@@ -270,6 +271,11 @@ export default function CleanerAgenda() {
           {feesApproved > 0 && ` · ${brl(feesApproved)} em compras aprovadas`}
         </p>
       </header>
+
+      {/* O que já venceu vem antes do que ainda vai acontecer. Assinatura
+          atrasada é a única coisa da agenda que já deveria estar feita — e,
+          desde que a fatura só cobra o assinado, é dinheiro parado. */}
+      <AssinaturasPendentes />
 
       {/* Combinado esperando resposta. Fica acima de tudo porque é dinheiro
           dela: sem o aceite, o valor da limpeza continua sendo uma proposta. */}
