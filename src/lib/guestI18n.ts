@@ -42,11 +42,13 @@ interface Textos {
   stepOf: (n: number, total: number) => string;
   next: string; edit: string; reviewCount: (n: number) => string;
   nights: (n: number) => string;
-  term: string; termText: string;
+  term: string; termText: string; termFull: string;
   signTitle: string; signHint: string; signMissing: string;
   submit: string; sending: string;
   placeholder: string; assistant: string; hello: string; helpYou: string;
   done: string;
+  okTitle: string; okText: string;
+  okDownload: string; okMore: string; okAsk: string;
   errDates: string; errOrder: string; errTerm: string;
   errName: string; errEmail: string; errPhone: string;
   errCpf: string; errPassport: string; errNationality: string; errPhoto: string;
@@ -58,7 +60,7 @@ export const T: Record<Idioma, Textos> = {
     welcome: "Bem-vindo!", how: "Como podemos ajudar?",
     register: "Cadastro de acesso ao apartamento",
     registerDone: "Cadastro de acesso concluído",
-    support: "Chat de Atendimento",
+    support: "Perguntar ao anfitrião",
     required: "Obrigatório antes da chegada — libera as instruções de acesso",
     requiredDone: "Toque para incluir mais alguém na estadia",
     supportHint: "Wi-Fi, acesso, regras da casa — 24 horas",
@@ -111,13 +113,22 @@ export const T: Record<Idioma, Textos> = {
       "Em caso de dano, <b>autorizo o anfitrião a pedir o ressarcimento pela plataforma da reserva</b> " +
       "(Airbnb, Booking) e a cobrança no meio de pagamento que registrei nela. " +
       "Estou ciente de que <b>o anfitrião não se responsabiliza por objetos esquecidos</b>, que ficam " +
-      "guardados por 30 dias, e de que será realizada uma <b>vistoria ao término</b>.",
+      "guardados por 30 dias, e de que será realizada uma <b>vistoria ao término</b>. " +
+      "Concordo que eventual disputa corre no <b>foro da comarca do imóvel</b>.",
+    termFull: "Ler o termo completo",
     signTitle: "Assine o termo",
     signHint: "Assine com o dedo. O documento assinado é enviado ao anfitrião.",
     signMissing: "Assine o termo antes de concluir",
     submit: "Cadastrar e liberar acesso", sending: "Cadastrando…",
     placeholder: "Escreva sua dúvida…", assistant: "Assistente do imóvel",
     hello: "Olá", helpYou: "Como posso te ajudar?",
+    okTitle: "Cadastro concluído",
+    okText:
+      "Tudo certo. As instruções de acesso e o termo que você assinou foram enviados " +
+      "para o seu e-mail.",
+    okDownload: "Baixar meu documento",
+    okMore: "Cadastrar mais pessoas",
+    okAsk: "Perguntar ao anfitrião",
     done: "Cadastro concluído! As instruções de acesso foram enviadas para o seu e-mail.",
     errDates: "Informe as datas da estadia",
     errOrder: "A saída precisa ser depois da entrada",
@@ -136,7 +147,7 @@ export const T: Record<Idioma, Textos> = {
     welcome: "Welcome!", how: "How can we help?",
     register: "Apartment access registration",
     registerDone: "Access registration complete",
-    support: "Support chat",
+    support: "Ask the host",
     required: "Required before arrival — unlocks your access instructions",
     requiredDone: "Tap to add someone else to the stay",
     supportHint: "Wi-Fi, access, house rules — 24 hours",
@@ -189,13 +200,22 @@ export const T: Record<Idioma, Textos> = {
       "In case of damage, I <b>authorize the host to claim reimbursement through the booking platform</b> " +
       "(Airbnb, Booking) and the charge to the payment method I registered there. " +
       "I understand that the <b>host is not liable for items left behind</b>, which are kept for 30 days, " +
-      "and that an <b>inspection will be carried out at the end</b>.",
+      "and that an <b>inspection will be carried out at the end</b>. " +
+      "I agree that any dispute is heard in the <b>courts of the district where the property is</b>.",
+    termFull: "Read the full statement",
     signTitle: "Sign the statement",
     signHint: "Sign with your finger. The signed document is sent to the host.",
     signMissing: "Please sign before finishing",
     submit: "Register and unlock access", sending: "Registering…",
     placeholder: "Type your question…", assistant: "Property assistant",
     hello: "Hello", helpYou: "How can I help you?",
+    okTitle: "Registration complete",
+    okText:
+      "All set. Your access instructions and the statement you signed have been sent " +
+      "to your email.",
+    okDownload: "Download my document",
+    okMore: "Register more people",
+    okAsk: "Ask the host",
     done: "All set! Your access instructions were sent to your email.",
     errDates: "Enter the stay dates",
     errOrder: "Check-out must be after check-in",
@@ -214,7 +234,7 @@ export const T: Record<Idioma, Textos> = {
     welcome: "¡Bienvenido!", how: "¿Cómo podemos ayudar?",
     register: "Registro de acceso al apartamento",
     registerDone: "Registro de acceso completado",
-    support: "Chat de atención",
+    support: "Preguntar al anfitrión",
     required: "Obligatorio antes de llegar — libera las instrucciones de acceso",
     requiredDone: "Toca para incluir a alguien más en la estancia",
     supportHint: "Wi-Fi, acceso, normas de la casa — 24 horas",
@@ -267,13 +287,22 @@ export const T: Record<Idioma, Textos> = {
       "En caso de daño, <b>autorizo al anfitrión a pedir el resarcimiento por la plataforma de la reserva</b> " +
       "(Airbnb, Booking) y el cobro en el medio de pago que registré en ella. " +
       "Soy consciente de que <b>el anfitrión no se responsabiliza por objetos olvidados</b>, que se guardan " +
-      "30 días, y de que se realizará una <b>inspección al término</b>.",
+      "30 días, y de que se realizará una <b>inspección al término</b>. " +
+      "Acepto que cualquier disputa se resuelva en el <b>fuero de la comarca del inmueble</b>.",
+    termFull: "Leer el término completo",
     signTitle: "Firma el término",
     signHint: "Firma con el dedo. El documento firmado se envía al anfitrión.",
     signMissing: "Firma antes de finalizar",
     submit: "Registrar y liberar acceso", sending: "Registrando…",
     placeholder: "Escribe tu duda…", assistant: "Asistente del inmueble",
     hello: "Hola", helpYou: "¿Cómo puedo ayudarte?",
+    okTitle: "Registro completado",
+    okText:
+      "Todo listo. Las instrucciones de acceso y el término que firmaste fueron enviados " +
+      "a tu correo.",
+    okDownload: "Descargar mi documento",
+    okMore: "Registrar más personas",
+    okAsk: "Preguntar al anfitrión",
     done: "¡Registro completado! Las instrucciones de acceso se enviaron a tu correo.",
     errDates: "Indica las fechas de la estancia",
     errOrder: "La salida debe ser después de la entrada",

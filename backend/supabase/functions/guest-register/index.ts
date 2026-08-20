@@ -470,6 +470,27 @@ export default handler(async (req) => {
     console.error("Termo assinado falhou:", e instanceof Error ? e.message : e);
   }
 
+  // ---- link do termo para o próprio hóspede --------------------------------
+  // O bucket `termos` é privado, e a policy de leitura autoriza pelo dono do
+  // imóvel — o hóspede não tem conta, então nunca passaria por ela. A URL
+  // assinada é gerada aqui, com o service_role, para um arquivo só.
+  //
+  // Seis horas: tempo de sobra para baixar na tela de conclusão, e curto o
+  // bastante para não virar um link permanente de um documento com foto de
+  // documento e rosto dentro. O e-mail com o PDF anexado continua sendo a
+  // cópia que dura.
+  let termoUrl: string | null = null;
+
+  if (termoPdf) {
+    const { data: assinado, error: erroUrl } = await db.storage
+      .from("termos")
+      .createSignedUrl(termoPdf, 6 * 3600, {
+        download: "termo-de-responsabilidade.pdf",
+      });
+    if (erroUrl) console.error("Link do termo falhou:", erroUrl.message);
+    termoUrl = assinado?.signedUrl ?? null;
+  }
+
   // ---- e-mails -------------------------------------------------------------
   // Ao dono: quem se cadastrou.
   const { data: ownerProfile } = await db
@@ -571,5 +592,6 @@ export default handler(async (req) => {
     property: { name: property.name, checkin_time: property.checkin_time, checkout_time: property.checkout_time },
     guests_registered: insertedPeople!.length,
     porter_pending: Boolean(porter),
+    termo_url: termoUrl,
   });
 });

@@ -8,10 +8,10 @@ import { Assinatura } from "@/components/Assinatura";
 import { CapturaFacial } from "@/components/CapturaFacial";
 import {
   AlertCircle, ArrowLeft, Building2, CalendarDays, Camera, Check, CheckCircle2,
-  ChevronRight, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
+  ChevronRight, Download, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { guestApi, guestSession, type GuestInput } from "@/lib/api";
+import { guestApi, guestSession, supabase, type GuestInput } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { T, IDIOMAS, idiomaInicial, salvarIdioma, type Idioma } from "@/lib/guestI18n";
 import { bandeira, paises, paisPorIso } from "@/lib/paises";
@@ -36,7 +36,7 @@ import {
  * primeiro botão mostrando que o cadastro já foi feito.
  */
 
-type Mode = "choice" | "register" | "chat";
+type Mode = "choice" | "register" | "sucesso" | "chat";
 type Msg = { role: "user" | "assistant"; content: string };
 
 
@@ -104,6 +104,10 @@ export default function GuestChat() {
   const [term, setTerm] = useState(false);
   const [assinatura, setAssinatura] = useState<string | null>(null);
   const [selfie, setSelfie] = useState<string | null>(null);
+  /** URL assinada do PDF, devolvida pelo cadastro. Só vale por algumas horas. */
+  const [termoUrl, setTermoUrl] = useState<string | null>(null);
+  /** Texto integral do termo ATIVO, lido do banco. Ver `carregarTermo`. */
+  const [termoCompleto, setTermoCompleto] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -133,6 +137,24 @@ export default function GuestChat() {
     setMode("register");
   }
 
+  /**
+   * Nova leva de pessoas, mesma estadia.
+   *
+   * As datas ficam — é a mesma hospedagem, e repetir check-in e check-out é
+   * pedir para alguém digitar diferente da primeira vez. O que zera é o que
+   * pertence às pessoas e ao ato de assinar: cada leva assina o próprio termo,
+   * com o próprio rosto. Reaproveitar a assinatura anterior produziria um
+   * documento em que alguém se responsabiliza por quem ele não cadastrou.
+   */
+  function cadastrarMaisPessoas() {
+    setGuests([novoHospede()]);
+    setTerm(false);
+    setAssinatura(null);
+    setSelfie(null);
+    setTermoUrl(null);
+    abrirCadastro();
+  }
+
   function abrirChat() {
     setMode("chat");
     setMessages((m) =>
@@ -143,6 +165,46 @@ export default function GuestChat() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
+
+  /**
+   * Texto integral do termo, lido da MESMA linha que o servidor vai copiar
+   * para dentro do PDF.
+   *
+   * O resumo com as frases em negrito continua existindo — ninguém lê onze
+   * cláusulas numa caixa de seleção. Mas o resumo mora no código do frontend e
+   * o termo mora no banco, e toda vez que uma cláusula nova entrou, os dois
+   * ficaram fora de sincronia até o próximo deploy. Quem assinasse no meio
+   * marcaria um resumo sem a cláusula e assinaria um PDF com ela.
+   *
+   * Buscando o texto ativo aqui, o que a pessoa consegue abrir e ler é
+   * literalmente o que ela vai assinar. A `term_versions` tem policy de
+   * leitura pública para a versão ativa, então isto não abre nada novo.
+   */
+  useEffect(() => {
+    let vivo = true;
+
+    (async () => {
+      const buscar = (locale: string) =>
+        supabase
+          .from("term_versions")
+          .select("body")
+          .eq("kind", "cadastro_hospede")
+          .eq("locale", locale)
+          .eq("active", true)
+          .maybeSingle();
+
+      // Mesma queda para português do servidor: melhor a pessoa ler no
+      // tradutor do que não ter o que ler.
+      let { data } = await buscar(idioma);
+      if (!data && idioma !== "pt") ({ data } = await buscar("pt"));
+
+      if (vivo) setTermoCompleto((data?.body as string | undefined) ?? "");
+    })();
+
+    return () => {
+      vivo = false;
+    };
+  }, [idioma]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -333,10 +395,8 @@ export default function GuestChat() {
       guestSession.set(slug, res.session_token);
       setToken(res.session_token);
       setPropertyName(res.property.name);
-      setMode("chat");
-      setMessages([
-        { role: "assistant", content: `${t.done}\n\n${t.helpYou}` },
-      ]);
+      setTermoUrl(res.termo_url);
+      setMode("sucesso");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Não consegui concluir o cadastro");
     } finally {
@@ -937,6 +997,24 @@ export default function GuestChat() {
                   />
                 </label>
 
+                {/* O texto integral, atrás de um toque.
+                    `<details>` e não um estado: o navegador já sabe abrir e
+                    fechar isto, e o leitor de tela já sabe anunciar. E fora do
+                    `<label>` de propósito — dentro dele, abrir o texto marcaria
+                    a caixa de aceite, que é o oposto do que se quer aqui. */}
+                {termoCompleto && (
+                  <details className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                    <summary className="flex min-h-[44px] cursor-pointer list-none items-center px-3 text-xs font-semibold text-primary">
+                      {t.termFull}
+                    </summary>
+                    <div className="max-h-64 overflow-y-auto border-t border-white/[0.06] px-3 py-3">
+                      <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+                        {termoCompleto}
+                      </p>
+                    </div>
+                  </details>
+                )}
+
                 {/* A assinatura só aparece depois do aceite. Mostrar o quadro
                     de assinar acima da caixa que a pessoa ainda não marcou é
                     pedir que ela assine algo que ainda não disse ter lido. */}
@@ -1015,6 +1093,75 @@ export default function GuestChat() {
             )}
           </div>
         </footer>
+      </div>
+    );
+  }
+
+  // ------------------------------------------------------------- conclusão
+  if (mode === "sucesso") {
+    return (
+      <div className="mesh-gradient flex min-h-screen flex-col">
+        <div className="mesh-blob-3 animate-blob" aria-hidden />
+
+        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
+          <div className="text-center">
+            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
+            </span>
+            <h1 className="mt-4 text-2xl font-extrabold tracking-tight">{t.okTitle}</h1>
+            {propertyName && (
+              <p className="mt-1 text-sm font-semibold text-primary">{propertyName}</p>
+            )}
+            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-muted-foreground">
+              {t.okText}
+            </p>
+          </div>
+
+          <div className="mt-7 space-y-3">
+            {/* O download some quando o termo não pôde ser gerado. Botão que
+                promete um arquivo inexistente é pior que botão nenhum: a
+                pessoa toca, não acontece nada, e passa a duvidar do resto da
+                tela — inclusive do "cadastro concluído". */}
+            {termoUrl && (
+              <Button asChild className="min-h-[52px] w-full text-base font-semibold">
+                {/* `download` e `rel` num link comum, e não `window.open` num
+                    handler: o bloqueador de pop-up do celular mata a segunda
+                    forma sem avisar ninguém. */}
+                <a href={termoUrl} download rel="noopener">
+                  <Download className="mr-2 h-4 w-4" aria-hidden />
+                  {t.okDownload}
+                </a>
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={cadastrarMaisPessoas}
+              className="min-h-[52px] w-full text-base font-semibold"
+            >
+              <UserPlus className="mr-2 h-4 w-4" aria-hidden />
+              {t.okMore}
+            </Button>
+          </div>
+
+          {/* Separado dos dois de cima, e mais leve: as ações do documento
+              terminam o assunto do cadastro; falar com o anfitrião abre outro. */}
+          <button
+            onClick={abrirChat}
+            className="glass-card mt-6 w-full rounded-2xl p-4 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{t.okAsk}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t.supportHint}</p>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+            </div>
+          </button>
+        </div>
       </div>
     );
   }

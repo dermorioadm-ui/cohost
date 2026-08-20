@@ -804,6 +804,14 @@ export const guestApi = {
       property: { name: string; checkin_time: string; checkout_time: string };
       guests_registered: number;
       porter_pending: boolean;
+      /**
+       * URL assinada do PDF do termo, válida por 6 horas.
+       *
+       * Nula quando a geração do termo falhou — que não derruba o cadastro, de
+       * propósito: o hóspede está na porta do prédio, e o documento é
+       * recuperável, a entrada não.
+       */
+      termo_url: string | null;
     }>("guest-register", { body, auth: false }),
 
   /** Chat em streaming — chama onChunk a cada pedaço de texto. */
