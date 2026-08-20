@@ -185,10 +185,7 @@ export default function GuestChat() {
     if (n === 1) {
       if (!checkin || !checkout) return t.errDates;
       if (checkout <= checkin) return t.errOrder;
-      return null;
-    }
 
-    if (n === 2) {
       for (const [i, g] of guests.entries()) {
         const quem = `${t.guest} ${i + 1}`;
         if (g.full_name.trim().split(/\s+/).length < 2) return `${quem}: ${t.errName}`;
@@ -210,8 +207,12 @@ export default function GuestChat() {
       return null;
     }
 
-    if (!term) return t.errTerm;
-    if (!assinatura) return t.signMissing;
+    if (n === 2) {
+      if (!term) return t.errTerm;
+      if (!assinatura) return t.signMissing;
+      return null;
+    }
+
     if (!selfie) return t.errFace;
     return null;
   };
@@ -479,9 +480,14 @@ export default function GuestChat() {
   // ------------------------------------------------------------- cadastro
   if (mode === "register") {
     const etapas: Array<{ n: 1 | 2 | 3; rotulo: string }> = [
-      { n: 1, rotulo: t.stepDates },
-      { n: 2, rotulo: t.stepGuests },
-      { n: 3, rotulo: t.stepTerm },
+      // As datas ficam junto dos nomes: são dois campos, e uma tela só para
+      // eles fazia a pessoa apertar "Continuar" para preencher o que caberia
+      // acima do primeiro hóspede. O rosto ganhou a tela que as datas
+      // devolveram — ele abre a câmera, e câmera dividindo espaço com um
+      // formulário longo é câmera que fica fora do campo de visão.
+      { n: 1, rotulo: t.stepStay },
+      { n: 2, rotulo: t.stepTerm },
+      { n: 3, rotulo: t.stepFace },
     ];
 
     return (
@@ -656,7 +662,7 @@ export default function GuestChat() {
             </section>
           )}
 
-          {passo === 2 && (
+          {passo === 1 && (
             <>
               {guests.map((g, i) => (
                 <section key={i} className="glass-card space-y-3 rounded-2xl p-4">
@@ -871,30 +877,32 @@ export default function GuestChat() {
             </>
           )}
 
-          {passo === 3 && (
+          {passo === 2 && (
             <>
               {/* O resumo existe porque este é o passo em que a pessoa ASSINA.
                   Assinar sem ver o que está assinando é o que transforma um
                   termo em papel sem valor — e o erro de data descoberto aqui
                   custa um clique, não uma discussão na portaria. */}
               <section className="glass-card space-y-3 rounded-2xl p-4">
+                {/* Os dois voltam para o mesmo passo: datas e hóspedes
+                    agora moram na mesma tela. */}
                 {[
                   {
-                    n: 1 as const,
+                    chave: "datas",
                     rotulo: t.dates,
                     Icone: CalendarDays,
                     principal: `${dataCurta(checkin)} → ${dataCurta(checkout)}`,
                     apoio: t.nights(noites),
                   },
                   {
-                    n: 2 as const,
+                    chave: "hospedes",
                     rotulo: t.guests,
                     Icone: UserPlus,
                     principal: t.reviewCount(guests.length),
                     apoio: guests.map((g) => g.full_name.trim()).filter(Boolean).join(" · "),
                   },
-                ].map(({ n, rotulo, Icone, principal, apoio }) => (
-                  <div key={n} className="flex items-start gap-3">
+                ].map(({ chave, rotulo, Icone, principal, apoio }) => (
+                  <div key={chave} className="flex items-start gap-3">
                     <Icone className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -907,7 +915,7 @@ export default function GuestChat() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => irPara(n)}
+                      onClick={() => irPara(1)}
                       className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
                     >
                       {t.edit}
@@ -941,17 +949,19 @@ export default function GuestChat() {
                   </div>
                 )}
               </section>
-
-              {/* A confirmação facial vem DEPOIS da assinatura, e só existe
-                  depois dela. Pedir o rosto antes seria pedir o rosto de quem
-                  ainda não se comprometeu com nada — e é justamente o vínculo
-                  entre o rosto e o traço que dá valor aos dois. */}
-              {term && assinatura && (
-                <section className="glass-card rounded-2xl p-4">
-                  <CapturaFacial onChange={setSelfie} textos={t.face} obrigatorio />
-                </section>
-              )}
             </>
+          )}
+
+          {/* A confirmação facial vem DEPOIS da assinatura, e numa tela só
+              dela. Pedir o rosto antes seria pedir o rosto de quem ainda não
+              se comprometeu com nada — é o vínculo entre o rosto e o traço que
+              dá valor aos dois. E a câmera precisa da tela inteira: dividindo
+              espaço com o fim de um formulário longo, ela nasce fora do campo
+              de visão de quem vai se enquadrar nela. */}
+          {passo === 3 && (
+            <section className="glass-card rounded-2xl p-4">
+              <CapturaFacial onChange={setSelfie} textos={t.face} obrigatorio />
+            </section>
           )}
 
           {/* `role="alert"` porque o erro nasce depois de um toque no botão:

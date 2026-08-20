@@ -38,7 +38,7 @@ interface Textos {
   };
   errFace: string;
   requiredHint: string;
-  stepDates: string; stepGuests: string; stepTerm: string;
+  stepStay: string; stepTerm: string; stepFace: string;
   stepOf: (n: number, total: number) => string;
   next: string; edit: string; reviewCount: (n: number) => string;
   nights: (n: number) => string;
@@ -96,9 +96,9 @@ export const T: Record<Idioma, Textos> = {
     },
     errFace: "faça a confirmação facial",
     requiredHint: "Campos com * são obrigatórios",
-    stepDates: "Datas",
-    stepGuests: "Hóspedes",
+    stepStay: "Estadia",
     stepTerm: "Termo",
+    stepFace: "Rosto",
     stepOf: (n, total) => `Passo ${n} de ${total}`,
     next: "Continuar", edit: "Editar",
     reviewCount: (n) => (n === 1 ? "1 hóspede" : `${n} hóspedes`),
@@ -108,7 +108,10 @@ export const T: Record<Idioma, Textos> = {
       "Declaro que cadastrei <b>todas as pessoas</b> que irão se hospedar, respeitando o limite de ocupação. " +
       "Assumo a responsabilidade pelo imóvel e <b>pelas demais pessoas que cadastrei</b> durante toda a estadia. " +
       "Comprometo-me a <b>não receber pessoas que não estão neste check-in</b> sem autorização do anfitrião. " +
-      "Estou ciente de que será realizada uma <b>vistoria ao término</b>.",
+      "Em caso de dano, <b>autorizo o anfitrião a pedir o ressarcimento pela plataforma da reserva</b> " +
+      "(Airbnb, Booking) e a cobrança no meio de pagamento que registrei nela. " +
+      "Estou ciente de que <b>o anfitrião não se responsabiliza por objetos esquecidos</b>, que ficam " +
+      "guardados por 30 dias, e de que será realizada uma <b>vistoria ao término</b>.",
     signTitle: "Assine o termo",
     signHint: "Assine com o dedo. O documento assinado é enviado ao anfitrião.",
     signMissing: "Assine o termo antes de concluir",
@@ -171,9 +174,9 @@ export const T: Record<Idioma, Textos> = {
     },
     errFace: "complete the face confirmation",
     requiredHint: "Fields marked * are required",
-    stepDates: "Dates",
-    stepGuests: "Guests",
+    stepStay: "Stay",
     stepTerm: "Statement",
+    stepFace: "Face",
     stepOf: (n, total) => `Step ${n} of ${total}`,
     next: "Continue", edit: "Edit",
     reviewCount: (n) => (n === 1 ? "1 guest" : `${n} guests`),
@@ -183,7 +186,10 @@ export const T: Record<Idioma, Textos> = {
       "I declare that I have registered <b>every person</b> who will be staying, within the occupancy limit. " +
       "I take responsibility for the property and <b>for the other people I registered</b> for the whole stay. " +
       "I undertake <b>not to let in anyone who is not on this check-in</b> without the host's authorization. " +
-      "I understand that an <b>inspection will be carried out at the end</b>.",
+      "In case of damage, I <b>authorize the host to claim reimbursement through the booking platform</b> " +
+      "(Airbnb, Booking) and the charge to the payment method I registered there. " +
+      "I understand that the <b>host is not liable for items left behind</b>, which are kept for 30 days, " +
+      "and that an <b>inspection will be carried out at the end</b>.",
     signTitle: "Sign the statement",
     signHint: "Sign with your finger. The signed document is sent to the host.",
     signMissing: "Please sign before finishing",
@@ -246,9 +252,9 @@ export const T: Record<Idioma, Textos> = {
     },
     errFace: "haz la confirmación facial",
     requiredHint: "Los campos con * son obligatorios",
-    stepDates: "Fechas",
-    stepGuests: "Huéspedes",
+    stepStay: "Estancia",
     stepTerm: "Término",
+    stepFace: "Rostro",
     stepOf: (n, total) => `Paso ${n} de ${total}`,
     next: "Continuar", edit: "Editar",
     reviewCount: (n) => (n === 1 ? "1 huésped" : `${n} huéspedes`),
@@ -258,7 +264,10 @@ export const T: Record<Idioma, Textos> = {
       "Declaro que registré a <b>todas las personas</b> que se hospedarán, respetando el límite de ocupación. " +
       "Asumo la responsabilidad por el inmueble y <b>por las demás personas que registré</b> durante toda la estancia. " +
       "Me comprometo a <b>no recibir a personas que no constan en este check-in</b> sin autorización del anfitrión. " +
-      "Soy consciente de que se realizará una <b>inspección al término</b>.",
+      "En caso de daño, <b>autorizo al anfitrión a pedir el resarcimiento por la plataforma de la reserva</b> " +
+      "(Airbnb, Booking) y el cobro en el medio de pago que registré en ella. " +
+      "Soy consciente de que <b>el anfitrión no se responsabiliza por objetos olvidados</b>, que se guardan " +
+      "30 días, y de que se realizará una <b>inspección al término</b>.",
     signTitle: "Firma el término",
     signHint: "Firma con el dedo. El documento firmado se envía al anfitrión.",
     signMissing: "Firma antes de finalizar",
