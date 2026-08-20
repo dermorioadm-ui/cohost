@@ -213,6 +213,21 @@ export const api = {
       }>("ical-validate", { body }),
   },
 
+  /**
+   * Implantação da portaria (serviço avulso).
+   *
+   * Devolve a URL do checkout da Stripe, ou o estado do pedido quando já
+   * existe um vivo. O preço não viaja daqui: quem decide é o banco.
+   */
+  porterSetup: (body: { property_id: string; condo_name?: string; condo_system?: string }) =>
+    request<{
+      ok: boolean;
+      checkout_url?: string;
+      ja_existe?: boolean;
+      status?: string;
+      message?: string;
+    }>("porter-setup", { body }),
+
   // Portaria digital. As credenciais só viajam daqui para o backend — a
   // tabela não tem policy de SELECT, então nunca voltam. Por isso o formulário
   // não "carrega o que está salvo": não existe carregar.

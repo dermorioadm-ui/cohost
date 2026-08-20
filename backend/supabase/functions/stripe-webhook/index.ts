@@ -206,6 +206,50 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const s = event.data.object as Stripe.Checkout.Session;
+
+        // Implantação de portaria: pagamento avulso, não assinatura.
+        //
+        // É AQUI que `interessado` vira `pago`, e não no clique do botão. Quem
+        // desiste na tela do cartão não pode entrar na fila da equipe técnica —
+        // senão a fila enche de trabalho que ninguém comprou.
+        const setupId = s.metadata?.porter_setup_id;
+        if (setupId) {
+          await db
+            .from("porter_setup_requests")
+            .update({
+              status: "pago",
+              paid_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", setupId)
+            .eq("status", "interessado");
+
+          // Avisa quem vai executar. Sem isso o cliente paga e fica esperando
+          // um contato que depende de alguém lembrar de abrir o painel.
+          const destino = env.adminNotifyEmail();
+          if (destino) {
+            await db.rpc("enqueue_notification", {
+              _channel: "email",
+              _template: "admin-new-subscriber",
+              _payload: {
+                owner_email: s.customer_details?.email ?? "",
+                owner_name: s.customer_details?.name ?? "",
+                plan_label: "Implantação de portaria",
+                billing_cycle: "avulso",
+                status: "pago",
+                property_count: "1",
+              },
+              _to_email: destino,
+              _idempotency_key: `porter-setup-pago:${setupId}`,
+              _locale: "pt",
+            });
+          }
+
+          // Pagamento avulso não mexe em assinatura. Sair aqui evita que o
+          // fluxo abaixo tente casar este checkout com um plano.
+          break;
+        }
+
         const customerId = typeof s.customer === "string" ? s.customer : s.customer?.id ?? null;
         const userId =
           (s.client_reference_id as string | null) ??

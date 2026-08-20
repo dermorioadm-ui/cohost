@@ -1,0 +1,140 @@
+import { useEffect, useState } from "react";
+import { CheckCircle2, Clock, DoorOpen, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase, api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+/**
+ * A oferta de implantação da portaria.
+ *
+ * O que ela precisa fazer, e quase nenhuma oferta faz: dizer o que o cliente
+ * NÃO vai precisar fazer. "Conectar portaria digital" é a funcionalidade;
+ * "você para de mandar nome e documento para o porteiro a cada chegada" é o
+ * que a pessoa compra.
+ *
+ * O preço fica visível antes do clique. Botão que leva a um checkout com valor
+ * surpresa queima a confiança que o resto do produto passou semanas montando.
+ *
+ * O card muda de forma conforme o estado — oferta, fila, pronto —, e some de
+ * vez quando a portaria já funciona. Oferta que continua aparecendo depois da
+ * compra é a lembrança diária de que ninguém está olhando.
+ */
+
+type Estado =
+  | { fase: "carregando" }
+  | { fase: "oferta" }
+  | { fase: "fila"; status: string }
+  | { fase: "pronto" };
+
+const PRECO = "R$ 197";
+
+export function PortariaOferta({ propertyId }: { propertyId: string }) {
+  const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
+  const [indo, setIndo] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const [pedido, conta] = await Promise.all([
+        supabase
+          .from("porter_setup_requests")
+          .select("status")
+          .eq("property_id", propertyId)
+          .neq("status", "cancelado")
+          .maybeSingle(),
+        supabase
+          .from("porter_status")
+          .select("active")
+          .eq("property_id", propertyId)
+          .maybeSingle(),
+      ]);
+
+      if (conta.data?.active) return setEstado({ fase: "pronto" });
+
+      const st = pedido.data?.status;
+      if (st === "implantado") return setEstado({ fase: "pronto" });
+      if (st && st !== "interessado") return setEstado({ fase: "fila", status: st });
+
+      setEstado({ fase: "oferta" });
+    })();
+  }, [propertyId]);
+
+  if (estado.fase === "carregando" || estado.fase === "pronto") return null;
+
+  if (estado.fase === "fila") {
+    return (
+      <section className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4">
+        <div className="flex gap-3">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <div>
+            <p className="text-sm font-semibold text-primary">Implantação em andamento</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Recebemos seu pagamento. Nossa equipe técnica entra em contato para pegar as
+              credenciais do prédio — normalmente em até um dia útil. Você não precisa fazer nada
+              agora.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const comprar = async () => {
+    setIndo(true);
+    try {
+      const r = await api.porterSetup({ property_id: propertyId });
+      if (r.checkout_url) {
+        window.location.href = r.checkout_url;
+        return;
+      }
+      toast.info(r.message ?? "Já recebemos seu pedido.");
+      setEstado({ fase: "fila", status: r.status ?? "pago" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não consegui abrir o pagamento");
+    } finally {
+      setIndo(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3 rounded-xl border border-primary/25 bg-primary/[0.05] p-5">
+      <div className="flex items-start gap-3">
+        <DoorOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+        <div>
+          <h3 className="font-semibold">O hóspede se cadastra na portaria sozinho</h3>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Com a portaria conectada, o cadastro que o hóspede já faz aqui vai direto para o
+            sistema do prédio. Você para de mandar nome e documento para o porteiro a cada
+            chegada, e ninguém fica parado na recepção esperando alguém achar você no WhatsApp.
+          </p>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5 pl-8 text-sm">
+        {[
+          "Nossa equipe técnica faz a integração com o sistema do seu prédio",
+          "Cada portaria é diferente — por isso é serviço, e não um botão",
+          "Depois de pronto, funciona sozinho para sempre",
+        ].map((t) => (
+          <li key={t} className="flex gap-2 text-muted-foreground">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+            <span className="leading-relaxed">{t}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+        <div>
+          {/* O preço antes do clique. Checkout com valor surpresa queima a
+              confiança que o resto do produto levou semanas para construir. */}
+          <p className="text-lg font-extrabold tabular-nums">{PRECO}</p>
+          <p className="text-xs text-muted-foreground">pagamento único, por imóvel</p>
+        </div>
+        <Button onClick={comprar} disabled={indo} className="min-h-[44px]">
+          {indo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Quero a portaria conectada
+        </Button>
+      </div>
+    </section>
+  );
+}

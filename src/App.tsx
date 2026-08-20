@@ -29,6 +29,8 @@ const Plano = lazy(() => import("@/pages/Plano"));
 const AdminVisaoGeral = lazy(() => import("@/pages/AdminVisaoGeral"));
 const AdminFinanceiro = lazy(() => import("@/pages/AdminFinanceiro"));
 const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
+const AdminAssinantes = lazy(() => import("@/pages/AdminAssinantes"));
+const AdminSistema = lazy(() => import("@/pages/AdminSistema"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -240,6 +242,22 @@ export default function App() {
                         element={
                           <Protected allow={["admin"]}>
                             <AdminFinanceiro />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/admin/assinantes"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminAssinantes />
+                          </Protected>
+                        }
+                      />
+                      <Route
+                        path="/admin/sistema"
+                        element={
+                          <Protected allow={["admin"]}>
+                            <AdminSistema />
                           </Protected>
                         }
                       />
