@@ -38,6 +38,17 @@ export interface EntradaTermo {
   declaradoEm?: string | null;
   /** data:image/png;base64,... vindo do canvas. */
   assinaturaDataUrl: string;
+  /**
+   * data:image/jpeg;base64,... do rosto de quem assinou, tirado logo depois
+   * da assinatura. Vai para o PDF e para o bucket, ao lado do traço.
+   */
+  rostoDataUrl?: string | null;
+  /**
+   * Foto do documento do signatário, já decodificada por quem chama — ela
+   * também é gravada no bucket `documentos`, e decodificar duas vezes um
+   * arquivo de megabytes dentro da mesma requisição é desperdício visível.
+   */
+  documento?: ImagemBruta | null;
   locale?: string;
   ip?: string | null;
   userAgent?: string | null;
@@ -49,6 +60,7 @@ export interface ResultadoTermo {
   id: string;
   pdfPath: string;
   assinaturaPath: string;
+  selfiePath: string | null;
 }
 
 /** Converte o data URL do canvas em bytes, recusando o que não for PNG. */
@@ -74,6 +86,35 @@ function pngDoDataUrl(dataUrl: string): Uint8Array {
     throw errors.invalid("Assinatura inválida");
   }
   return bytes;
+}
+
+/** Limite de cada imagem de conferência (documento e rosto). */
+const MAX_IMAGEM_BYTES = 8 * 1024 * 1024;
+
+export interface ImagemBruta {
+  bytes: Uint8Array;
+  mime: string;
+}
+
+/**
+ * Decodifica um data URL de imagem, ou devolve null.
+ *
+ * Devolve null em vez de lançar de propósito. Estas imagens são conferência,
+ * não requisito de existência do termo: uma foto ilegível não pode ser o
+ * motivo de o hóspede ficar sem check-in na porta do prédio.
+ */
+export function imagemDoDataUrl(dataUrl: string | null | undefined): ImagemBruta | null {
+  const m = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+/=\s]+)$/
+    .exec(dataUrl ?? "");
+  if (!m) return null;
+
+  try {
+    const bin = atob(m[2].replace(/\s/g, ""));
+    if (bin.length > MAX_IMAGEM_BYTES) return null;
+    return { bytes: Uint8Array.from(bin, (c) => c.charCodeAt(0)), mime: m[1] };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -155,11 +196,40 @@ async function montarPdf(opts: {
   assinadoEm: string;
   ip?: string | null;
   assinaturaPng: Uint8Array;
+  documento?: ImagemBruta | null;
+  rosto?: ImagemBruta | null;
 }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const normal = await pdf.embedFont(StandardFonts.Helvetica);
   const negrito = await pdf.embedFont(StandardFonts.HelveticaBold);
   const assinatura = await pdf.embedPng(opts.assinaturaPng);
+
+  /**
+   * Embute uma foto, ou devolve null.
+   *
+   * O pdf-lib só sabe PNG e JPEG. WebP e HEIC chegam de celular e fariam a
+   * geração inteira falhar — e o termo sem PDF é pior que o termo sem a foto
+   * de conferência. A decisão é pelos bytes, não pelo mime declarado: quem
+   * manda o data URL escolhe o rótulo, não o conteúdo.
+   */
+  const embutir = async (img: ImagemBruta | null | undefined) => {
+    if (!img || img.bytes.length < 4) return null;
+    const b = img.bytes;
+    try {
+      if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
+        return await pdf.embedPng(b);
+      }
+      if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) {
+        return await pdf.embedJpg(b);
+      }
+    } catch (e) {
+      console.warn("Imagem de conferência ignorada:", e instanceof Error ? e.message : e);
+    }
+    return null;
+  };
+
+  const docImg = await embutir(opts.documento);
+  const rostoImg = await embutir(opts.rosto);
 
   const A4: [number, number] = [595.28, 841.89];
   const MARGEM = 56;
@@ -252,6 +322,84 @@ async function montarPdf(opts: {
   ].filter(Boolean) as string[];
   for (const linha of rastro) escrever(linha, 8.5, normal, CINZA, 1.5);
 
+  // ---- conferência: documento e rosto --------------------------------------
+  // Lado a lado, e no mesmo documento em que está o traço. Separados — a
+  // assinatura num arquivo, a foto do documento noutro, o rosto num terceiro —
+  // cada peça prova pouca coisa sozinha, e quem for conferir depois precisa
+  // remontar o conjunto à mão. Juntos, a conferência é olhar uma folha.
+  if (docImg || rostoImg) {
+    const CAIXA_L = 210;
+    const CAIXA_A = 140;
+
+    espaco(CAIXA_A + 60);
+    y -= 26;
+
+    pagina.drawLine({
+      start: { x: MARGEM, y },
+      end: { x: MARGEM + LARGURA, y },
+      thickness: 0.5,
+      color: rgb(0.85, 0.85, 0.88),
+    });
+    y -= 18;
+
+    escrever("CONFERENCIA", 8.5, negrito, CINZA);
+    y -= 6;
+
+    const topo = y;
+    const colunas: Array<[string, Awaited<ReturnType<typeof embutir>>]> = [
+      ["Documento apresentado", docImg],
+      ["Rosto de quem assinou", rostoImg],
+    ];
+
+    for (const [i, [rotulo, img]] of colunas.entries()) {
+      const x = MARGEM + i * (CAIXA_L + 24);
+      if (!img) continue;
+
+      pagina.drawText(winAnsi(rotulo), {
+        x,
+        y: topo - 10,
+        size: 8,
+        font: negrito,
+        color: CINZA,
+      });
+
+      // Encaixe por contenção: a foto de documento chega deitada e a do rosto
+      // em quadrado. Esticar cada uma para preencher a caixa deformaria o
+      // rosto — e rosto deformado não serve para conferir nada.
+      const escalaImg = Math.min(CAIXA_L / img.width, CAIXA_A / img.height);
+      const iw = img.width * escalaImg;
+      const ih = img.height * escalaImg;
+      const ix = x + (CAIXA_L - iw) / 2;
+      const iy = topo - 18 - CAIXA_A + (CAIXA_A - ih) / 2;
+
+      pagina.drawImage(img, { x: ix, y: iy, width: iw, height: ih });
+      pagina.drawRectangle({
+        x,
+        y: topo - 18 - CAIXA_A,
+        width: CAIXA_L,
+        height: CAIXA_A,
+        borderColor: rgb(0.85, 0.85, 0.88),
+        borderWidth: 0.5,
+      });
+    }
+
+    y = topo - 18 - CAIXA_A - 14;
+
+    // Dito no próprio documento, porque é a diferença entre o que este PDF
+    // prova e o que alguém pode achar que ele prova. A conferência entre o
+    // rosto e o documento é feita por quem lê; nada aqui foi comparado
+    // automaticamente, e afirmar o contrário é o tipo de detalhe que só é
+    // cobrado no dia em que o documento é contestado.
+    escrever(
+      "Imagens enviadas pelo proprio signatario no momento da assinatura. " +
+        "A conferencia entre o rosto e o documento e visual, feita por quem analisa este termo.",
+      7.5,
+      normal,
+      CINZA,
+      1.5,
+    );
+  }
+
   return await pdf.save();
 }
 
@@ -310,6 +458,25 @@ export async function registrarTermo(
     .upload(assinaturaPath, png, { contentType: "image/png", upsert: false });
   if (up1.error) throw errors.upstream("Não consegui guardar a assinatura");
 
+  // O rosto é gravado separado do PDF de propósito: o PDF é o documento, e a
+  // imagem original é a prova de onde ele saiu. Guardar só a versão embutida
+  // deixaria a conferência dependente do tamanho em que ela coube na folha.
+  const rosto = imagemDoDataUrl(entrada.rostoDataUrl);
+  let selfiePath: string | null = null;
+
+  if (rosto) {
+    const ext = rosto.mime.split("/")[1] === "png" ? "png" : "jpg";
+    const caminho = `${base}/rosto.${ext}`;
+    const up = await db.storage
+      .from(BUCKET)
+      .upload(caminho, rosto.bytes, { contentType: rosto.mime, upsert: false });
+    // Falha aqui não derruba o termo: a assinatura já existe e o PDF ainda
+    // sairá com a imagem embutida. O que se perde é o original, e isso fica
+    // no log em vez de virar um cadastro recusado.
+    if (up.error) console.error("Falha ao guardar o rosto:", up.error.message);
+    else selfiePath = caminho;
+  }
+
   const pdf = await montarPdf({
     titulo: usado.title,
     corpo: usado.body,
@@ -321,6 +488,8 @@ export async function registrarTermo(
     assinadoEm,
     ip: entrada.ip,
     assinaturaPng: png,
+    documento: entrada.documento,
+    rosto,
   });
 
   const up2 = await db.storage
@@ -344,6 +513,7 @@ export async function registrarTermo(
       term_texto: usado.body,
       term_titulo: usado.title,
       assinatura_path: assinaturaPath,
+      selfie_path: selfiePath,
       pdf_path: pdfPath,
       ip: entrada.ip ?? null,
       user_agent: entrada.userAgent ?? null,
@@ -356,7 +526,7 @@ export async function registrarTermo(
     throw errors.upstream("Não consegui registrar a assinatura");
   }
 
-  return { id: linha.id, pdfPath, assinaturaPath };
+  return { id: linha.id, pdfPath, assinaturaPath, selfiePath };
 }
 
 /**

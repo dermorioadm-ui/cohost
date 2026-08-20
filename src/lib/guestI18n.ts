@@ -31,7 +31,12 @@ interface Textos {
   docTitle: string; cpf: string; foreign: string; foreignHint: string;
   nationality: string; passport: string; nationalityPick: string;
   photo: string; photoHint: string; photoSending: string;
-  photoCamera: string; photoGallery: string; photoRemove: string;
+  photoOpen: string; photoRemove: string; photoDone: string;
+  face: {
+    titulo: string; ajuda: string; abrir: string; disparar: string;
+    refazer: string; consentimento: string; negada: string; arquivo: string;
+  };
+  errFace: string;
   requiredHint: string;
   stepDates: string; stepGuests: string; stepTerm: string;
   stepOf: (n: number, total: number) => string;
@@ -72,11 +77,24 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nacionalidade", passport: "Número do passaporte",
     nationalityPick: "Escolher país",
     photo: "Foto do documento",
-    photoHint: "Ajuda a portaria a liberar sua entrada. Aceita foto ou PDF.",
+    photoHint: "Tire agora ou escolha uma foto que já esteja no celular.",
     photoSending: "Preparando…",
-    photoCamera: "Tirar foto",
-    photoGallery: "Galeria / arquivo",
-    photoRemove: "Remover",
+    photoOpen: "Enviar foto do documento",
+    photoRemove: "Trocar",
+    photoDone: "Documento enviado",
+    face: {
+      titulo: "Confirmação facial",
+      ajuda: "Enquadre o rosto no oval, sem boné e sem óculos escuros. A foto entra no termo assinado, ao lado do seu documento.",
+      abrir: "Abrir a câmera",
+      disparar: "Tirar a foto",
+      refazer: "Tirar outra",
+      consentimento:
+        "Sua foto é usada apenas para confirmar que foi você quem assinou este termo, e fica guardada junto do documento assinado. Ela não é usada para nenhuma outra finalidade.",
+      negada:
+        "Não consegui abrir a câmera. Libere o acesso nas configurações do navegador ou envie a foto pelo botão abaixo.",
+      arquivo: "Enviar uma foto",
+    },
+    errFace: "faça a confirmação facial",
     requiredHint: "Campos com * são obrigatórios",
     stepDates: "Datas",
     stepGuests: "Hóspedes",
@@ -134,11 +152,24 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nationality", passport: "Passport number",
     nationalityPick: "Choose country",
     photo: "Photo of your ID",
-    photoHint: "Helps the front desk let you in. Photo or PDF.",
+    photoHint: "Take one now, or pick a photo already on your phone.",
     photoSending: "Preparing…",
-    photoCamera: "Take photo",
-    photoGallery: "Gallery / file",
-    photoRemove: "Remove",
+    photoOpen: "Upload photo of your ID",
+    photoRemove: "Replace",
+    photoDone: "ID uploaded",
+    face: {
+      titulo: "Face confirmation",
+      ajuda: "Fit your face in the oval, no hat and no sunglasses. The photo goes into the signed statement, next to your ID.",
+      abrir: "Open the camera",
+      disparar: "Take the photo",
+      refazer: "Retake",
+      consentimento:
+        "Your photo is used only to confirm that you were the person who signed this statement, and is stored with the signed document. It is not used for anything else.",
+      negada:
+        "I couldn't open the camera. Allow access in your browser settings, or send the photo using the button below.",
+      arquivo: "Send a photo",
+    },
+    errFace: "complete the face confirmation",
     requiredHint: "Fields marked * are required",
     stepDates: "Dates",
     stepGuests: "Guests",
@@ -196,11 +227,24 @@ export const T: Record<Idioma, Textos> = {
     nationality: "Nacionalidad", passport: "Número de pasaporte",
     nationalityPick: "Elegir país",
     photo: "Foto del documento",
-    photoHint: "Ayuda a la portería a dejarte entrar. Foto o PDF.",
+    photoHint: "Hazla ahora o elige una foto que ya tengas en el móvil.",
     photoSending: "Preparando…",
-    photoCamera: "Hacer foto",
-    photoGallery: "Galería / archivo",
-    photoRemove: "Quitar",
+    photoOpen: "Enviar foto del documento",
+    photoRemove: "Cambiar",
+    photoDone: "Documento enviado",
+    face: {
+      titulo: "Confirmación facial",
+      ajuda: "Encuadra tu cara en el óvalo, sin gorra y sin gafas de sol. La foto entra en el término firmado, junto a tu documento.",
+      abrir: "Abrir la cámara",
+      disparar: "Hacer la foto",
+      refazer: "Repetir",
+      consentimento:
+        "Tu foto se usa solo para confirmar que fuiste tú quien firmó este término, y se guarda junto al documento firmado. No se usa para ninguna otra finalidad.",
+      negada:
+        "No pude abrir la cámara. Permite el acceso en los ajustes del navegador o envía la foto con el botón de abajo.",
+      arquivo: "Enviar una foto",
+    },
+    errFace: "haz la confirmación facial",
     requiredHint: "Los campos con * son obligatorios",
     stepDates: "Fechas",
     stepGuests: "Huéspedes",

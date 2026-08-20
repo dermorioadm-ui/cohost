@@ -1,6 +1,8 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
 import { admin, appToday } from "../_shared/lib/db.ts";
-import { enviarTermoPorEmail, registrarTermo } from "../_shared/lib/termo.ts";
+import {
+  enviarTermoPorEmail, imagemDoDataUrl, registrarTermo,
+} from "../_shared/lib/termo.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -37,6 +39,17 @@ interface Body {
   term_accepted?: boolean;
   /** PNG do canvas: data:image/png;base64,... */
   assinatura?: string;
+  /**
+   * Rosto de quem assinou, tirado logo depois da assinatura.
+   *
+   * Aceito como opcional pelo mesmo motivo que o documento e a assinatura
+   * foram opcionais no seu tempo: o backend sobe antes do frontend, e nessa
+   * janela existe hóspede na porta do prédio com a página anterior, que não
+   * pede o rosto. Recusar ali o deixaria sem check-in por causa do nosso
+   * deploy. Depois que a página nova estiver publicada, este campo vira
+   * obrigatório — como os outros dois viraram.
+   */
+  selfie?: string;
   locale?: string;
 }
 
@@ -308,6 +321,14 @@ export default handler(async (req) => {
   // uma. E fora de qualquer caminho que possa derrubar o cadastro: a foto é
   // um reforço para a portaria, e o hóspede não pode ficar sem check-in
   // porque a imagem dele falhou no upload.
+
+  // O documento do RESPONSÁVEL entra no PDF do termo, logo abaixo. Ele é
+  // sempre o primeiro da lista — `is_primary: i === 0`, alguns passos acima —,
+  // então sai daqui direto, sem depender de o laço de upload ter terminado.
+  // `imagemDoDataUrl` devolve null para PDF: o pdf-lib não rasteriza páginas,
+  // e um PDF de documento simplesmente não aparece no termo.
+  const documentoDoResponsavel = imagemDoDataUrl(guests[0]?.document_photo);
+
   await Promise.all(
     insertedPeople!.map(async (pessoa, i) => {
       const foto = guests[i]?.document_photo;
@@ -421,6 +442,8 @@ export default handler(async (req) => {
       // transforma o traço numa identificação.
       signerDoc: rotuloDoc(guests[0]),
       assinaturaDataUrl: body.assinatura!,
+      rostoDataUrl: body.selfie ?? null,
+      documento: documentoDoResponsavel,
       locale,
       ip,
       userAgent: req.headers.get("user-agent"),
