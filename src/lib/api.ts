@@ -767,7 +767,17 @@ export const api = {
 export interface GuestInput {
   full_name: string;
   email: string;
+  /** E.164, com o DDI do país escolhido. */
   phone: string;
+  /** O DDI sozinho, sem o "+". Ver `guest_people.phone_ddi`. */
+  phone_ddi?: string;
+  document_type?: "cpf" | "passaporte" | "rg" | "outro";
+  /** CPF só com dígitos, ou passaporte em maiúsculas. */
+  document_number?: string;
+  /** ISO 3166-1 alfa-2. "BR" para quem informou CPF. */
+  nationality?: string;
+  /** data:image/...;base64,... da foto do documento. */
+  document_photo?: string;
 }
 
 export const guestApi = {

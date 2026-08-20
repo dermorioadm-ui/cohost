@@ -73,20 +73,35 @@ const PORTER_APP = {
  * há ambiguidade a resolver aqui, e supor o Brasil é melhor do que emitir um
  * DDI que não existe.
  */
-function formatPhone(e164: string | null): string {
+function formatPhone(e164: string | null, ddi?: string | null): string {
   if (!e164) return "";
   const digits = e164.replace(/\D/g, "");
+
+  // O DDI declarado no cadastro ganha de qualquer heurística. Ele existe
+  // justamente porque o comprimento NÃO distingue os casos: um celular
+  // espanhol (+34 612345678) tem os mesmos 11 dígitos de um brasileiro com
+  // DDD, e adivinhar mandaria "+55 34 6123 45678" para a Kiper.
+  const declarado = (ddi ?? "").replace(/\D/g, "");
+  if (declarado && digits.startsWith(declarado)) {
+    const local = digits.slice(declarado.length);
+    if (declarado === "55" && local.length >= 10) {
+      return `+55 ${local.slice(0, 2)} ${local.slice(2, -4)} ${local.slice(-4)}`;
+    }
+    return `+${declarado} ${local}`;
+  }
 
   if (digits.startsWith("55") && digits.length >= 12) {
     const local = digits.slice(2);
     return `+55 ${local.slice(0, 2)} ${local.slice(2, 7)} ${local.slice(7)}`;
   }
 
+  // Sem DDI declarado, 10 ou 11 dígitos continua sendo Brasil — é o cadastro
+  // antigo, feito antes de o formulário perguntar o país, e ali não havia
+  // hóspede estrangeiro para confundir.
   if (digits.length === 10 || digits.length === 11) {
     return `+55 ${digits.slice(0, 2)} ${digits.slice(2, -4)} ${digits.slice(-4)}`;
   }
 
-  // DDI de 1 a 3 dígitos: sem tabela, devolvemos com o + e o resto junto.
   return `+${digits}`;
 }
 
@@ -132,7 +147,7 @@ export default handler(async (req) => {
 
     const { data: person } = await db
       .from("guest_people")
-      .select("full_name, email, phone_e164")
+      .select("full_name, email, phone_e164, phone_ddi")
       .eq("id", row.person_id)
       .maybeSingle();
 
@@ -145,7 +160,7 @@ export default handler(async (req) => {
       continue;
     }
 
-    const phone = formatPhone(person.phone_e164);
+    const phone = formatPhone(person.phone_e164, person.phone_ddi);
     const baseBody = {
       name: person.full_name,
       email: person.email,

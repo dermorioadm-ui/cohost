@@ -21,8 +21,12 @@ interface GuestInput {
   full_name?: string;
   email?: string;
   phone?: string;
+  phone_ddi?: string;
   document_type?: string;
   document_number?: string;
+  nationality?: string;
+  /** data:image/...;base64,... da foto do documento. */
+  document_photo?: string;
 }
 
 interface Body {
@@ -41,6 +45,54 @@ const RATE_LIMIT_PER_HOUR = 20;
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
 const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+
+/**
+ * CPF: dígitos verificadores.
+ *
+ * A checagem se repete aqui, e não só no formulário, porque validação de
+ * cliente é conveniência e não regra. Quem chama o endpoint direto passaria
+ * "00000000000" e o termo assinado sairia apontando para ninguém — que é
+ * exatamente o que o documento existe para evitar.
+ */
+function cpfValido(valor: string): boolean {
+  const d = (valor ?? "").replace(/\D/g, "");
+  if (d.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(d)) return false;
+
+  const digito = (ate: number): number => {
+    let soma = 0;
+    for (let i = 0; i < ate; i++) soma += Number(d[i]) * (ate + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+
+  return digito(9) === Number(d[9]) && digito(10) === Number(d[10]);
+}
+
+const passaporteValido = (v: string) => /^[A-Z0-9]{5,12}$/.test((v ?? "").trim().toUpperCase());
+
+/** ISO 3166-1 alfa-2. Não valida o país, valida o formato. */
+const isoValido = (v: string) => /^[A-Z]{2}$/.test((v ?? "").trim().toUpperCase());
+
+/** "CPF 123.456.789-09" ou "Passaporte AB123456 (PT)", para o PDF. */
+function rotuloDoc(g: GuestInput | undefined): string {
+  if (!g) return "";
+  const tipo = (g.document_type ?? "").trim().toLowerCase();
+  const numero = (g.document_number ?? "").trim();
+  if (!numero) return "";
+
+  if (tipo === "cpf") {
+    const d = numero.replace(/\D/g, "");
+    const formatado =
+      d.length === 11
+        ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+        : d;
+    return `CPF ${formatado}`;
+  }
+
+  const pais = (g.nationality ?? "").trim().toUpperCase();
+  return `Passaporte ${numero.toUpperCase()}${pais ? ` (${pais})` : ""}`;
+}
 
 function clientIp(req: Request): string | null {
   const fwd = req.headers.get("x-forwarded-for");
@@ -103,6 +155,28 @@ export default handler(async (req) => {
     if (digits.length < 10) {
       throw errors.invalid(`Hóspede ${i + 1}: informe um telefone válido com DDD`);
     }
+
+    // O documento é o que dá validade ao termo assinado. Um cadastro sem ele
+    // produz uma assinatura que identifica um nome, e nome não identifica
+    // ninguém — há dois "João Silva" em qualquer prédio.
+    const tipo = (g.document_type ?? "").trim().toLowerCase();
+    const numero = (g.document_number ?? "").trim();
+
+    if (tipo === "passaporte") {
+      if (!passaporteValido(numero)) {
+        throw errors.invalid(`Hóspede ${i + 1}: número de passaporte inválido`);
+      }
+      if (!isoValido(g.nationality ?? "")) {
+        throw errors.invalid(`Hóspede ${i + 1}: informe a nacionalidade`);
+      }
+    } else if (tipo === "cpf") {
+      if (!cpfValido(numero)) throw errors.invalid(`Hóspede ${i + 1}: CPF inválido`);
+    } else if (tipo || numero) {
+      throw errors.invalid(`Hóspede ${i + 1}: tipo de documento não aceito`);
+    }
+    // Sem tipo e sem número o cadastro passa: é o frontend antigo, que sobe
+    // depois deste backend. Mesma razão do termo assinado — não se deixa
+    // hóspede na porta do prédio por causa do nosso deploy.
   });
 
   // ---- rate limit ----------------------------------------------------------
@@ -207,8 +281,15 @@ export default handler(async (req) => {
     full_name: g.full_name!.trim(),
     email: g.email!.trim().toLowerCase(),
     phone_e164: normalizedPhones[i],
-    document_type: g.document_type ?? null,
-    document_number: g.document_number ?? null,
+    phone_ddi: (g.phone_ddi ?? "").replace(/\D/g, "") || null,
+    document_type: (g.document_type ?? "").trim().toLowerCase() || null,
+    // CPF guardado só com dígitos e passaporte em maiúsculas: a mesma pessoa
+    // digitando "123.456.789-09" e "12345678909" precisa virar a mesma linha.
+    document_number:
+      (g.document_type ?? "").trim().toLowerCase() === "cpf"
+        ? (g.document_number ?? "").replace(/\D/g, "") || null
+        : (g.document_number ?? "").trim().toUpperCase() || null,
+    nationality: (g.nationality ?? "").trim().toUpperCase() || null,
     is_primary: i === 0,
   }));
 
@@ -221,6 +302,51 @@ export default handler(async (req) => {
     console.error("Falha ao gravar hóspedes:", peopleError.message);
     throw errors.upstream("Não foi possível concluir o cadastro. Tente novamente.");
   }
+
+  // ---- foto do documento ---------------------------------------------------
+  // Depois de gravar as pessoas, porque o arquivo é nomeado pelo id de cada
+  // uma. E fora de qualquer caminho que possa derrubar o cadastro: a foto é
+  // um reforço para a portaria, e o hóspede não pode ficar sem check-in
+  // porque a imagem dele falhou no upload.
+  await Promise.all(
+    insertedPeople!.map(async (pessoa, i) => {
+      const foto = guests[i]?.document_photo;
+      if (!foto) return;
+
+      const m = /^data:(image\/(?:jpeg|png|webp|heic)|application\/pdf);base64,([A-Za-z0-9+/=\s]+)$/
+        .exec(foto);
+      if (!m) {
+        console.warn(`Foto do documento ignorada (formato) — pessoa ${pessoa.id}`);
+        return;
+      }
+
+      try {
+        const bin = atob(m[2].replace(/\s/g, ""));
+        if (bin.length > 8 * 1024 * 1024) throw new Error("arquivo grande demais");
+
+        const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+        const ext = m[1] === "application/pdf" ? "pdf" : m[1].split("/")[1];
+        // O primeiro segmento é o property_id: é por ele que a policy do
+        // storage decide quem pode ler.
+        const caminho = `${property.id}/${registration.id}/${pessoa.id}.${ext}`;
+
+        const { error: upErro } = await db.storage
+          .from("documentos")
+          .upload(caminho, bytes, { contentType: m[1], upsert: true });
+        if (upErro) throw new Error(upErro.message);
+
+        await db
+          .from("guest_people")
+          .update({ document_photo_path: caminho })
+          .eq("id", pessoa.id);
+      } catch (e) {
+        console.error(
+          `Foto do documento falhou (pessoa ${pessoa.id}):`,
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }),
+  );
 
   // ---- sessão de chat ------------------------------------------------------
   const { data: tokenRow } = await db.rpc("generate_token", { _bytes: 32 });
@@ -292,7 +418,9 @@ export default handler(async (req) => {
         propertyId: property.id,
         registrationId: registration.id,
         signerName: primary.full_name,
-        signerDoc: guests[0]?.document_number?.trim() || null,
+        // O documento do responsável no rodapé da assinatura: é ele que
+        // transforma o traço numa identificação.
+        signerDoc: rotuloDoc(guests[0]),
         assinaturaDataUrl: body.assinatura!,
         locale,
         ip,
@@ -302,8 +430,15 @@ export default handler(async (req) => {
           ["Check-in", body.checkin_date!],
           ["Check-out", body.checkout_date!],
           ["Pessoas cadastradas", String(insertedPeople!.length)],
+          // Cada hóspede com o documento ao lado do nome. O termo diz
+          // "cadastrei todas as pessoas, com nome e documento de cada uma" —
+          // um PDF que lista só os nomes não sustenta a própria cláusula.
           ...insertedPeople!.map(
-            (pe, i) => [`Hóspede ${i + 1}`, pe.full_name] as [string, string],
+            (pe, i) =>
+              [
+                `Hóspede ${i + 1}`,
+                [pe.full_name, rotuloDoc(guests[i])].filter(Boolean).join(" — "),
+              ] as [string, string],
           ),
         ],
       });
