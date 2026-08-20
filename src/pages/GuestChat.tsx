@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Assinatura } from "@/components/Assinatura";
 import {
-  ArrowLeft, Building2, Camera, Check, CheckCircle2, ChevronDown, ChevronRight,
-  Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
+  ArrowLeft, Building2, Camera, Check, CheckCircle2, ChevronRight,
+  Image as ImageIcon, Loader2, MessageCircle, Plus, Send, Trash2, UserPlus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { guestApi, guestSession, type GuestInput } from "@/lib/api";
@@ -50,6 +50,17 @@ interface Rascunho extends GuestInput {
   fotoNome: string;
   fotoDataUrl: string;
 }
+
+/**
+ * Marca de campo obrigatório.
+ *
+ * O asterisco vai no rótulo e o `aria-hidden` o esconde do leitor de tela —
+ * quem usa leitor recebe a obrigatoriedade pelo `required` do próprio campo,
+ * e ouvir "asterisco" no meio de cada rótulo só atrapalha.
+ */
+const Obrigatorio = () => (
+  <span aria-hidden className="ml-0.5 text-destructive">*</span>
+);
 
 const novoHospede = (): Rascunho => ({
   full_name: "",
@@ -344,15 +355,21 @@ export default function GuestChat() {
         </div>
 
         <div className="max-w-sm mx-auto px-4 pt-5 space-y-4">
+          {/* Dito uma vez, no topo. Repetir "obrigatório" em cada campo
+              transforma a marca em ruído, e a pessoa deixa de enxergá-la. */}
+          <p className="text-xs text-muted-foreground">
+            <span aria-hidden className="text-destructive">*</span> {t.requiredHint}
+          </p>
+
           <section className="rounded-2xl border bg-background p-4 space-y-3">
             <p className="text-sm font-semibold">{t.dates}</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">{t.checkin}</Label>
+                <Label className="text-xs">{t.checkin}<Obrigatorio /></Label>
                 <Input type="date" min={today} value={checkin} onChange={(e) => setCheckin(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">{t.checkout}</Label>
+                <Label className="text-xs">{t.checkout}<Obrigatorio /></Label>
                 <Input type="date" min={checkin || today} value={checkout} onChange={(e) => setCheckout(e.target.value)} />
               </div>
             </div>
@@ -379,7 +396,10 @@ export default function GuestChat() {
               {/* Nome e e-mail */}
               {(["full_name", "email"] as const).map((field) => (
                 <div key={field} className="space-y-1.5">
-                  <Label className="text-xs">{field === "full_name" ? t.name : t.email}</Label>
+                  <Label className="text-xs">
+                    {field === "full_name" ? t.name : t.email}
+                    <Obrigatorio />
+                  </Label>
                   <Input
                     value={g[field] ?? ""}
                     onChange={(e) =>
@@ -394,7 +414,7 @@ export default function GuestChat() {
 
               {/* Telefone com país. O DDI explícito é o que a portaria exige. */}
               <div className="space-y-1.5">
-                <Label className="text-xs">{t.phone}</Label>
+                <Label className="text-xs">{t.phone}<Obrigatorio /></Label>
                 <TelefonePais
                   valor={g.telefone}
                   onChange={(v) => trocar(i, { telefone: v })}
@@ -406,7 +426,7 @@ export default function GuestChat() {
               {/* ------------------------------------------------ documento */}
               <div className="space-y-2 rounded-xl bg-muted/40 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Label className="text-xs font-semibold">{t.docTitle}</Label>
+                  <Label className="text-xs font-semibold">{t.docTitle}<Obrigatorio /></Label>
                   {/* O "sou estrangeiro" fica AO LADO do campo, e não numa tela
                       antes: quem tem CPF nunca precisa pensar nele, e quem não
                       tem descobre a saída no exato momento em que trava. */}
@@ -443,7 +463,7 @@ export default function GuestChat() {
                 ) : (
                   <div className="space-y-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">{t.nationality}</Label>
+                      <Label className="text-xs">{t.nationality}<Obrigatorio /></Label>
                       <select
                         value={g.nacionalidade}
                         onChange={(e) => trocar(i, { nacionalidade: e.target.value })}
@@ -458,7 +478,7 @@ export default function GuestChat() {
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">{t.passport}</Label>
+                      <Label className="text-xs">{t.passport}<Obrigatorio /></Label>
                       <Input
                         value={g.passaporte}
                         onChange={(e) =>
@@ -476,43 +496,69 @@ export default function GuestChat() {
                 {/* Foto do documento */}
                 <div className="space-y-1.5 border-t pt-2">
                   <Label className="text-xs">{t.photo}</Label>
-                  <label
-                    className={cn(
-                      "flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm",
-                      g.fotoDataUrl && "border-solid border-success/50",
-                    )}
-                  >
-                    <input
-                      type="file"
-                      // `capture` abre a câmera direto no celular. Sem ele o
-                      // hóspede cai na galeria e tem que sair para fotografar.
-                      accept="image/*,application/pdf"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) pegarFoto(i, f);
-                        e.target.value = "";
-                      }}
-                    />
-                    {fotoOcupada === i ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        <span className="text-muted-foreground">{t.photoSending}</span>
-                      </>
-                    ) : g.fotoDataUrl ? (
-                      <>
-                        <Check className="h-4 w-4 shrink-0 text-success" />
-                        <span className="min-w-0 flex-1 truncate">{g.fotoNome}</span>
-                        <span className="shrink-0 text-xs text-primary">{t.photoChange}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Camera className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="text-muted-foreground">{t.photo}</span>
-                      </>
-                    )}
-                  </label>
+
+                  {/* DUAS entradas, e não uma.
+                      Com `capture` o navegador abre a câmera direto e não
+                      oferece a galeria — quem já fotografou o RG na semana
+                      passada não consegue usar a foto que tem. Sem `capture`,
+                      parte dos Android vai direto para o gerenciador de
+                      arquivos e esconde a câmera. Nenhum dos dois sozinho
+                      atende os dois sistemas, então os dois ficam à vista. */}
+                  {g.fotoDataUrl && fotoOcupada !== i ? (
+                    <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-success/50 px-3 text-sm">
+                      <Check className="h-4 w-4 shrink-0 text-success" />
+                      <span className="min-w-0 flex-1 truncate">{g.fotoNome}</span>
+                      <button
+                        type="button"
+                        onClick={() => trocar(i, { fotoDataUrl: "", fotoNome: "" })}
+                        className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        {t.photoRemove}
+                      </button>
+                    </div>
+                  ) : fotoOcupada === i ? (
+                    <div className="flex min-h-[44px] items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t.photoSending}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm text-muted-foreground">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) pegarFoto(i, f);
+                            e.target.value = "";
+                          }}
+                        />
+                        <Camera className="h-4 w-4 shrink-0" aria-hidden />
+                        {t.photoCamera}
+                      </label>
+
+                      <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm text-muted-foreground">
+                        <input
+                          type="file"
+                          // Sem `capture`: o iPhone abre "Fototeca / Tirar foto /
+                          // Escolher ficheiro" e o Android abre o seletor com
+                          // galeria e arquivos. PDF entra por aqui também.
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) pegarFoto(i, f);
+                            e.target.value = "";
+                          }}
+                        />
+                        <ImageIcon className="h-4 w-4 shrink-0" aria-hidden />
+                        {t.photoGallery}
+                      </label>
+                    </div>
+                  )}
+
                   <p className="text-xs text-muted-foreground">{t.photoHint}</p>
                 </div>
               </div>
@@ -537,7 +583,11 @@ export default function GuestChat() {
                 que ela assine algo que ainda não disse ter lido. */}
             {term && (
               <div className="border-t pt-4">
-                <Assinatura onChange={setAssinatura} rotulo={t.signTitle} />
+                <Assinatura
+                  onChange={setAssinatura}
+                  rotulo={t.signTitle}
+                  obrigatorio
+                />
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t.signHint}</p>
               </div>
             )}
