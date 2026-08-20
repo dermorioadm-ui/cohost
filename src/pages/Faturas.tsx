@@ -44,6 +44,68 @@ interface Item {
   descricao: string;
   data: string | null;
   valor: number;
+  property_id: string | null;
+  /**
+   * Imóvel, trazido pelo embed do PostgREST.
+   *
+   * O tipo gerado diz ARRAY mesmo quando a relação é muitos-para-um, e em
+   * tempo de execução vem objeto. Aceitar as duas formas aqui e normalizar em
+   * `imovelDe` custa três linhas; confiar numa delas quebra na outra.
+   */
+  properties: Imovel | Imovel[] | null;
+}
+
+interface Imovel {
+  name: string;
+  parent_property_id: string | null;
+}
+
+const imovelDe = (i: Item): Imovel | null =>
+  Array.isArray(i.properties) ? (i.properties[0] ?? null) : i.properties;
+
+/**
+ * Um imóvel dentro da fatura, já somado.
+ *
+ * A fatura é lida por duas pessoas que precisam concordar sobre ela, e a
+ * pergunta que as duas fazem é a mesma: quanto deu CADA apartamento, e de onde
+ * veio. Uma lista corrida de trinta linhas responde isso pedindo que se some
+ * de cabeça — que é exatamente o que a fatura existe para evitar.
+ */
+interface Bloco {
+  chave: string;
+  nome: string;
+  limpezas: Item[];
+  insumos: Item[];
+  extras: Item[];
+  total: number;
+}
+
+function agrupar(itens: Item[]): Bloco[] {
+  const mapa = new Map<string, Bloco>();
+
+  for (const i of itens) {
+    // Agrupa pela UNIDADE FÍSICA: os dois anúncios do mesmo apartamento caem
+    // no mesmo bloco, porque para quem limpa e para quem paga é um lugar só.
+    const imovel = imovelDe(i);
+    const chave = imovel?.parent_property_id ?? i.property_id ?? "sem-imovel";
+    if (!mapa.has(chave)) {
+      mapa.set(chave, {
+        chave,
+        nome: imovel?.name ?? "Sem imóvel",
+        limpezas: [],
+        insumos: [],
+        extras: [],
+        total: 0,
+      });
+    }
+    const b = mapa.get(chave)!;
+    if (i.kind === "limpeza") b.limpezas.push(i);
+    else if (i.kind === "insumos") b.insumos.push(i);
+    else b.extras.push(i);
+    b.total += Number(i.valor);
+  }
+
+  return [...mapa.values()].sort((a, b) => b.total - a.total);
 }
 
 const brl = (v: number) =>
@@ -55,11 +117,7 @@ const dia = (iso: string) =>
     month: "short",
   });
 
-const ROTULO_KIND: Record<Item["kind"], string> = {
-  limpeza: "Limpeza",
-  insumos: "Insumos",
-  extra: "Extra",
-};
+const soma = (l: Item[]) => l.reduce((s, i) => s + Number(i.valor), 0);
 
 export default function Faturas() {
   const { role, user } = useAuth();
@@ -102,12 +160,14 @@ export default function Faturas() {
 
     const { data, error } = await supabase
       .from("cleaner_invoice_items")
-      .select("id, invoice_id, kind, descricao, data, valor")
+      .select(
+        "id, invoice_id, kind, descricao, data, valor, property_id, properties(name, parent_property_id)",
+      )
       .eq("invoice_id", id)
       .order("data", { ascending: true });
 
     if (error) return toast.error("Não consegui abrir os itens");
-    setItens((m) => ({ ...m, [id]: (data ?? []) as Item[] }));
+    setItens((m) => ({ ...m, [id]: (data ?? []) as unknown as Item[] }));
   };
 
   const emAberto = useMemo(
@@ -316,24 +376,57 @@ function CartaoFatura({
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <ul className="divide-y divide-white/[0.05]">
-              {itens.map((i) => (
-                <li key={i.id} className="flex items-start gap-3 py-2.5">
-                  <span className="mt-0.5 shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {ROTULO_KIND[i.kind]}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs leading-snug">{i.descricao}</p>
-                    {i.data && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{dia(i.data)}</p>
+            <div className="space-y-3">
+              {agrupar(itens).map((b) => (
+                <div key={b.chave} className="rounded-xl border border-white/[0.07] bg-white/[0.02]">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-white/[0.06] px-3 py-2.5">
+                    <p className="min-w-0 truncate text-xs font-semibold">{b.nome}</p>
+                    <p className="shrink-0 text-xs font-bold tabular-nums">{brl(b.total)}</p>
+                  </div>
+
+                  <div className="space-y-2.5 px-3 py-2.5">
+                    {/* As três perguntas, nesta ordem: quantos checkouts ela
+                        assinou, quanto é a taxa combinada, e o que ela teve de
+                        comprar do próprio bolso. */}
+                    {b.limpezas.length > 0 && (
+                      <Grupo
+                        titulo={`Checkouts assinados (${b.limpezas.length})`}
+                        total={soma(b.limpezas)}
+                        linhas={b.limpezas.map((i) => ({
+                          id: i.id,
+                          texto: i.data ? dia(i.data) : "—",
+                          valor: Number(i.valor),
+                        }))}
+                      />
+                    )}
+
+                    {b.insumos.length > 0 && (
+                      <Grupo
+                        titulo="Taxa fixa de insumos"
+                        total={soma(b.insumos)}
+                        linhas={b.insumos.map((i) => ({
+                          id: i.id,
+                          texto: "combinada no mês",
+                          valor: Number(i.valor),
+                        }))}
+                      />
+                    )}
+
+                    {b.extras.length > 0 && (
+                      <Grupo
+                        titulo={`Comprou por fora (${b.extras.length})`}
+                        total={soma(b.extras)}
+                        linhas={b.extras.map((i) => ({
+                          id: i.id,
+                          texto: i.descricao,
+                          valor: Number(i.valor),
+                        }))}
+                      />
                     )}
                   </div>
-                  <span className="shrink-0 text-xs font-medium tabular-nums">
-                    {brl(Number(i.valor))}
-                  </span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
 
           {paga && (
@@ -401,5 +494,42 @@ function CartaoFatura({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Um bloco de categoria dentro do imóvel: título, soma e as linhas.
+ *
+ * A soma fica ao lado do título, e não só no fim: quem confere a fatura quer
+ * saber "quanto foi de limpeza aqui" antes de olhar as datas uma a uma.
+ */
+function Grupo({
+  titulo,
+  total,
+  linhas,
+}: {
+  titulo: string;
+  total: number;
+  linhas: Array<{ id: string; texto: string; valor: number }>;
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {titulo}
+        </p>
+        <p className="shrink-0 text-[11px] font-semibold tabular-nums">{brl(total)}</p>
+      </div>
+      <ul className="mt-1 space-y-0.5">
+        {linhas.map((l) => (
+          <li key={l.id} className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-[11px] text-muted-foreground">{l.texto}</span>
+            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+              {brl(l.valor)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -77,6 +77,9 @@ interface PropertyRow {
   supplies_monthly_price: number;
   supplies_items: string[] | null;
   supplies_notes: string | null;
+  em_condominio: boolean;
+  /** Preenchido quando este anúncio é cópia de outro. Ver `Duplicata`. */
+  parent_property_id: string | null;
 }
 
 /** Sugestão inicial, para o dono não encarar uma caixa vazia ao ligar. */
@@ -117,7 +120,7 @@ interface Agreement {
 
 type StepKey = "imovel" | "calendario" | "limpeza" | "insumos" | "atendimento" | "portaria";
 
-const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
+const TODAS: { key: StepKey; label: string; icon: typeof Home }[] = [
   { key: "imovel", label: "Imóvel", icon: Home },
   { key: "calendario", label: "Calendário", icon: CalendarDays },
   { key: "limpeza", label: "Limpeza", icon: Users },
@@ -125,6 +128,17 @@ const STEPS: { key: StepKey; label: string; icon: typeof Home }[] = [
   { key: "atendimento", label: "Atendimento", icon: MessageCircle },
   { key: "portaria", label: "Portaria", icon: DoorOpen },
 ];
+
+/**
+ * As etapas deste imóvel.
+ *
+ * Casa, sítio e kitnet de porta para a rua não têm síndico, não têm e-mail de
+ * condomínio e não têm portaria para integrar. Deixar a etapa lá, vazia e para
+ * sempre incompleta, ensina o dono a ignorar as bolinhas de pendência — e a
+ * partir daí ele ignora também as que importam.
+ */
+const etapasDe = (emCondominio: boolean) =>
+  emCondominio ? TODAS : TODAS.filter((s) => s.key !== "portaria");
 
 const hhmm = (t: string | null | undefined) => (t ?? "").slice(0, 5);
 
@@ -253,6 +267,17 @@ export default function Imovel() {
     setStep(key);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  // Depende do imóvel, então é calculado aqui e não no módulo.
+  const STEPS = etapasDe(form?.em_condominio ?? true);
+
+  // Marcar "sem condomínio" estando DENTRO da etapa Portaria tirava a etapa da
+  // barra e deixava o conteúdo dela na tela, com a barra toda apagada. Quem
+  // fica sem lugar volta para o começo.
+  useEffect(() => {
+    if (form && !STEPS.some((s) => s.key === step)) setStep("imovel");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form?.em_condominio, step]);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
@@ -397,6 +422,7 @@ export default function Imovel() {
         condo_name: form.condo_name ?? "",
         condo_email: form.condo_email ?? "",
         condo_notify: form.condo_notify,
+        em_condominio: form.em_condominio,
         checkin_time: hhmm(form.checkin_time),
         checkout_time: hhmm(form.checkout_time),
         turnover_price: Number(form.turnover_price),
@@ -600,12 +626,50 @@ export default function Imovel() {
       {/* ---------------------------------------------------------- Imóvel */}
       {step === "imovel" && (
         <>
+          {/* Se este anúncio é cópia, a primeira coisa da tela diz isso.
+              Sem esse aviso, quem abre a cópia vê um imóvel igual ao outro com
+              nome levemente diferente e conclui que duplicou por engano — e
+              apaga, levando junto o cruzamento de calendário que impede
+              reserva dupla no MESMO apartamento. */}
+          {form.parent_property_id && <Duplicata paiId={form.parent_property_id} />}
+
           <section className="space-y-4 rounded-xl glass-card p-5">
             <h2 className="font-semibold">Identificação</h2>
 
             <div className="space-y-1.5">
               <Label>Nome do imóvel</Label>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </div>
+
+            {/* Onde o imóvel fica muda o que o produto pede depois: sem
+                condomínio não há síndico para avisar nem portaria para
+                integrar, e a etapa Portaria some da barra. */}
+            <div className="space-y-2">
+              <Label>Onde fica</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: true, rotulo: "Em condomínio", apoio: "Prédio, vila ou conjunto" },
+                  { v: false, rotulo: "Sem condomínio", apoio: "Casa, sítio, porta para a rua" },
+                ].map((o) => (
+                  <button
+                    key={String(o.v)}
+                    type="button"
+                    onClick={() => set("em_condominio", o.v)}
+                    aria-pressed={form.em_condominio === o.v}
+                    className={cn(
+                      "min-h-[56px] rounded-xl border p-2.5 text-left transition-colors",
+                      form.em_condominio === o.v
+                        ? "border-primary bg-primary/10"
+                        : "border-white/[0.07] hover:bg-accent",
+                    )}
+                  >
+                    <span className="block text-xs font-semibold">{o.rotulo}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                      {o.apoio}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1579,4 +1643,53 @@ function snapshot(p: PropertyRow, ai: Record<string, string>): string {
     Number(p.supplies_monthly_price), p.supplies_items ?? [], p.supplies_notes ?? "",
     ai,
   ]);
+}
+
+/**
+ * O aviso de que este anúncio é cópia de outro.
+ *
+ * A cópia existe para o mesmo apartamento aparecer em dois lugares — dois
+ * anúncios, dois links de hóspede, dois calendários cruzados. O que ela NÃO é
+ * é um segundo apartamento: o estoque é o mesmo, a chave é a mesma, e a
+ * limpeza acontece uma vez. Por isso a taxa fixa de insumos é cobrada uma vez
+ * só pelo par, e a fatura agrupa os dois no mesmo bloco.
+ */
+function Duplicata({ paiId }: { paiId: string }) {
+  const [nome, setNome] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    supabase
+      .from("properties")
+      .select("name")
+      .eq("id", paiId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (vivo) setNome((data?.name as string | undefined) ?? null);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [paiId]);
+
+  return (
+    <section className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-4">
+      <Copy className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      <div className="min-w-0 text-xs leading-relaxed">
+        <p className="text-sm font-semibold text-primary">Outro anúncio do mesmo apartamento</p>
+        <p className="mt-1 text-muted-foreground">
+          Este é o mesmo imóvel de{" "}
+          <Link to={`/imoveis/${paiId}`} className="font-medium text-foreground underline">
+            {nome ?? "outro anúncio"}
+          </Link>
+          , com link de hóspede, calendário e atendimento próprios. Os dois calendários se travam
+          entre si, então reservar aqui bloqueia lá.
+        </p>
+        <p className="mt-1.5 text-muted-foreground">
+          Como o apartamento é um só, a <strong className="text-foreground">taxa fixa de insumos é
+          cobrada uma vez</strong> pelos dois, e a fatura da diarista soma os dois no mesmo bloco.
+        </p>
+      </div>
+    </section>
+  );
 }
