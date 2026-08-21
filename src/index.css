@@ -316,6 +316,35 @@ input[type="date"]::-webkit-datetime-edit {
   align-items: center;
 }
 
+/**
+ * O calendarinho do lado direito do campo.
+ *
+ * O navegador desenha esse ícone em preto, porque assume fundo claro. Este app
+ * é escuro do início ao fim — o ícone ficava quase invisível contra o campo, e
+ * quem não sabia que ele estava ali digitava a data no braço. Invertido, ele
+ * vira branco e volta a parecer o botão que é.
+ *
+ * Vale também para hora e data-e-hora (a assinatura da limpeza e os horários de
+ * check-in do imóvel), que sofrem do mesmo problema com o reloginho.
+ */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]:focus::-webkit-calendar-picker-indicator,
+input[type="time"]:focus::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
