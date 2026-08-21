@@ -152,10 +152,14 @@ export default function Landing() {
             Gestão de temporada · Niterói e Rio
           </p>
 
+          {/* A promessa fala do leitor, não de nós: o que ele compra é não
+              fazer nada. O preço continua no título (decisão 2), mas depois
+              da promessa — primeiro o desejo, depois o número que o torna
+              possível. */}
           <h1 className="lp-rise" style={{ animationDelay: "140ms" }}>
-            Nós gerimos seu{" "}
-            <span className="lp-canal lp-canal--airbnb">Airbnb</span> e{" "}
-            <span className="lp-canal lp-canal--booking">Booking</span> por{" "}
+            Seu <span className="lp-canal lp-canal--airbnb">Airbnb</span> e{" "}
+            <span className="lp-canal lp-canal--booking">Booking</span> rodando{" "}
+            <em>sem você</em>, por{" "}
             <span className="lp-preco-inline">
               R$&nbsp;97
               <span className="lp-preco-mes">/mês</span>
@@ -163,13 +167,15 @@ export default function Landing() {
           </h1>
 
           <p className="lp-sub lp-rise" style={{ animationDelay: "220ms" }}>
-            Checkout sem preocupação. Insumos comprados pela equipe de limpeza por
-            uma taxa fixa combinada. O apartamento trabalha; você não.
+            O hóspede é respondido às duas da manhã, a diarista fica sabendo do
+            checkout, a portaria recebe o cadastro, o termo de responsabilidade
+            sai assinado e os insumos se repõem sozinhos. Pra você sobra uma
+            tarefa: receber.
           </p>
 
           <div className="lp-cta-linha lp-rise" style={{ animationDelay: "300ms" }}>
             <Link to="/entrar?modo=cadastro" className="lp-botao">
-              Começar agora
+              Colocar no automático
             </Link>
             <a href="#planos" className="lp-link-seco">
               Ver os planos
