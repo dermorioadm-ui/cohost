@@ -8547,6 +8547,65 @@
    "inputs": {}
   }
  ],
+ "recast": [
+  {
+   "id": "kling-v3.0-pro-recast",
+   "name": "Kling 3.0 Pro Motion Control",
+   "endpoint": "kling-v3.0-pro-motion-control",
+   "provider": "Kling AI",
+   "family": "kling",
+   "videoField": "video_url",
+   "imageField": "image_url",
+   "hasPrompt": true,
+   "description": "Transfere o movimento do vídeo para uma imagem de personagem, com fidelidade máxima.",
+   "inputs": {
+    "prompt": {
+     "type": "string"
+    }
+   }
+  },
+  {
+   "id": "runway-act-two-recast",
+   "name": "Runway Act Two",
+   "endpoint": "runway-act-two-i2v",
+   "provider": "RunwayML",
+   "family": "runway",
+   "videoField": "video_url",
+   "imageField": "image_url",
+   "hasPrompt": false,
+   "description": "Dirige uma imagem de personagem com o movimento e a atuação do seu vídeo.",
+   "inputs": {
+    "aspect_ratio": {
+     "type": "string",
+     "enum": [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4",
+      "21:9"
+     ],
+     "default": "16:9"
+    }
+   }
+  },
+  {
+   "id": "wan2.2-animate-recast",
+   "name": "Wan2.2 Animate",
+   "endpoint": "wan2.2-animate",
+   "provider": "Alibaba",
+   "family": "wan2.2",
+   "videoField": "video_url",
+   "imageField": "image_url",
+   "hasPrompt": true,
+   "description": "Anima um personagem ou substitui o personagem de um clipe existente.",
+   "inputs": {
+    "prompt": {
+     "type": "string"
+    }
+   }
+  }
+ ],
  "lipsync": [
   {
    "id": "infinitetalk-image-to-video",

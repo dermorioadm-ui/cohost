@@ -31,7 +31,7 @@ BASE_URL = os.environ.get("MUAPI_BASE_URL", "https://api.muapi.ai").rstrip("/")
 CATALOG_PATH = pathlib.Path(__file__).resolve().parent.parent / "references" / "catalogo.json"
 JOBS_PATH = pathlib.Path(os.environ.get("MUAPI_JOBS_FILE", pathlib.Path.home() / ".muapi" / "jobs.jsonl"))
 
-KINDS = ("t2v", "i2v", "v2v", "lipsync", "audio")
+KINDS = ("t2v", "i2v", "v2v", "recast", "lipsync", "audio")
 LIST_FIELDS = {"images_list", "videos_list", "audios_list", "reference_images",
                "reference_videos", "reference_audios", "image_urls", "video_files", "audio_files"}
 
@@ -451,7 +451,7 @@ def main():
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("models", help="lista modelos do catálogo")
-    p.add_argument("--kind", choices=KINDS, help="t2v, i2v, v2v, lipsync ou audio")
+    p.add_argument("--kind", choices=KINDS, help="t2v, i2v, v2v, recast, lipsync ou audio")
     p.add_argument("--search", help="filtro por id, nome ou provedor")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_models)
@@ -460,7 +460,7 @@ def main():
     p.add_argument("model")
     p.set_defaults(func=cmd_show)
 
-    p = sub.add_parser("gen", help="gera vídeo (t2v, i2v, v2v ou lipsync)")
+    p = sub.add_parser("gen", help="gera vídeo (t2v, i2v, v2v, recast ou lipsync)")
     p.add_argument("--model", required=True)
     p.add_argument("--endpoint", help="força o caminho da API (modelo fora do catálogo)")
     p.add_argument("--prompt")

@@ -1,7 +1,7 @@
 # Catálogo de modelos de vídeo — MuAPI
 
 Recorte curado do catálogo do Open Generative AI (`packages/studio/src/models.js`).
-O arquivo completo, com os 290 modelos e todos os campos, está em `catalogo.json` —
+O arquivo completo, com os 293 modelos e todos os campos, está em `catalogo.json` —
 consulte por `muapi_video.py models` / `show`, não abrindo o JSON (200 KB).
 
 Legenda: `dur` duração em segundos · `ar` proporções · `res` resolução · **negrito** = padrão.
@@ -107,6 +107,20 @@ Vídeo pronto + áudio → boca sincronizada:
 | `creatify-lipsync`, `veed-lipsync` | igual | — |
 | `infinitetalk-video-to-video` | igual | 480p 720p, aceita prompt |
 | `volcengine-video-to-video-lip-sync` | igual | `mode` |
+
+## Recast — trocar ou dirigir o personagem
+
+Vídeo (movimento e atuação) + imagem (quem aparece). Todos usam `video_url` + `image_url`:
+
+| Modelo (`id`) | Endpoint | Prompt | Para quê |
+|---|---|---|---|
+| `wan2.2-animate-recast` | **`wan2.2-animate`** | sim | anima um personagem ou substitui o que está no clipe |
+| `runway-act-two-recast` | **`runway-act-two-i2v`** | não | dirige a imagem com a atuação do vídeo; `aspect_ratio` |
+| `kling-v3.0-pro-recast` | **`kling-v3.0-pro-motion-control`** | sim | transferência de movimento com mais fidelidade |
+
+Vizinhos úteis, que ficam em `v2v`: `ai-video-face-swap` (troca só o rosto),
+`kling-v2.6-std-motion-control` / `kling-v2.6-pro-motion-control` (gerações anteriores do
+motion control), `heygen-video-translate` (mesma pessoa, outro idioma).
 
 ## Video-to-video e pós-produção
 

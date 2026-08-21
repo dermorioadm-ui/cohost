@@ -65,6 +65,7 @@ Todo job enviado fica registrado em `~/.muapi/jobs.jsonl`.
 | Amarrar dois frames | `seedance-2.5-first-last-frame`, `pixverse-v6-transition`, `vidu-q3-pro-first-last-frames` | primeiro + último frame |
 | Manter o mesmo personagem/produto | `seedance-2.5-omni-reference`, `kling-o1-reference-to-video` (até 7 imgs), `veo3.1-reference-to-video` (3) | referências de identidade |
 | Continuar um clipe já gerado | `seedance-2-extend`, `veo3.1-extend-video`, `grok-imagine-extend` | recebem o `request_id` do job anterior, não um arquivo |
+| Trocar/dirigir o personagem de um vídeo | `wan2.2-animate-recast`, `runway-act-two-recast`, `kling-v3.0-pro-recast` | recast: seu vídeo dá o movimento, a imagem dá quem aparece |
 | Boca sincronizada com áudio real | `infinitetalk-image-to-video` (retrato), `sync-lipsync` / `latent-sync` (vídeo pronto) | lip-sync |
 | Sem filtro de conteúdo | variantes `*-spicy-*`, `grok-imagine-*` com `--mode spicy` | a MuAPI não filtra prompt; a responsabilidade do uso é de quem gera |
 
@@ -72,7 +73,7 @@ Detalhe por modelo (duração, proporções, resolução, campos exclusivos) est
 `references/modelos.md`. O catálogo completo, legível por máquina, em
 `references/catalogo.json` — consulte pelo CLI (`models` / `show`), não abrindo o arquivo.
 
-## Os cinco modos
+## Os modos
 
 **Text-to-video** — `--prompt` obrigatório. Nada de imagem.
 
@@ -86,6 +87,10 @@ aceitam também `--video` e `--audio` de referência. O CLI põe cada um no camp
 
 **Extensão** — `--request-id <job anterior>` em vez de mídia. Só continua job do mesmo
 modelo/família.
+
+**Recast** — `--video cena.mp4 --image personagem.png`. O vídeo entra como *movimento e
+atuação*; a imagem decide quem aparece. Serve para trocar o ator de uma tomada já filmada
+ou para dirigir um personagem sem filmar de novo. `runway-act-two-recast` ignora prompt.
 
 **Lip-sync** — retrato: `--image rosto.png --audio voz.mp3`. Vídeo pronto:
 `--video clipe.mp4 --audio voz.mp3`. Áudio manda no resultado: grave limpo, sem música
