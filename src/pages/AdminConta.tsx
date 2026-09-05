@@ -229,7 +229,7 @@ export default function AdminConta() {
           </div>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
           {[
             // Plano e assinatura só existem para quem é dono. A tabela de
             // perfis carrega valores padrão para todo mundo, e uma diarista
@@ -251,7 +251,7 @@ export default function AdminConta() {
           ))}
         </dl>
 
-        <div className="mt-4 flex justify-end border-t border-white/[0.06] pt-4">
+        <div className="mt-4 flex justify-end border-t border-border pt-4">
           <Button size="sm" onClick={() => setRegistrando(true)} className="min-h-[40px]">
             <MessageSquarePlus className="mr-1.5 h-4 w-4" aria-hidden />
             Registrar contato

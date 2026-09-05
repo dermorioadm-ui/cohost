@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, supabase } from "@/lib/api";
+import { Marca } from "@/components/Marca";
+import { Link } from "react-router-dom";
 
 /**
  * Entrada do dono. Cadastro, login e recuperação na mesma tela — o modo
@@ -77,40 +79,56 @@ export default function Auth() {
     }
   };
 
+  const titulo =
+    mode === "signup" ? "Criar sua conta" : mode === "reset" ? "Recuperar senha" : "Entrar";
+  const apoio =
+    mode === "signup"
+      ? "Em poucos minutos seu check-in roda blindado."
+      : mode === "reset"
+        ? "Enviamos um link para você criar uma senha nova."
+        : "Bem-vindo de volta.";
+
+  // A mesma pílula da página de vendas no alto, e a folha branca com a sombra
+  // longa embaixo: quem veio do "Assinar" reconhece o lugar sem ler nada.
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-muted/30">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <p className="text-xs font-bold tracking-widest uppercase text-primary">HospedePay</p>
-          <h1 className="mt-2 text-2xl font-extrabold leading-tight">
-            {mode === "signup"
-              ? "Criar sua conta"
-              : mode === "reset"
-                ? "Recuperar senha"
-                : "Entrar"}
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            {mode === "signup"
-              ? "Em poucos minutos seu checkout roda sozinho."
-              : mode === "reset"
-                ? "Enviamos um link para você criar uma senha nova."
-                : "Bem-vindo de volta."}
+    <div className="min-h-screen bg-background">
+      <header className="fixed inset-x-3 top-3 z-30 flex justify-center">
+        <div className="flex w-full max-w-[720px] items-center justify-between gap-3 rounded-[52px] bg-white py-2 pl-4 pr-2 shadow-pill">
+          <Link to="/" aria-label="Página inicial" className="rounded-full">
+            <Marca size={32} />
+          </Link>
+          <Link
+            to="/"
+            className="flex h-10 items-center rounded-full border border-border px-4 text-[13px] tracking-corpo text-foreground transition-colors hover:border-foreground"
+          >
+            Ver a página
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-4 pb-12 pt-24">
+        <div className="animate-rise-in">
+          <p className="rotulo text-primary">
+            {mode === "signup" ? "Cadastro" : mode === "reset" ? "Senha" : "Acesso"}
           </p>
+          <h1 className="mt-2 text-[34px] font-normal leading-[1.02] tracking-titulo">{titulo}</h1>
+          <p className="mt-2 text-[15px] leading-snug text-muted-foreground">{apoio}</p>
         </div>
 
         {mode === "reset" && resetSent ? (
-          <div className="space-y-4 rounded-2xl border bg-background p-5 shadow-sm">
-            <p className="text-sm leading-relaxed">
-              Se existir uma conta com <strong>{form.email.trim().toLowerCase()}</strong>, o link
-              de recuperação chega em instantes. Ele vale por 1 hora e só funciona uma vez.
+          <div className="mt-7 space-y-4 rounded-panel bg-white p-6 shadow-frame animate-rise-in [animation-delay:120ms]">
+            <p className="text-[15px] leading-relaxed">
+              Se existir uma conta com <span className="font-medium">{form.email.trim().toLowerCase()}</span>, o
+              link de recuperação chega em instantes. Ele vale por 1 hora e só funciona uma vez.
             </p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Não chegou? Confira a caixa de spam. O e-mail sai de uma caixa que não é lida —
               responder a ele não chega em ninguém.
             </p>
             <Button
               variant="outline"
-              className="h-11 w-full"
+              size="lg"
+              className="w-full"
               onClick={() => {
                 setMode("signin");
                 setResetSent(false);
@@ -120,7 +138,10 @@ export default function Auth() {
             </Button>
           </div>
         ) : (
-        <form onSubmit={submit} className="space-y-4 bg-background rounded-2xl border p-5 shadow-sm">
+        <form
+          onSubmit={submit}
+          className="mt-7 space-y-4 rounded-panel bg-white p-6 shadow-frame animate-rise-in [animation-delay:120ms]"
+        >
           {mode === "signup" && (
             <>
               <div className="space-y-1.5">
@@ -135,7 +156,7 @@ export default function Auth() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="phone">WhatsApp</Label>
+                <Label htmlFor="phone">WhatsApp (com DDD)</Label>
                 <Input
                   id="phone"
                   value={form.phone}
@@ -175,7 +196,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => setMode("reset")}
-                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] transition-colors hover:text-foreground"
                 >
                   Esqueci minha senha
                 </button>
@@ -183,7 +204,7 @@ export default function Auth() {
             </div>
           )}
 
-          <Button type="submit" className="w-full h-11" disabled={busy}>
+          <Button type="submit" size="lg" className="mt-2 w-full" disabled={busy}>
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === "signup"
               ? "Criar conta"
@@ -200,7 +221,7 @@ export default function Auth() {
             setResetSent(false);
             setMode(mode === "signup" ? "signin" : mode === "reset" ? "signin" : "signup");
           }}
-          className="mt-5 w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-6 w-full text-center text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] transition-colors hover:text-foreground"
         >
           {mode === "signup"
             ? "Já tenho conta — entrar"
@@ -208,6 +229,12 @@ export default function Auth() {
               ? "Lembrei a senha — voltar ao login"
               : "Não tenho conta — criar agora"}
         </button>
+
+        <p className="mt-10 text-center text-xs leading-relaxed text-muted-foreground">
+          Reserva confirmada, documento com foto, selfie e assinatura digital.
+          <br />
+          Contrato vem antes da chave.
+        </p>
       </div>
     </div>
   );

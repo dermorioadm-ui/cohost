@@ -1,24 +1,27 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+/**
+ * Aviso no tom da página: papel branco, fio, sombra da pílula. O erro é o único
+ * que ganha cor de fundo — e é coral, porque na página o coral é o que pede
+ * atenção.
+ */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-primary group-[.toaster]:text-primary-foreground group-[.toaster]:border-primary group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-primary-foreground/80",
-          actionButton: "group-[.toast]:bg-primary-foreground group-[.toast]:text-primary",
-          cancelButton: "group-[.toast]:bg-primary-foreground/20 group-[.toast]:text-primary-foreground",
-          success: "group-[.toaster]:bg-primary group-[.toaster]:text-primary-foreground group-[.toaster]:border-primary",
-          error: "group-[.toaster]:bg-destructive group-[.toaster]:text-destructive-foreground group-[.toaster]:border-destructive",
+            "group toast group-[.toaster]:rounded-2xl group-[.toaster]:border-[#f0f0f0] group-[.toaster]:bg-white group-[.toaster]:text-black group-[.toaster]:shadow-pill group-[.toaster]:font-sans group-[.toaster]:tracking-corpo",
+          description: "group-[.toast]:text-[#8f8f8f]",
+          actionButton: "group-[.toast]:rounded-full group-[.toast]:bg-black group-[.toast]:text-white",
+          cancelButton: "group-[.toast]:rounded-full group-[.toast]:bg-[#f0f0f0] group-[.toast]:text-black",
+          success: "group-[.toaster]:bg-white group-[.toaster]:text-black",
+          error:
+            "group-[.toaster]:bg-primary group-[.toaster]:text-white group-[.toaster]:border-primary",
         },
       }}
       {...props}

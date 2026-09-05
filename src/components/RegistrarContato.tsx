@@ -100,7 +100,7 @@ export function RegistrarContato({
                     "min-h-[40px] rounded-lg border px-3 text-sm transition-colors",
                     canal === c.v
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-white/[0.08] text-muted-foreground hover:bg-muted/50",
+                      : "border-border text-muted-foreground hover:bg-muted/50",
                   )}
                 >
                   {c.t}
@@ -121,7 +121,7 @@ export function RegistrarContato({
                     "min-h-[40px] rounded-lg border px-3 text-sm transition-colors",
                     resultado === r.v
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-white/[0.08] text-muted-foreground hover:bg-muted/50",
+                      : "border-border text-muted-foreground hover:bg-muted/50",
                   )}
                 >
                   {r.t}

@@ -158,7 +158,7 @@ export default function AdminSistema() {
       )}
 
       <section className="glass-card overflow-hidden rounded-xl">
-        <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Activity className="h-4 w-4 text-muted-foreground" aria-hidden />
           <h2 className="text-sm font-semibold">Todos os indicadores</h2>
         </div>
@@ -188,7 +188,7 @@ export default function AdminSistema() {
           ter onde ser respondida — sem ela, a resposta é o log efêmero da
           function, que some em horas. */}
       <section className="glass-card overflow-hidden rounded-xl">
-        <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <ScrollText className="h-4 w-4 text-muted-foreground" aria-hidden />
           <h2 className="text-sm font-semibold">Registro de sistema</h2>
         </div>

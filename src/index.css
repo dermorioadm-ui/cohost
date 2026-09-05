@@ -1,103 +1,78 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Tokens = a paleta da página de vendas, em HSL.
+ *
+ *   #ffffff papel        #000000 tinta        #8f8f8f texto apagado
+ *   #f0f0f0 linha/painel #f7f7f7 célula       #e6e6e6 campo    #d9d9d9 contorno
+ *   #FF385C coral        #E31C5F coral (hover) #00A699 verde-água (no ar)
+ *
+ * O app era escuro e a página é clara. Não é o app que muda de humor: é o
+ * painel que precisa parecer a continuação da página que vendeu o produto —
+ * quem clica em "Assinar" e cai num vidro escuro acha que entrou em outro
+ * site.
+ */
 @layer base {
   :root {
-    --background: 220 15% 5%;
-    --foreground: 0 0% 96%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
 
-    --card: 220 12% 8%;
-    --card-foreground: 0 0% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
 
-    --popover: 220 12% 8%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 358 83% 65%;
+    --primary: 349 100% 61%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 340 78% 50%;
 
-    --secondary: 220 10% 14%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 56%;
 
-    --accent: 220 10% 14%;
-    --accent-foreground: 0 0% 96%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
 
-    --destructive: 0 72% 51%;
+    --surface: 0 0% 97%;
+    --line-strong: 0 0% 85%;
+
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 16%;
-    --input: 220 10% 16%;
-    --ring: 358 83% 65%;
+    --border: 0 0% 94%;
+    --input: 0 0% 85%;
+    --ring: 0 0% 0%;
 
-    --radius: 0.75rem;
+    --ink: 0 0% 0%;
+    --ink-foreground: 0 0% 100%;
 
-    --sidebar-background: 220 12% 7%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 358 83% 65%;
+    --radius: 0.875rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 349 100% 61%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 10% 12%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 220 10% 14%;
-    --sidebar-ring: 358 83% 65%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 94%;
+    --sidebar-ring: 0 0% 0%;
 
-    --success: 174 72% 40%;
+    --success: 175 100% 33%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 33 95% 42%;
     --warning-foreground: 0 0% 100%;
 
     /* Cor por canal de venda, usada nas faixas do calendário. O coral do
        Airbnb é o --primary; o Booking tem o azul da própria marca. */
-    --booking: 217 72% 54%;
-    --vrbo: 265 60% 60%;
-  }
-
-  .dark {
-    --background: 220 15% 5%;
-    --foreground: 0 0% 96%;
-
-    --card: 220 12% 8%;
-    --card-foreground: 0 0% 96%;
-
-    --popover: 220 12% 8%;
-    --popover-foreground: 0 0% 96%;
-
-    --primary: 358 83% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 10% 14%;
-    --secondary-foreground: 0 0% 96%;
-
-    --muted: 220 10% 14%;
-    --muted-foreground: 0 0% 55%;
-
-    --accent: 220 10% 14%;
-    --accent-foreground: 0 0% 96%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 10% 16%;
-    --input: 220 10% 16%;
-    --ring: 358 83% 65%;
-
-    --sidebar-background: 220 12% 7%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 358 83% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 10% 12%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 220 10% 14%;
-    --sidebar-ring: 358 83% 65%;
-
-    --success: 174 72% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --booking: 217 72% 48%;
+    --vrbo: 265 60% 55%;
   }
 }
 
@@ -106,13 +81,149 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-  }
-
   html {
     -webkit-tap-highlight-color: transparent;
   }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    letter-spacing: -0.012em;
+    font-feature-settings: "lnum", "tnum";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #b5b5b5;
+  }
+
+  /* Título fala baixo: peso 400, entrelinha curta, tracking fechado. */
+  h1, h2, h3 {
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Superfícies da página, com os nomes que o app já usava.
+ *
+ * As classes `glass-*` nasceram para um app de vidro escuro. Os 28 arquivos
+ * que as usam continuam a usá-las — só que agora elas desenham papel: cartão
+ * branco com fio #f0f0f0 e a sombra dos cartões de plano; barra branca com
+ * fio; painel de destaque em tinta preta, como o herói da página.
+ * ---------------------------------------------------------------------- */
+
+.glass,
+.glass-card,
+.glass-stat {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.glass-stat:hover,
+.glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.09);
+}
+
+/* Barras fixas: a pílula de navegação e os rodapés de ação. */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid #f0f0f0;
+}
+
+.glass-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #f0f0f0;
+}
+
+/**
+ * Bloco de destaque de cada tela: tinta preta, texto branco — o herói da
+ * página, em miniatura. O coral fica reservado para o que pede um clique.
+ */
+.glass-accent {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #000000;
+}
+
+.glass-accent .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.glass-accent .text-primary {
+  color: #ff385c;
+}
+
+/* Painel cinza da página ("Você sabe como é."): fundo #f0f0f0, raio 32. */
+.paper-panel {
+  background: #f0f0f0;
+  border-radius: 32px;
+}
+
+/* Moldura branca com a sombra longa da garantia. */
+.paper-frame {
+  background: #ffffff;
+  border-radius: 45px;
+  box-shadow: 0 8px 127px rgba(0, 0, 0, 0.11);
+}
+
+/* Rótulo em caixa alta: 12px, tracking 0.08em, cinza ou coral. */
+.rotulo {
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8f8f8f;
+}
+
+/* Número grande da página: peso 400, tracking -0.041em. */
+.numero-grande {
+  font-weight: 400;
+  letter-spacing: -0.041em;
+  line-height: 0.96;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* O fundo da página é branco. O gradiente de antes vira nada, de propósito. */
+.mesh-gradient {
+  position: relative;
+  background: #ffffff;
+}
+
+.mesh-blob-3 {
+  display: none;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.animate-blob {
+  animation: none;
+}
+
+.affiliate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 56, 92, 0.12), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
 }
 
 /* Phone input styling */
@@ -138,158 +249,7 @@
 }
 
 .phone-input-wrapper .react-international-phone-country-selector-dropdown__list-item-country-name {
-  @apply !text-foreground !text-sm;
-}
-
-.phone-input-wrapper .react-international-phone-country-selector-dropdown__list-item-dial-code {
-  @apply !text-muted-foreground !text-sm;
-}
-
-/* ── Glassmorphism (dark-first) ─────────────────────────────── */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.glass-nav {
-  background: rgba(10, 10, 14, 0.75);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
-}
-
-.glass-sidebar {
-  background: rgba(10, 10, 14, 0.65);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4);
-}
-
-.glass-stat {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
-}
-
-.glass-stat:hover {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-/**
- * Vidro tingido de coral, para o bloco de destaque de cada tela.
- *
- * Existe como classe, e não como `bg-primary/20` no JSX, porque as regras de
- * vidro vêm depois de `@tailwind utilities` neste arquivo: uma utilitária de
- * background perderia para o `background` do `.glass` e o tom sumiria.
- */
-.glass-accent {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.30), hsl(var(--primary) / 0.08));
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid hsl(var(--primary) / 0.35);
-  box-shadow: 0 8px 32px hsl(var(--primary) / 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: all 0.25s ease;
-}
-
-.glass-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transform: translateY(-1px);
-}
-
-/* Background blobs — vivid on dark */
-.mesh-gradient {
-  position: relative;
-  background: hsl(var(--background));
-  isolation: isolate;
-}
-
-.mesh-gradient::before,
-.mesh-gradient::after {
-  content: '';
-  position: fixed;
-  border-radius: 50%;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.mesh-gradient::before {
-  width: 650px;
-  height: 650px;
-  top: -150px;
-  right: -120px;
-  background: radial-gradient(circle, hsl(358 83% 65% / 0.22), transparent 70%);
-  filter: blur(80px);
-}
-
-.mesh-gradient::after {
-  width: 550px;
-  height: 550px;
-  bottom: -100px;
-  left: -120px;
-  background: radial-gradient(circle, hsl(174 72% 40% / 0.14), transparent 70%);
-  filter: blur(80px);
-}
-
-.mesh-blob-3 {
-  position: fixed;
-  width: 450px;
-  height: 450px;
-  top: 45%;
-  left: 35%;
-  border-radius: 50%;
-  background: radial-gradient(circle, hsl(38 92% 50% / 0.1), transparent 70%);
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: -1;
-}
-
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes blob-drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -20px) scale(1.05); }
-  66% { transform: translate(-20px, 15px) scale(0.95); }
-}
-
-.animate-fade-up {
-  animation: fade-up 0.5s ease-out both;
-}
-
-.animate-blob {
-  animation: blob-drift 20s ease-in-out infinite;
-}
-
-.affiliate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255, 90, 95, 0.15), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 3s ease-in-out infinite;
+  @apply !text-foreground;
 }
 
 /**
@@ -316,22 +276,11 @@ input[type="date"]::-webkit-datetime-edit {
   align-items: center;
 }
 
-/**
- * O calendarinho do lado direito do campo.
- *
- * O navegador desenha esse ícone em preto, porque assume fundo claro. Este app
- * é escuro do início ao fim — o ícone ficava quase invisível contra o campo, e
- * quem não sabia que ele estava ali digitava a data no braço. Invertido, ele
- * vira branco e volta a parecer o botão que é.
- *
- * Vale também para hora e data-e-hora (a assinatura da limpeza e os horários de
- * check-in do imóvel), que sofrem do mesmo problema com o reloginho.
- */
+/* O calendarinho do campo: preto sobre branco, como o navegador desenha. */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: 0.75;
+  opacity: 0.6;
   cursor: pointer;
   padding: 0.25rem;
 }
@@ -350,13 +299,10 @@ input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-blob,
   .affiliate-shimmer,
-  .animate-fade-up {
-    animation: none;
-  }
-  .glass-stat:hover,
-  .glass-card:hover {
-    transform: none;
+  .animate-fade-up,
+  .animate-rise-in,
+  .animate-online-pulse {
+    animation: none !important;
   }
 }

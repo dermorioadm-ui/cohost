@@ -386,7 +386,7 @@ export default function Hospedes() {
                     botão em cada acompanhante daria a impressão de vários
                     documentos onde existe um. */}
                 {r.is_primary && termos.get(r.registration_id) && (
-                  <div className="mt-3 border-t border-white/[0.06] pt-3">
+                  <div className="mt-3 border-t border-border pt-3">
                     <BotaoBaixarTermo termo={termos.get(r.registration_id)!} compacto />
                   </div>
                 )}

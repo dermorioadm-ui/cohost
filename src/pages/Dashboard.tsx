@@ -253,7 +253,7 @@ export default function Dashboard() {
                           Saída {t.checkout_time?.slice(0, 5) ?? "--:--"}
                           {provider && ` · ${styleOf(provider).label}`}
                           {t.next_checkin_date === t.checkout_date && (
-                            <span className="text-amber-600 font-medium">
+                            <span className="text-warning font-medium">
                               {" "}
                               · entrada no mesmo dia
                             </span>

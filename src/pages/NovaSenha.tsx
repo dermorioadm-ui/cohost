@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Marca } from "@/components/Marca";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/api";
 
@@ -108,14 +109,14 @@ export default function NovaSenha() {
 
   if (state === "invalid") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-6 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
         <div className="max-w-xs">
           <p className="font-semibold">Este link não vale mais</p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Links de recuperação valem por 1 hora e só funcionam uma vez. Peça outro na tela de
             login.
           </p>
-          <Button className="mt-5 h-11 w-full" onClick={() => navigate("/entrar")}>
+          <Button size="lg" className="mt-5 w-full" onClick={() => navigate("/entrar")}>
             Ir para o login
           </Button>
         </div>
@@ -124,19 +125,17 @@ export default function NovaSenha() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-            <KeyRound className="h-7 w-7 text-primary" />
-          </div>
-          <h1 className="mt-5 text-2xl font-extrabold leading-tight">Criar uma senha nova</h1>
+          <Marca size={40} className="mx-auto" semNome />
+          <h1 className="mt-5 text-[30px] font-normal leading-[1.05] tracking-titulo">Criar uma senha nova</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Ao salvar, você já entra direto no painel.
           </p>
         </div>
 
-        <form onSubmit={save} className="space-y-4 rounded-2xl border bg-background p-5 shadow-sm">
+        <form onSubmit={save} className="space-y-4 rounded-panel bg-white p-6 shadow-frame">
           <div className="space-y-1.5">
             <Label htmlFor="nova">Nova senha</Label>
             <Input
@@ -162,7 +161,7 @@ export default function NovaSenha() {
             />
           </div>
 
-          <Button type="submit" className="h-11 w-full" disabled={busy}>
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salvar e entrar
           </Button>

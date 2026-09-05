@@ -162,7 +162,7 @@ export default function AdminPipeline() {
             "min-h-[36px] rounded-full border px-3 text-xs font-medium transition-colors",
             filtro === null
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-white/[0.08] text-muted-foreground hover:bg-muted/50",
+              : "border-border text-muted-foreground hover:bg-muted/50",
           )}
         >
           Todos ({linhas.length})
@@ -177,7 +177,7 @@ export default function AdminPipeline() {
                 ? "border-primary bg-primary text-primary-foreground"
                 : ESTAGIO[e].grave
                   ? "border-warning/40 text-warning hover:bg-warning/10"
-                  : "border-white/[0.08] text-muted-foreground hover:bg-muted/50",
+                  : "border-border text-muted-foreground hover:bg-muted/50",
             )}
           >
             {ESTAGIO[e].curto} ({porEstagio.get(e)})
@@ -247,7 +247,7 @@ export default function AdminPipeline() {
                 </p>
               )}
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                 <p className="text-xs text-muted-foreground">
                   {l.contatos === 0
                     ? "Nunca foi contatado"

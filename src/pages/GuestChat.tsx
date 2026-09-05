@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Marca } from "@/components/Marca";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Assinatura } from "@/components/Assinatura";
 import { CapturaFacial } from "@/components/CapturaFacial";
 import {
-  AlertCircle, ArrowLeft, Building2, CalendarDays, Camera, Check, CheckCircle2,
+  AlertCircle, ArrowLeft, CalendarDays, Camera, Check, CheckCircle2,
   ChevronRight, Download, Loader2, LogOut, MessageCircle, Plus, Send, Trash2,
   UserPlus,
 } from "lucide-react";
@@ -490,10 +491,8 @@ export default function GuestChat() {
 
         <div className="mx-auto w-full max-w-sm px-4 pb-12 pt-10">
           <header className="text-center">
-            <span className="glass-accent inline-flex h-14 w-14 items-center justify-center rounded-2xl">
-              <Building2 className="h-6 w-6 text-primary-foreground" aria-hidden />
-            </span>
-            <h1 className="mt-4 text-2xl font-extrabold tracking-tight">{t.welcome}</h1>
+            <Marca size={40} className="mx-auto" semNome />
+            <h1 className="mt-4 text-[30px] font-normal leading-[1.05] tracking-titulo">{t.welcome}</h1>
             {propertyName && (
               <p className="mt-1 text-sm font-semibold text-primary">{propertyName}</p>
             )}
@@ -522,8 +521,8 @@ export default function GuestChat() {
                 className={cn(
                   "inline-flex min-h-[44px] items-center gap-2 rounded-full border px-3.5 text-sm transition-colors",
                   idioma === l.id
-                    ? "border-primary/50 bg-primary/15 font-semibold text-primary"
-                    : "border-white/[0.08] text-muted-foreground hover:bg-white/[0.04]",
+                    ? "border-ink bg-ink text-ink-foreground"
+                    : "border-line-strong text-foreground hover:border-foreground",
                 )}
               >
                 <span className="text-lg leading-none">{bandeira(l.iso)}</span>
@@ -624,7 +623,7 @@ export default function GuestChat() {
         {/* O cabeçalho fica fixo porque é ele que responde "onde eu estou e
             quanto falta". Rolando junto com o formulário, a resposta some
             exatamente no trecho longo em que a pergunta aparece. */}
-        <header className="glass-nav sticky top-0 z-20 border-b border-white/[0.06]">
+        <header className="sticky top-0 z-20 border-b border-border bg-white/92 backdrop-blur-md">
           <div className="mx-auto w-full max-w-md px-4 pb-2 pt-3">
             <div className="flex items-center gap-2">
               {/* Sem esta volta, a escolha vira porta de mão única: o hóspede
@@ -633,7 +632,7 @@ export default function GuestChat() {
                 type="button"
                 onClick={voltar}
                 aria-label={t.back}
-                className="-ml-2 rounded-full p-2 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+                className="-ml-2 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
@@ -667,7 +666,7 @@ export default function GuestChat() {
                               ? "bg-success/20 text-success"
                               : atual
                                 ? "bg-primary text-primary-foreground"
-                                : "bg-white/[0.06] text-muted-foreground",
+                                : "bg-secondary text-muted-foreground",
                           )}
                         >
                           {feito ? <Check className="h-3 w-3" aria-hidden /> : n}
@@ -692,7 +691,7 @@ export default function GuestChat() {
                     key={n}
                     className={cn(
                       "h-1 flex-1 rounded-full transition-colors",
-                      n <= passo ? "bg-primary" : "bg-white/[0.08]",
+                      n <= passo ? "bg-primary" : "bg-secondary",
                     )}
                   />
                 ))}
@@ -781,7 +780,7 @@ export default function GuestChat() {
                   noites" na hora é como a pessoa percebe que digitou o mês
                   errado — antes de descobrir isso na portaria. */}
               {noites > 0 && (
-                <p className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-3 py-2 text-xs text-muted-foreground">
+                <p className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
                   <CalendarDays className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                   {t.nights(noites)}
                 </p>
@@ -845,7 +844,7 @@ export default function GuestChat() {
                   </div>
 
                   {/* ------------------------------------------------ documento */}
-                  <div className="space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
+                  <div className="space-y-2 rounded-xl border border-border bg-surface p-3">
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-xs font-semibold">{t.docTitle}<Obrigatorio /></Label>
                       {/* O "sou estrangeiro" fica AO LADO do campo, e não numa
@@ -929,7 +928,7 @@ export default function GuestChat() {
                         misturado manda direto para o gerenciador de arquivos —
                         sem câmera. Tirado o PDF, um botão faz o trabalho dos
                         dois. */}
-                    <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+                    <div className="space-y-1.5 border-t border-border pt-3">
                       <Label className="text-xs">{t.photo}<Obrigatorio /></Label>
 
                       {g.fotoDataUrl && fotoOcupada !== i ? (
@@ -969,7 +968,7 @@ export default function GuestChat() {
                           {t.photoSending}
                         </div>
                       ) : (
-                        <label className="flex min-h-[56px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-[0.98]">
+                        <label className="flex min-h-[56px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-pill shadow-primary/20 transition-transform active:scale-[0.98]">
                           <input
                             type="file"
                             // Sem `capture` e sem PDF: é esta combinação que
@@ -1070,11 +1069,11 @@ export default function GuestChat() {
                     `<label>` de propósito — dentro dele, abrir o texto marcaria
                     a caixa de aceite, que é o oposto do que se quer aqui. */}
                 {termoCompleto && (
-                  <details className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                  <details className="rounded-xl border border-border bg-surface">
                     <summary className="flex min-h-[44px] cursor-pointer list-none items-center px-3 text-xs font-semibold text-primary">
                       {t.termFull}
                     </summary>
-                    <div className="max-h-64 overflow-y-auto border-t border-white/[0.06] px-3 py-3">
+                    <div className="max-h-64 overflow-y-auto border-t border-border px-3 py-3">
                       <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
                         {termoCompleto}
                       </p>
@@ -1086,7 +1085,7 @@ export default function GuestChat() {
                     de assinar acima da caixa que a pessoa ainda não marcou é
                     pedir que ela assine algo que ainda não disse ter lido. */}
                 {term && (
-                  <div className="border-t border-white/[0.06] pt-4">
+                  <div className="border-t border-border pt-4">
                     <Assinatura onChange={setAssinatura} rotulo={t.signTitle} obrigatorio />
                     <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                       {t.signHint}
@@ -1175,7 +1174,7 @@ export default function GuestChat() {
             <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
               <CheckCircle2 className="h-8 w-8 text-success" aria-hidden />
             </span>
-            <h1 className="mt-4 text-2xl font-extrabold tracking-tight">{t.okTitle}</h1>
+            <h1 className="mt-4 text-[30px] font-normal leading-[1.05] tracking-titulo">{t.okTitle}</h1>
             {propertyName && (
               <p className="mt-1 text-sm font-semibold text-primary">{propertyName}</p>
             )}
@@ -1238,12 +1237,12 @@ export default function GuestChat() {
     <div className="mesh-gradient flex min-h-screen flex-col">
       <div className="mesh-blob-3 animate-blob" aria-hidden />
 
-      <header className="glass-nav sticky top-0 z-20 flex items-center gap-3 border-b border-white/[0.06] px-4 py-3">
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-white/92 px-4 py-3 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setMode("choice")}
           aria-label={t.back}
-          className="-ml-2 rounded-full p-2 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          className="-ml-2 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>

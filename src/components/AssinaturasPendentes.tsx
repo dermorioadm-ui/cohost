@@ -81,7 +81,7 @@ export function AssinaturasPendentes({ onAssinou }: { onAssinou?: () => void }) 
 
       <div className="space-y-2">
         {lista.map((p) => (
-          <div key={p.id} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+          <div key={p.id} className="rounded-xl border border-border bg-surface p-3">
             <div className="flex items-baseline justify-between gap-3">
               <p className="min-w-0 truncate text-sm font-medium">{p.imovel}</p>
               <p className="shrink-0 text-sm font-semibold tabular-nums">

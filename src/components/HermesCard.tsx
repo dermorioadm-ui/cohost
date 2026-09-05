@@ -501,7 +501,7 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
                 Ler o termo completo
               </button>
 
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-white/[0.07] bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground whitespace-pre-line">
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background/40 p-3 text-[11px] leading-relaxed text-muted-foreground whitespace-pre-line">
                 {state.term.body}
               </div>
 
@@ -547,7 +547,7 @@ export function HermesCard({ propertyId }: { propertyId: string }) {
 
       {/* ------------------------------------------------------ chave do agente */}
       {cred && (
-        <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
           <div className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Chave da VPS</h3>

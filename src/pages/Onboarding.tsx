@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Marca } from "@/components/Marca";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -180,23 +181,28 @@ export default function Onboarding() {
   ];
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-16">
-      <header className="border-b bg-background/80 backdrop-blur sticky top-0 z-10">
+    <div className="min-h-screen bg-background pb-16">
+      {/* O trilho é o das "três travas" da página: barras finas que se
+          preenchem de coral, uma por passo, com o rótulo em caixa alta. */}
+      <header className="sticky top-0 z-10 border-b border-border bg-white/92 backdrop-blur-md">
         <div className="max-w-lg mx-auto px-4 py-3">
-          <p className="text-xs font-bold tracking-widest uppercase text-primary">HospedePay</p>
-          <div className="mt-3 flex items-center gap-1">
+          <div className="flex items-center justify-between gap-3">
+            <Marca size={28} />
+            <span className="rotulo">Passo {step} de {steps.length}</span>
+          </div>
+          <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}>
             {steps.map((s) => (
-              <div key={s.n} className="flex-1">
-                <div
-                  className={cn(
-                    "h-1 rounded-full transition-colors",
-                    step >= s.n ? "bg-primary" : "bg-border",
-                  )}
-                />
+              <div key={s.n} className="min-w-0">
+                <div className="h-[3px] overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full origin-left rounded-full bg-primary transition-transform duration-500 ease-page"
+                    style={{ transform: step >= s.n ? "scaleX(1)" : "scaleX(0)" }}
+                  />
+                </div>
                 <p
                   className={cn(
-                    "mt-1.5 text-[10px] font-medium truncate",
-                    step >= s.n ? "text-foreground" : "text-muted-foreground",
+                    "mt-1.5 truncate text-[10px] uppercase tracking-rotulo",
+                    step === s.n ? "text-primary" : step > s.n ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
                   {s.label}
@@ -210,7 +216,7 @@ export default function Onboarding() {
       <main className="max-w-lg mx-auto px-4 pt-6 space-y-5">
         {/* ------------------------------------------------ 1. Imóvel */}
         {step === 1 && (
-          <section className="bg-background rounded-2xl border p-5 space-y-4">
+          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
             <div>
               <h2 className="text-lg font-bold">Seu imóvel</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -281,7 +287,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 2. iCal */}
         {step === 2 && (
-          <section className="bg-background rounded-2xl border p-5 space-y-4">
+          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
             <div>
               <h2 className="text-lg font-bold">Conectar o calendário</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -313,7 +319,7 @@ export default function Onboarding() {
                   >
                     <span className={cn("h-2.5 w-2.5 rounded-full", c.swatch)} aria-hidden />
                     {c.label}
-                    {done && <Check className="h-4 w-4 text-emerald-500" />}
+                    {done && <Check className="h-4 w-4 text-success" />}
                   </button>
                 );
               })}
@@ -348,8 +354,8 @@ export default function Onboarding() {
                 className={cn(
                   "rounded-xl p-4 text-sm flex gap-3",
                   icalResult.ok
-                    ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100"
-                    : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
+                    ? "bg-success/10 text-success"
+                    : "bg-warning/10 text-warning",
                 )}
               >
                 {icalResult.ok ? (
@@ -397,7 +403,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 3. Diarista */}
         {step === 3 && (
-          <section className="bg-background rounded-2xl border p-5 space-y-4">
+          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
             <div>
               <h2 className="text-lg font-bold">Quem faz a limpeza</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -442,8 +448,8 @@ export default function Onboarding() {
             )}
 
             {waLink && (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950 p-4 space-y-3">
-                <p className="text-sm text-emerald-900 dark:text-emerald-100 leading-relaxed">
+              <div className="rounded-xl bg-success/10 p-4 space-y-3">
+                <p className="text-sm text-success leading-relaxed">
                   Convite pronto. Envie pelo seu WhatsApp — chegando do seu número,
                   ela clica sem desconfiar.
                 </p>
@@ -469,7 +475,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 4. Assistente */}
         {step === 4 && (
-          <section className="bg-background rounded-2xl border p-5 space-y-4">
+          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
             <div>
               <h2 className="text-lg font-bold">O que a assistente precisa saber</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -509,7 +515,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 5. Mensagem */}
         {step === 5 && (
-          <section className="bg-background rounded-2xl border p-5 space-y-4">
+          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
             <div>
               <h2 className="text-lg font-bold">Último passo</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -533,7 +539,7 @@ export default function Onboarding() {
                   setTimeout(() => setCopied(false), 2000);
                 }}
               >
-                {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
 

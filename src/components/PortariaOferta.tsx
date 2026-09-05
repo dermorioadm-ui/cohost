@@ -151,7 +151,7 @@ export function PortariaOferta({ propertyId }: { propertyId: string }) {
         ))}
       </ul>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
         <div>
           {/* O preço antes do clique. Checkout com valor surpresa queima a
               confiança que o resto do produto levou semanas para construir. */}

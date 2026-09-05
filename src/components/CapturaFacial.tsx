@@ -159,7 +159,7 @@ export function CapturaFacial({
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{textos.ajuda}</p>
       </div>
 
-      <div className="relative mx-auto aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40">
+      <div className="relative mx-auto aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl border border-border bg-black/40">
         {foto ? (
           <img src={foto} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -263,7 +263,7 @@ export function CapturaFacial({
           diluído no termo geral, ele não é consentimento. Por isso a frase
           fica aqui, ao lado do botão que tira a foto, e não trinta linhas
           acima no meio de outro texto. */}
-      <p className="flex items-start gap-2 rounded-xl bg-white/[0.04] p-3 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="flex items-start gap-2 rounded-xl bg-surface p-3 text-[11px] leading-relaxed text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
         <span>{textos.consentimento}</span>
       </p>

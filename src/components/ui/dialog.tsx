@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/45 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -24,9 +24,9 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * No celular o conteúdo sobe do rodapé e pode rolar: a diarista preenche isto
- * em pé, com o teclado aberto ocupando metade da tela. No desktop vira o
- * diálogo centralizado de sempre.
+ * A folha do formulário da página: sobe do rodapé com raio 28 e a sombra
+ * longa; no desktop vira o diálogo centralizado. O × é o mesmo botão redondo
+ * cinza, no mesmo canto.
  */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -37,17 +37,17 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 flex max-h-[90dvh] flex-col gap-4 overflow-y-auto border bg-background p-5 shadow-lg",
-        "inset-x-0 bottom-0 rounded-t-2xl",
-        "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed z-50 flex max-h-[92dvh] flex-col gap-4 overflow-y-auto bg-background p-5 shadow-sheet",
+        "inset-x-0 bottom-0 rounded-t-[28px] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
+        "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:p-6 sm:pb-6",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4",
         className,
       )}
       {...props}
     >
       {children}
       <DialogPrimitive.Close
-        className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground transition-colors hover:bg-[#e6e6e6] focus:outline-none focus:ring-2 focus:ring-ring"
         aria-label="Fechar"
       >
         <X className="h-4 w-4" />
@@ -58,7 +58,7 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-col gap-1 pr-8", className)} {...props} />;
+  return <div className={cn("flex flex-col gap-1 pr-10", className)} {...props} />;
 }
 
 const DialogTitle = React.forwardRef<
@@ -67,7 +67,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-bold leading-tight", className)}
+    className={cn("text-[22px] font-normal leading-tight tracking-titulo", className)}
     {...props}
   />
 ));

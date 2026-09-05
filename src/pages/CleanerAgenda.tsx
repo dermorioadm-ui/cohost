@@ -346,7 +346,7 @@ export default function CleanerAgenda() {
 
       {grouped.length === 0 && (
         <div className="rounded-2xl glass-card p-8 text-center">
-          <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+          <CheckCircle2 className="h-8 w-8 text-success mx-auto" />
           <p className="mt-3 font-semibold">Nada por enquanto</p>
           <p className="text-sm text-muted-foreground mt-1">
             Quando entrar reserva, aparece aqui sozinho.
@@ -400,7 +400,7 @@ export default function CleanerAgenda() {
                         {task.checkout_time?.slice(0, 5) ?? "--:--"}
                       </p>
                       {sameDay && (
-                        <p className="mt-1 text-xs font-semibold text-amber-600">
+                        <p className="mt-1 text-xs font-semibold text-warning">
                           Entrada no mesmo dia — precisa estar pronto
                         </p>
                       )}
@@ -408,7 +408,7 @@ export default function CleanerAgenda() {
                           aparece AQUI — é a diferença entre "chego quando dá"
                           e "posso ir agora, o apartamento já liberou". */}
                       {task.hospede_saiu_em && task.status !== "completed" && (
-                        <p className="mt-1 text-xs font-semibold text-emerald-600">
+                        <p className="mt-1 text-xs font-semibold text-success">
                           Hóspede saiu às{" "}
                           {new Date(task.hospede_saiu_em).toLocaleTimeString("pt-BR", {
                             hour: "2-digit",
@@ -424,7 +424,7 @@ export default function CleanerAgenda() {
                   </div>
 
                   {task.status === "completed" ? (
-                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 px-4 py-3 text-emerald-700 dark:text-emerald-300">
+                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-success/10 px-4 py-3 text-success">
                       <Check className="h-5 w-5" />
                       <span className="font-semibold text-sm">Concluída</span>
                     </div>
@@ -472,9 +472,9 @@ export default function CleanerAgenda() {
                   <span
                     className={cn(
                       "text-xs font-semibold",
-                      fee.status === "approved" && "text-emerald-600",
+                      fee.status === "approved" && "text-success",
                       fee.status === "rejected" && "text-destructive",
-                      fee.status === "pending" && "text-amber-600",
+                      fee.status === "pending" && "text-warning",
                     )}
                   >
                     {FEE_STATUS_LABEL[fee.status]}
@@ -541,7 +541,7 @@ function PhotoButton({
         className={cn(
           "mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5 text-sm font-medium transition-colors",
           task.photo_path
-            ? "border-emerald-300 text-emerald-700 dark:text-emerald-400"
+            ? "border-success/40 text-success"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
           busy && "opacity-60",
         )}

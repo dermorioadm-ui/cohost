@@ -65,7 +65,7 @@ export function DicasCard({ className }: { className?: string }) {
         // faria a pessoa clicar esperando um botão e encontrar um preço.
         dica.oferta
           ? "border-primary/30 bg-primary/[0.06]"
-          : "border-white/[0.08] bg-white/[0.03]",
+          : "border-border bg-surface",
         className,
       )}
       aria-label="Sugestão de melhoria"
@@ -84,7 +84,7 @@ export function DicasCard({ className }: { className?: string }) {
               aria-label="Agora não"
               // 44px de área de toque num ícone de 16px: hitSlop feito com
               // padding negativo no visual, e não com um X gigante.
-              className="-m-2 shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              className="-m-2 shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -99,7 +99,7 @@ export function DicasCard({ className }: { className?: string }) {
               "mt-3 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
               dica.oferta
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-white/[0.06] hover:bg-white/[0.1]",
+                : "bg-secondary hover:bg-[#e6e6e6]",
             )}
           >
             {dica.oferta ? "Ver como funciona" : "Configurar agora"}
