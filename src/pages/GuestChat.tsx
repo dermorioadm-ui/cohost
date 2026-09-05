@@ -536,14 +536,14 @@ export default function GuestChat() {
               <button
                 key={chave}
                 onClick={ir}
-                className="glass-card w-full rounded-2xl p-5 text-left"
+                className="glass-card w-full rounded-[30px] p-5 text-left"
               >
                 <div className="flex items-center gap-4">
-                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", fundo)}>
+                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full", fundo)}>
                     <Icone className={cn("h-5 w-5", cor)} aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold leading-tight">{titulo}</p>
+                    <p className="text-[17px] leading-tight tracking-titulo">{titulo}</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{apoio}</p>
                   </div>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
@@ -559,14 +559,14 @@ export default function GuestChat() {
                 onClick={avisarSaida}
                 disabled={saida !== "ocioso"}
                 className={cn(
-                  "glass-card w-full rounded-2xl p-5 text-left",
+                  "glass-card w-full rounded-[30px] p-5 text-left",
                   saida === "feito" && "border border-success/30",
                 )}
               >
                 <div className="flex items-center gap-4">
                   <span
                     className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
                       saida === "feito" ? "bg-success/15" : "bg-primary/10",
                     )}
                   >
@@ -636,66 +636,47 @@ export default function GuestChat() {
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
-              <h1 className="min-w-0 flex-1 truncate text-sm font-bold">{t.register}</h1>
-              <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-                {t.stepOf(passo, 3)}
-              </span>
+              <h1 className="min-w-0 flex-1 truncate text-[15px] tracking-corpo">{t.register}</h1>
+              <span className="rotulo shrink-0">{t.stepOf(passo, 3)}</span>
             </div>
 
-            <nav aria-label={t.stepOf(passo, 3)} className="mt-1">
-              <ol className="flex items-stretch">
-                {etapas.map(({ n, rotulo }) => {
-                  const feito = n < passo;
-                  const atual = n === passo;
-                  return (
-                    <li key={n} className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        // Só passo já visitado é clicável. Pular para a frente
-                        // sem preencher o que veio antes leva a pessoa a uma
-                        // tela que ela vai ter de abandonar no primeiro erro.
-                        disabled={n > maxPasso}
-                        onClick={() => irPara(n)}
-                        aria-current={atual ? "step" : undefined}
-                        className="flex min-h-[44px] w-full items-center gap-1.5 px-1 disabled:cursor-default"
-                      >
-                        <span
-                          className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold transition-colors",
-                            feito
-                              ? "bg-success/20 text-success"
-                              : atual
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-secondary text-muted-foreground",
-                          )}
-                        >
-                          {feito ? <Check className="h-3 w-3" aria-hidden /> : n}
-                        </span>
-                        <span
-                          className={cn(
-                            "truncate text-[11px] font-medium",
-                            atual ? "text-foreground" : "text-muted-foreground",
-                          )}
-                        >
-                          {rotulo}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-
-              <div className="flex gap-1 pb-1" aria-hidden>
-                {etapas.map(({ n }) => (
-                  <span
+            {/* O trilho é o das "três travas" da página de vendas: uma barra
+                fina por passo, que se preenche de coral, com o rótulo em caixa
+                alta embaixo. Passo já visitado continua clicável. */}
+            <nav aria-label={t.stepOf(passo, 3)} className="mt-3 grid grid-cols-3 gap-1.5 pb-1">
+              {etapas.map(({ n, rotulo }) => {
+                const feito = n < passo;
+                const atual = n === passo;
+                return (
+                  <button
                     key={n}
-                    className={cn(
-                      "h-1 flex-1 rounded-full transition-colors",
-                      n <= passo ? "bg-primary" : "bg-secondary",
-                    )}
-                  />
-                ))}
-              </div>
+                    type="button"
+                    // Só passo já visitado é clicável. Pular para a frente
+                    // sem preencher o que veio antes leva a pessoa a uma
+                    // tela que ela vai ter de abandonar no primeiro erro.
+                    disabled={n > maxPasso}
+                    onClick={() => irPara(n)}
+                    aria-current={atual ? "step" : undefined}
+                    className="min-w-0 text-left disabled:cursor-default"
+                  >
+                    <span className="block h-[3px] overflow-hidden rounded-full bg-secondary">
+                      <span
+                        className="block h-full origin-left rounded-full bg-primary transition-transform duration-500 ease-page"
+                        style={{ transform: feito || atual ? "scaleX(1)" : "scaleX(0)" }}
+                      />
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-1.5 flex items-center gap-1 truncate text-[10px] uppercase tracking-rotulo",
+                        atual ? "text-primary" : feito ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      {feito && <Check className="h-3 w-3 shrink-0 text-success" aria-hidden />}
+                      {rotulo}
+                    </span>
+                  </button>
+                );
+              })}
             </nav>
           </div>
         </header>
@@ -705,15 +686,15 @@ export default function GuestChat() {
         <main className="mx-auto w-full max-w-md flex-1 space-y-4 px-4 pb-36 pt-5">
           {/* Dito uma vez, no topo. Repetir "obrigatório" em cada campo
               transforma a marca em ruído, e a pessoa deixa de enxergá-la. */}
-          <p className="text-xs text-muted-foreground">
+          <p className="px-1 text-xs text-muted-foreground">
             <span aria-hidden className="text-destructive">*</span> {t.requiredHint}
           </p>
 
           {passo === 1 && (
-            <section className="glass-card space-y-4 rounded-2xl p-4">
+            <section className="glass-card space-y-4 rounded-[30px] p-5">
               <div>
-                <p className="text-sm font-semibold">{t.dates}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t.required}</p>
+                <p className="text-[20px] leading-tight tracking-titulo">{t.dates}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t.required}</p>
               </div>
 
               {/* `min-w-0` na célula, e não só `w-full` no campo.
@@ -791,12 +772,12 @@ export default function GuestChat() {
           {passo === 1 && (
             <>
               {guests.map((g, i) => (
-                <section key={i} className="glass-card space-y-3 rounded-2xl p-4">
+                <section key={i} className="glass-card space-y-3 rounded-[30px] p-5">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">
+                    <p className="text-[20px] leading-tight tracking-titulo">
                       {t.guest} {i + 1}
                       {i === 0 && (
-                        <span className="text-xs font-normal text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {" "}· {t.responsible}
                         </span>
                       )}
@@ -844,7 +825,7 @@ export default function GuestChat() {
                   </div>
 
                   {/* ------------------------------------------------ documento */}
-                  <div className="space-y-2 rounded-xl border border-border bg-surface p-3">
+                  <div className="space-y-2 rounded-2xl border border-border bg-surface p-3">
                     <div className="flex items-center justify-between gap-2">
                       <Label className="text-xs font-semibold">{t.docTitle}<Obrigatorio /></Label>
                       {/* O "sou estrangeiro" fica AO LADO do campo, e não numa
@@ -888,7 +869,7 @@ export default function GuestChat() {
                           <select
                             value={g.nacionalidade}
                             onChange={(e) => trocar(i, { nacionalidade: e.target.value })}
-                            className="min-h-[44px] w-full rounded-lg border border-input bg-background px-3 text-sm"
+                            className="min-h-[44px] w-full rounded-[14px] border border-input bg-background px-3 text-sm focus:border-foreground focus:outline-none"
                           >
                             <option value="">{t.nationalityPick}</option>
                             {listaPaises.map((p) => (
@@ -932,7 +913,7 @@ export default function GuestChat() {
                       <Label className="text-xs">{t.photo}<Obrigatorio /></Label>
 
                       {g.fotoDataUrl && fotoOcupada !== i ? (
-                        <div className="flex items-center gap-3 rounded-xl border border-success/40 bg-success/[0.07] p-2.5">
+                        <div className="flex items-center gap-3 rounded-2xl border border-success/40 bg-success/10 p-2.5">
                           {/* A miniatura, e não só o nome do arquivo: é ela que
                               deixa a pessoa ver que fotografou o documento
                               certo, e não a mesa embaixo dele. */}
@@ -963,12 +944,12 @@ export default function GuestChat() {
                           </label>
                         </div>
                       ) : fotoOcupada === i ? (
-                        <div className="flex min-h-[56px] items-center justify-center gap-2 rounded-xl border border-input text-sm text-muted-foreground">
+                        <div className="flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-line-strong text-sm text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                           {t.photoSending}
                         </div>
                       ) : (
-                        <label className="flex min-h-[56px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-pill shadow-primary/20 transition-transform active:scale-[0.98]">
+                        <label className="flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2.5 rounded-full bg-ink px-4 text-[15px] tracking-corpo text-ink-foreground transition-[transform,background-color] hover:bg-[#f0f0f0] active:scale-[0.985]">
                           <input
                             type="file"
                             // Sem `capture` e sem PDF: é esta combinação que
@@ -1009,7 +990,7 @@ export default function GuestChat() {
                   Assinar sem ver o que está assinando é o que transforma um
                   termo em papel sem valor — e o erro de data descoberto aqui
                   custa um clique, não uma discussão na portaria. */}
-              <section className="glass-card space-y-3 rounded-2xl p-4">
+              <section className="glass-card space-y-3 rounded-[30px] p-5">
                 {/* Os dois voltam para o mesmo passo: datas e hóspedes
                     agora moram na mesma tela. */}
                 {[
@@ -1031,7 +1012,7 @@ export default function GuestChat() {
                   <div key={chave} className="flex items-start gap-3">
                     <Icone className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <p className="rotulo">
                         {rotulo}
                       </p>
                       <p className="text-sm font-medium">{principal}</p>
@@ -1050,7 +1031,7 @@ export default function GuestChat() {
                 ))}
               </section>
 
-              <section className="glass-card space-y-4 rounded-2xl p-4">
+              <section className="glass-card space-y-4 rounded-[30px] p-5">
                 <label className="flex cursor-pointer items-start gap-3">
                   <Checkbox
                     checked={term}
@@ -1103,7 +1084,7 @@ export default function GuestChat() {
               espaço com o fim de um formulário longo, ela nasce fora do campo
               de visão de quem vai se enquadrar nela. */}
           {passo === 3 && (
-            <section className="glass-card rounded-2xl p-4">
+            <section className="glass-card rounded-[30px] p-5">
               <CapturaFacial onChange={setSelfie} textos={t.face} obrigatorio />
             </section>
           )}
@@ -1246,9 +1227,7 @@ export default function GuestChat() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
-        </div>
+        <Marca size={36} semNome />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{propertyName || t.assistant}</p>
           <p className="flex items-center gap-1.5 text-[11px] text-success">
@@ -1265,7 +1244,7 @@ export default function GuestChat() {
               className={cn(
                 "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                 m.role === "user"
-                  ? "rounded-br-md bg-primary text-primary-foreground"
+                  ? "rounded-br-md bg-ink text-ink-foreground"
                   : "glass-card rounded-bl-md",
               )}
             >
