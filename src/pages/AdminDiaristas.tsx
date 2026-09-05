@@ -97,7 +97,7 @@ export default function AdminDiaristas() {
               <Link
                 key={c.cleaner_id}
                 to={`/admin/conta/${c.cleaner_id}`}
-                className="glass-card block space-y-2 rounded-xl p-4 transition-colors hover:bg-white/[0.03]"
+                className="glass-card block space-y-2 rounded-xl p-4 transition-colors hover:bg-secondary"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -124,7 +124,7 @@ export default function AdminDiaristas() {
           <div className="glass-card hidden overflow-hidden rounded-xl md:block">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] text-left text-xs text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th scope="col" className="px-4 py-3 font-medium">Diarista</th>
                   <th scope="col" className="px-4 py-3 font-medium">Contato</th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">Hosts</th>
@@ -138,7 +138,7 @@ export default function AdminDiaristas() {
                 {lista.map((c) => (
                   <tr
                     key={c.cleaner_id}
-                    className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]"
+                    className="border-b border-border last:border-0 hover:bg-secondary"
                   >
                     <td className="px-4 py-3 font-medium">{c.full_name ?? "Sem nome"}</td>
                     <td className="px-4 py-3 text-muted-foreground">

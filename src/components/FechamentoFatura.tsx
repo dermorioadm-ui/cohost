@@ -84,7 +84,7 @@ export function FechamentoFatura({
   if (dia === null) return null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+    <div className="space-y-3 rounded-xl border border-border bg-surface p-3">
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-muted-foreground" aria-hidden />
         <p className="text-sm font-medium">Fatura mensal</p>
@@ -121,7 +121,7 @@ export function FechamentoFatura({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-3">
+      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
         <Button
           type="button"
           variant="outline"

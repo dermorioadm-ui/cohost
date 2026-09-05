@@ -63,14 +63,14 @@ export default function Confirmar() {
 
   if (state === "invalid") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-6 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
         <div className="max-w-xs">
           <p className="font-semibold">Este link não vale mais</p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Links de confirmação só funcionam uma vez. Se você já confirmou, é só entrar. Se não,
             faça o cadastro de novo para receber outro.
           </p>
-          <Button className="mt-5 h-11 w-full" onClick={() => navigate("/entrar")}>
+          <Button size="lg" className="mt-5 w-full" onClick={() => navigate("/entrar")}>
             Ir para o login
           </Button>
         </div>
@@ -79,12 +79,12 @@ export default function Confirmar() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-6 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
       <div className="max-w-xs">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-          <CheckCircle2 className="h-7 w-7 text-primary" />
-        </div>
-        <p className="mt-5 text-lg font-extrabold">E-mail confirmado</p>
+        <span className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
+          <CheckCircle2 className="h-7 w-7 text-success" />
+        </span>
+        <p className="mt-5 text-[26px] font-normal leading-tight tracking-titulo">E-mail confirmado</p>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Vamos configurar seu primeiro imóvel.
         </p>

@@ -32,8 +32,8 @@ const SELO: Record<string, { texto: string; classe: string }> = {
   active:   { texto: "Ativa",       classe: "bg-success/15 text-success" },
   past_due: { texto: "Falhando",    classe: "bg-warning/15 text-warning" },
   trialing: { texto: "Em teste",    classe: "bg-primary/15 text-primary" },
-  canceled: { texto: "Cancelada",   classe: "bg-white/[0.06] text-muted-foreground" },
-  expired:  { texto: "Sem acesso",  classe: "bg-white/[0.06] text-muted-foreground" },
+  canceled: { texto: "Cancelada",   classe: "bg-secondary text-muted-foreground" },
+  expired:  { texto: "Sem acesso",  classe: "bg-secondary text-muted-foreground" },
 };
 
 interface Linha {
@@ -119,7 +119,7 @@ export default function AdminAssinantes() {
             "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors",
             soTravados
               ? "bg-warning/15 text-warning"
-              : "bg-white/[0.04] text-muted-foreground hover:text-foreground",
+              : "bg-surface text-muted-foreground hover:text-foreground",
           )}
         >
           <AlertTriangle className="h-4 w-4" />
@@ -152,7 +152,7 @@ export default function AdminAssinantes() {
               <Link
                 key={s.owner_id}
                 to={`/admin/conta/${s.owner_id}`}
-                className="glass-card block w-full rounded-xl p-4 text-left transition-colors hover:bg-white/[0.04]"
+                className="glass-card block w-full rounded-xl p-4 text-left transition-colors hover:bg-secondary"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

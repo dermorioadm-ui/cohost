@@ -226,7 +226,7 @@ export default function CleanerGanhos() {
                         className={cn(
                           "w-full rounded-t transition-colors",
                           b.value === 0
-                            ? "h-px bg-white/[0.08]"
+                            ? "h-px bg-secondary"
                             : atual
                               ? "bg-primary"
                               : "bg-primary/35",
@@ -248,7 +248,7 @@ export default function CleanerGanhos() {
             </div>
 
             {/* Linha de base: o zero precisa existir para a altura significar algo. */}
-            <div className="mt-1 h-px bg-white/[0.08]" aria-hidden />
+            <div className="mt-1 h-px bg-secondary" aria-hidden />
 
             {/* A mesma informação em texto, para quem não lê a altura da barra. */}
             <dl className="mt-4 grid grid-cols-3 gap-x-3 gap-y-1.5 text-[11px]">

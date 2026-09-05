@@ -257,7 +257,7 @@ export default function Financeiro() {
           {pending.length > 0 && (
             <section>
               <h2 className="mb-2 flex items-center gap-2 text-sm font-bold">
-                <Wallet className="h-4 w-4 text-amber-600" />
+                <Wallet className="h-4 w-4 text-warning" />
                 Esperando sua aprovação ({pending.length})
               </h2>
               <div className="space-y-3">
@@ -411,7 +411,7 @@ export default function Financeiro() {
                       <span
                         className={cn(
                           "text-xs font-semibold",
-                          fee.status === "approved" ? "text-emerald-600" : "text-destructive",
+                          fee.status === "approved" ? "text-success" : "text-destructive",
                         )}
                       >
                         {fee.status === "approved" ? "Aprovada" : "Recusada"}

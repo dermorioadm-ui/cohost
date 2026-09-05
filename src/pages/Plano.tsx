@@ -240,7 +240,7 @@ export default function Plano() {
                 onClick={() => setCycle(c)}
                 className={cn(
                   "rounded-md px-3 py-1 font-medium transition-colors",
-                  cycle === c ? "bg-background shadow-sm" : "text-muted-foreground",
+                  cycle === c ? "bg-background shadow-card" : "text-muted-foreground",
                 )}
               >
                 {c === "monthly" ? "Mensal" : "Anual"}
@@ -262,7 +262,7 @@ export default function Plano() {
               key={p.tier}
               className={cn(
                 "rounded-xl p-5",
-                atual ? "glass-accent border border-primary/30" : "glass-card",
+                atual ? "glass-accent" : "glass-card",
               )}
             >
               <div className="flex items-start justify-between gap-3">

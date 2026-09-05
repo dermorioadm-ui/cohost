@@ -384,7 +384,7 @@ export function Assinatura({
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-xl border border-white/[0.12] bg-white">
+      <div className="relative overflow-hidden rounded-xl border border-border bg-white">
         {canvasEl}
         {!temTraco && (
           <div className="pointer-events-none absolute inset-0 flex items-end justify-center pb-6">

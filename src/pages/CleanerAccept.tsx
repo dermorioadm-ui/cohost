@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Marca } from "@/components/Marca";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarCheck, Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { api, supabase } from "@/lib/api";
 
 /**
@@ -104,11 +105,9 @@ export default function CleanerAccept() {
       <div className="mesh-blob-3 animate-blob" aria-hidden />
 
       <div className="w-full max-w-xs text-center">
-        <div className="glass-accent mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
-          <CalendarCheck className="h-7 w-7 text-primary-foreground" aria-hidden />
-        </div>
+        <Marca size={40} className="mx-auto" semNome />
 
-        <h1 className="mt-5 text-xl font-bold leading-tight">
+        <h1 className="mt-5 text-[28px] font-normal leading-[1.05] tracking-titulo">
           {preview!.already_accepted ? "Bem-vinda de volta" : "Oi"},{" "}
           {preview!.cleaner_name.split(" ")[0]}!
         </h1>
@@ -131,7 +130,7 @@ export default function CleanerAccept() {
           )}
         </p>
 
-        <div className="glass-card mt-5 space-y-2.5 rounded-2xl p-4 text-left">
+        <div className="paper-frame mt-6 space-y-2.5 !rounded-panel p-5 text-left">
           {[
             "Você vê os horários de saída no celular",
             "Não precisa ser avisada toda vez",
@@ -160,7 +159,7 @@ export default function CleanerAccept() {
           </div>
         )}
 
-        <Button onClick={accept} disabled={busy} className="mt-4 h-12 w-full font-semibold">
+        <Button onClick={accept} disabled={busy} size="lg" className="mt-4 w-full">
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Entrar
         </Button>

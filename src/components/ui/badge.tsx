@@ -3,15 +3,23 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Etiqueta no tom dos rótulos da página: caixa alta, 11px, tracking aberto.
+ * Cor de fundo bem clara e texto na cor do estado — nunca um bloco sólido, que
+ * no papel branco pesa mais do que a informação que carrega.
+ */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.06em] leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "border-transparent bg-primary/15 text-primary",
+        secondary: "border-transparent bg-secondary text-muted-foreground",
+        destructive: "border-transparent bg-destructive/10 text-destructive",
+        success: "border-transparent bg-success/15 text-success",
+        warning: "border-transparent bg-warning/10 text-warning",
+        ink: "border-transparent bg-ink text-ink-foreground",
+        outline: "border-line-strong text-foreground",
       },
     },
     defaultVariants: {

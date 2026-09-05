@@ -600,7 +600,7 @@ export default function Imovel() {
                 "flex min-h-[44px] min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 text-xs font-medium transition-colors sm:shrink-0 sm:justify-start sm:px-3.5",
                 active
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-white/[0.07] text-muted-foreground hover:bg-accent hover:text-foreground",
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               <s.icon className="h-4 w-4 shrink-0" />
@@ -660,7 +660,7 @@ export default function Imovel() {
                       "min-h-[56px] rounded-xl border p-2.5 text-left transition-colors",
                       form.em_condominio === o.v
                         ? "border-primary bg-primary/10"
-                        : "border-white/[0.07] hover:bg-accent",
+                        : "border-border hover:bg-accent",
                     )}
                   >
                     <span className="block text-xs font-semibold">{o.rotulo}</span>
@@ -791,7 +791,7 @@ export default function Imovel() {
               return (
                 <div
                   key={channel.provider}
-                  className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+                  className="space-y-3 rounded-xl border border-border bg-surface p-4"
                 >
                   <div className="flex items-center gap-2">
                     <span className={cn("h-2.5 w-2.5 rounded-full", channel.swatch)} aria-hidden />
@@ -901,7 +901,7 @@ export default function Imovel() {
                   return (
                     <div
                       key={channel.provider}
-                      className="space-y-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"
+                      className="space-y-2 rounded-xl border border-border bg-surface p-3"
                     >
                       <div className="flex items-center gap-2">
                         <span
@@ -910,7 +910,7 @@ export default function Imovel() {
                         />
                         <h3 className="text-sm font-semibold">Cole no {channel.label}</h3>
                       </div>
-                      <p className="break-all rounded-lg bg-black/20 p-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      <p className="break-all rounded-lg bg-surface p-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
                         {link}
                       </p>
                       <Button
@@ -1072,7 +1072,7 @@ export default function Imovel() {
                     {/* Link do painel dela. Some quando ninguém está vinculado,
                         porque sem vínculo não há agenda para o link abrir. */}
                     {form.cleaner_id && (
-                      <div className="space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+                      <div className="space-y-3 rounded-xl border border-border bg-surface p-3">
                         <div className="flex items-center gap-2">
                           <LinkIcon className="h-4 w-4 text-muted-foreground" />
                           <p className="text-sm font-medium">Link do painel dela</p>

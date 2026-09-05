@@ -370,7 +370,7 @@ function CartaoFatura({
       </button>
 
       {aberta && (
-        <div className="border-t border-white/[0.06] px-4 pb-4">
+        <div className="border-t border-border px-4 pb-4">
           {!itens ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -378,8 +378,8 @@ function CartaoFatura({
           ) : (
             <div className="space-y-3">
               {agrupar(itens).map((b) => (
-                <div key={b.chave} className="rounded-xl border border-white/[0.07] bg-white/[0.02]">
-                  <div className="flex items-baseline justify-between gap-3 border-b border-white/[0.06] px-3 py-2.5">
+                <div key={b.chave} className="rounded-xl border border-border bg-surface">
+                  <div className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2.5">
                     <p className="min-w-0 truncate text-xs font-semibold">{b.nome}</p>
                     <p className="shrink-0 text-xs font-bold tabular-nums">{brl(b.total)}</p>
                   </div>

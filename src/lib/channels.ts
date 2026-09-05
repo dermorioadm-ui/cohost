@@ -7,10 +7,10 @@
  * na cor do canal, para reconhecer de relance de onde veio aquela limpeza sem
  * precisar ler nada.
  *
- * A tarja é lateral, e não fundo colorido: o cartão é de vidro e o fundo
- * translúcido tingido some contra o gradiente da tela. Uma barra sólida de
- * 4px na borda sobrevive a qualquer fundo, inclusive impressa em preto e
- * branco, onde ainda resta a diferença de tom.
+ * A tarja é lateral, e não fundo colorido: o cartão é de papel branco, e um
+ * fundo tingido o transformaria em aviso. Uma barra sólida de 4px na borda
+ * sobrevive a qualquer fundo, inclusive impressa em preto e branco, onde
+ * ainda resta a diferença de tom.
  */
 
 export type Provider = "airbnb" | "booking" | "vrbo" | "other";
@@ -45,9 +45,9 @@ export const PROVIDER_STYLE: Record<Provider, ProviderStyle> = {
     label: "Vrbo",
   },
   other: {
-    bar: "border-white/25 bg-white/15",
-    dot: "border-white/20 bg-white/10",
-    stripe: "bg-white/30",
+    bar: "border-line-strong bg-muted",
+    dot: "border-line-strong bg-secondary",
+    stripe: "bg-line-strong",
     label: "Outro",
   },
 };

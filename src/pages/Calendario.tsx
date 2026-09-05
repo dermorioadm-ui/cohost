@@ -360,7 +360,7 @@ export default function Calendario() {
         <button
           onClick={() => step(-1)}
           aria-label="Mês anterior"
-          className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -379,7 +379,7 @@ export default function Calendario() {
         <button
           onClick={() => step(1)}
           aria-label="Próximo mês"
-          className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
@@ -445,7 +445,7 @@ export default function Calendario() {
                             "relative h-[4.5rem] rounded-xl border text-left transition-all duration-200 sm:h-24",
                             outOfMonth
                               ? "border-transparent bg-transparent"
-                              : "border-white/[0.07] bg-white/[0.035] hover:border-white/20 hover:bg-white/[0.07]",
+                              : "border-border bg-surface hover:border-line-strong hover:bg-secondary",
                             isSelected &&
                               "border-primary/60 bg-primary/[0.12] ring-1 ring-primary/40",
                           )}
@@ -525,7 +525,7 @@ export default function Calendario() {
 
         {/* Legenda — só os canais que realmente aparecem no mês. */}
         {!loading && visibleReservations.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/[0.06] pt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
             {[...new Set(visibleReservations.map((r) => r.provider ?? "other"))].map((p) => (
               <span key={p} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span

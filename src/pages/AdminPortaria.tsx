@@ -214,7 +214,7 @@ export default function AdminPortaria() {
                 )}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" aria-hidden />
                   {p.paid_at ? `Pagou ${espera}` : `Clicou ${espera}`}

@@ -151,9 +151,9 @@ export default function AdminVisaoGeral() {
                   </div>
                   {/* Barra e número juntos: a barra dá a forma, o número dá o
                       valor exato. Só a barra obrigaria a estimar de olho. */}
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full rounded-full bg-primary/70 transition-[width] duration-300"
+                      className="h-full rounded-full bg-primary transition-[width] duration-300"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
