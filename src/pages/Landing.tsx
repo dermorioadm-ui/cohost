@@ -407,7 +407,7 @@ export default function Landing() {
   };
 
   return (
-    <div ref={raiz} className="relative min-h-screen overflow-x-hidden bg-white text-black">
+    <div ref={raiz} className="tema-claro relative min-h-screen overflow-x-hidden bg-white text-black">
       <style>{LP_CSS}</style>
 
       {/* ------------------------------------------------------------ nav */}

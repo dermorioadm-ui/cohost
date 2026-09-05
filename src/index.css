@@ -5,74 +5,103 @@
 @tailwind utilities;
 
 /**
- * Tokens = a paleta da página de vendas, em HSL.
+ * Tokens = a paleta do documento de identidade, em HSL.
  *
- *   #ffffff papel        #000000 tinta        #8f8f8f texto apagado
- *   #f0f0f0 linha/painel #f7f7f7 célula       #e6e6e6 campo    #d9d9d9 contorno
- *   #FF385C coral        #E31C5F coral (hover) #00A699 verde-água (no ar)
+ *   Coral #FF385C (marca, título, preço) · coral fechado #E31C5F (hover)
+ *   Verde #00A699 (online, assinado)     · laranja #FC642D (recusa, atenção)
+ *   #000000 texto · #484848 corpo · #8F8F8F apoio · #F0F0F0 linha · #FFFFFF fundo
  *
- * O app era escuro e a página é clara. Não é o app que muda de humor: é o
- * painel que precisa parecer a continuação da página que vendeu o produto —
- * quem clica em "Assinar" e cai num vidro escuro acha que entrou em outro
- * site.
+ * O painel e o login rodam sobre o preto — o mesmo preto do herói e do
+ * fechamento da página de vendas, com os mesmos cartões translúcidos de
+ * borda branca a 18% que a página usa para o seu bloco de chamada. Nada de
+ * cinza-azulado: os neutros são os da identidade, invertidos. A pílula de
+ * navegação continua branca, exatamente como flutua sobre o herói preto.
+ *
+ * A página de vendas é clara e continua clara: ela envolve tudo em
+ * `.tema-claro`, que devolve os tokens do papel branco.
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 349 100% 61%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 340 78% 50%;
 
-    --secondary: 0 0% 94%;
-    --secondary-foreground: 0 0% 0%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 94%;
+    --muted: 0 0% 11%;
     --muted-foreground: 0 0% 56%;
 
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 100%;
 
-    --surface: 0 0% 97%;
-    --line-strong: 0 0% 85%;
+    --surface: 0 0% 8%;
+    --line-strong: 0 0% 26%;
 
-    --destructive: 0 72% 48%;
+    --destructive: 16 97% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 94%;
-    --input: 0 0% 85%;
-    --ring: 0 0% 0%;
+    --border: 0 0% 15%;
+    --input: 0 0% 26%;
+    --ring: 0 0% 100%;
 
-    --ink: 0 0% 0%;
-    --ink-foreground: 0 0% 100%;
+    --ink: 0 0% 100%;
+    --ink-foreground: 0 0% 0%;
 
     --radius: 0.875rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 0%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 349 100% 61%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 0 0% 94%;
-    --sidebar-ring: 0 0% 0%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 100%;
 
     --success: 175 100% 33%;
     --success-foreground: 0 0% 100%;
-    --warning: 33 95% 42%;
+    --warning: 16 97% 58%;
     --warning-foreground: 0 0% 100%;
 
     /* Cor por canal de venda, usada nas faixas do calendário. O coral do
        Airbnb é o --primary; o Booking tem o azul da própria marca. */
-    --booking: 217 72% 48%;
-    --vrbo: 265 60% 55%;
+    --booking: 217 72% 54%;
+    --vrbo: 265 60% 60%;
+  }
+
+  /* O papel branco da página de vendas. */
+  .tema-claro {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 94%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
+    --surface: 0 0% 97%;
+    --line-strong: 0 0% 85%;
+    --border: 0 0% 94%;
+    --input: 0 0% 85%;
+    --ring: 0 0% 0%;
+    --ink: 0 0% 0%;
+    --ink-foreground: 0 0% 100%;
+    --warning: 16 97% 50%;
+    --destructive: 16 97% 50%;
+    color-scheme: light;
   }
 }
 
@@ -83,6 +112,7 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
   }
 
   body {
@@ -97,6 +127,11 @@
 
   input::placeholder,
   textarea::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .tema-claro input::placeholder,
+  .tema-claro textarea::placeholder {
     color: #b5b5b5;
   }
 
@@ -108,74 +143,86 @@
 }
 
 /* -------------------------------------------------------------------------
- * Superfícies da página, com os nomes que o app já usava.
+ * Superfícies, com os nomes que o app já usava.
  *
- * As classes `glass-*` nasceram para um app de vidro escuro. Os 28 arquivos
- * que as usam continuam a usá-las — só que agora elas desenham papel: cartão
- * branco com fio #f0f0f0 e a sombra dos cartões de plano; barra branca com
- * fio; painel de destaque em tinta preta, como o herói da página.
+ * As classes `glass-*` nasceram para um app de vidro escuro; hoje elas
+ * desenham o cartão do herói da página de vendas: branco a 6% sobre o preto,
+ * fio branco a 12%, canto de 30px (o "cartão" da identidade) e a sombra
+ * longa, quase invisível.
  * ---------------------------------------------------------------------- */
 
 .glass,
 .glass-card,
 .glass-stat {
-  background: #ffffff;
-  border: 1px solid #f0f0f0;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
-    transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 27px 104px rgba(0, 0, 0, 0.35);
+  transition: background-color 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-color 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .glass-stat:hover,
 .glass-card:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.09);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* Barras fixas: a pílula de navegação e os rodapés de ação. */
+/* Barras fixas: cabeçalhos e rodapés de ação das telas públicas. */
 .glass-nav {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .glass-sidebar {
-  background: #ffffff;
-  border-right: 1px solid #f0f0f0;
+  background: #000000;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /**
- * Bloco de destaque de cada tela: tinta preta, texto branco — o herói da
- * página, em miniatura. O coral fica reservado para o que pede um clique.
+ * Bloco de destaque de cada tela: o cartão de chamada do herói da página —
+ * branco a 10%, fio a 18%, vidro. O coral fica reservado para marca, título
+ * e preço, como manda a identidade.
  */
 .glass-accent {
-  background: #000000;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: #ffffff;
-  border: 1px solid #000000;
 }
 
 .glass-accent .text-muted-foreground {
   color: rgba(255, 255, 255, 0.6);
 }
 
-.glass-accent .text-primary {
-  color: #ff385c;
-}
-
 /* Painel cinza da página ("Você sabe como é."): fundo #f0f0f0, raio 32. */
 .paper-panel {
   background: #f0f0f0;
   border-radius: 32px;
+  color: #000000;
 }
 
-/* Moldura branca com a sombra longa da garantia. */
+/* Moldura da promessa (45px). No escuro é o cartão do herói; no claro, a
+   moldura branca com a sombra longa da garantia. */
 .paper-frame {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 45px;
-  box-shadow: 0 8px 127px rgba(0, 0, 0, 0.11);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Rótulo em caixa alta: 12px, tracking 0.08em, cinza ou coral. */
+.tema-claro .paper-frame {
+  background: #ffffff;
+  border: 0;
+  box-shadow: 0 8px 127px rgba(0, 0, 0, 0.11);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Rótulo em caixa alta: 12px, tracking 0.08em, apoio ou coral. */
 .rotulo {
   font-size: 12px;
   line-height: 1.5;
@@ -192,10 +239,10 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* O fundo da página é branco. O gradiente de antes vira nada, de propósito. */
+/* O fundo é o preto chapado do herói. O gradiente de antes vira nada. */
 .mesh-gradient {
   position: relative;
-  background: #ffffff;
+  background: hsl(var(--background));
 }
 
 .mesh-blob-3 {
@@ -276,13 +323,21 @@ input[type="date"]::-webkit-datetime-edit {
   align-items: center;
 }
 
-/* O calendarinho do campo: preto sobre branco, como o navegador desenha. */
+/* O calendarinho do campo: o navegador o desenha preto; sobre o preto do
+   painel ele some, então é invertido. No papel da página fica como está. */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  opacity: 0.6;
+  filter: invert(1);
+  opacity: 0.7;
   cursor: pointer;
   padding: 0.25rem;
+}
+
+.tema-claro input[type="date"]::-webkit-calendar-picker-indicator,
+.tema-claro input[type="time"]::-webkit-calendar-picker-indicator,
+.tema-claro input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: none;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator:hover,

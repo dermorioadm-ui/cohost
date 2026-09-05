@@ -184,10 +184,10 @@ export default function Onboarding() {
     <div className="min-h-screen bg-background pb-16">
       {/* O trilho é o das "três travas" da página: barras finas que se
           preenchem de coral, uma por passo, com o rótulo em caixa alta. */}
-      <header className="sticky top-0 z-10 border-b border-border bg-white/92 backdrop-blur-md">
+      <header className="sticky top-0 z-10 border-b border-border bg-black/85 backdrop-blur-md">
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <Marca size={28} />
+            <Marca size={28} tom="tinta" />
             <span className="rotulo">Passo {step} de {steps.length}</span>
           </div>
           <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}>
@@ -216,7 +216,7 @@ export default function Onboarding() {
       <main className="max-w-lg mx-auto px-4 pt-6 space-y-5">
         {/* ------------------------------------------------ 1. Imóvel */}
         {step === 1 && (
-          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
+          <section className="glass-card rounded-[30px] p-5 space-y-4">
             <div>
               <h2 className="text-lg font-bold">Seu imóvel</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -287,7 +287,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 2. iCal */}
         {step === 2 && (
-          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
+          <section className="glass-card rounded-[30px] p-5 space-y-4">
             <div>
               <h2 className="text-lg font-bold">Conectar o calendário</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -403,7 +403,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 3. Diarista */}
         {step === 3 && (
-          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
+          <section className="glass-card rounded-[30px] p-5 space-y-4">
             <div>
               <h2 className="text-lg font-bold">Quem faz a limpeza</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -475,7 +475,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 4. Assistente */}
         {step === 4 && (
-          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
+          <section className="glass-card rounded-[30px] p-5 space-y-4">
             <div>
               <h2 className="text-lg font-bold">O que a assistente precisa saber</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -515,7 +515,7 @@ export default function Onboarding() {
 
         {/* ------------------------------------------------ 5. Mensagem */}
         {step === 5 && (
-          <section className="rounded-2xl bg-white p-5 space-y-4 shadow-card border border-border">
+          <section className="glass-card rounded-[30px] p-5 space-y-4">
             <div>
               <h2 className="text-lg font-bold">Último passo</h2>
               <p className="text-sm text-muted-foreground mt-0.5">

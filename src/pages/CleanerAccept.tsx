@@ -130,7 +130,7 @@ export default function CleanerAccept() {
           )}
         </p>
 
-        <div className="mt-6 space-y-2.5 rounded-panel bg-white p-5 text-left shadow-frame">
+        <div className="paper-frame mt-6 space-y-2.5 !rounded-panel p-5 text-left">
           {[
             "Você vê os horários de saída no celular",
             "Não precisa ser avisada toda vez",

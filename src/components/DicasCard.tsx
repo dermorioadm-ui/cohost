@@ -99,7 +99,7 @@ export function DicasCard({ className }: { className?: string }) {
               "mt-3 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors",
               dica.oferta
                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-secondary hover:bg-[#e6e6e6]",
+                : "bg-secondary hover:bg-accent",
             )}
           >
             {dica.oferta ? "Ver como funciona" : "Configurar agora"}

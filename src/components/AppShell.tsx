@@ -12,10 +12,11 @@ import { cn } from "@/lib/utils";
 /**
  * Casca do app: a pílula flutuante da página de vendas, agora com navegação.
  *
- * A página abre com uma pílula branca no alto — marca à esquerda, um estado à
- * direita, sombra longa, cantos de 52px. O painel repete exatamente esse
- * objeto, porque é ele que diz "você continua no mesmo lugar" para quem acabou
- * de assinar. No desktop os itens de navegação moram dentro da pílula: o
+ * A página abre com uma pílula branca flutuando sobre o herói preto — marca à
+ * esquerda, um estado à direita, sombra longa, cantos de 52px. O painel repete
+ * exatamente esse objeto sobre o mesmo preto, porque é ele que diz "você
+ * continua no mesmo lugar" para quem acabou de assinar. Por isso as cores de
+ * dentro da pílula são literais: ela é branca mesmo com o app escuro. No desktop os itens de navegação moram dentro da pílula: o
  * ativo abre em pílula preta com o nome, os outros ficam só no ícone, com o
  * nome no hover. No celular a pílula de cima guarda a marca e a saída, e a
  * navegação vai para um dock branco, também flutuante, no rodapé.
@@ -119,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div
       role="group"
       aria-label="Alternar painel"
-      className="flex shrink-0 items-center gap-0.5 rounded-full bg-secondary p-1 sm:gap-1"
+      className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#f0f0f0] p-1 sm:gap-1"
     >
       {roles.map((r) => (
         <button
@@ -133,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-pressed={role === r}
           className={cn(
             "h-8 rounded-full px-2.5 text-[12px] font-medium leading-none tracking-corpo transition-colors sm:px-3",
-            role === r ? "bg-ink text-ink-foreground" : "text-muted-foreground hover:text-foreground",
+            role === r ? "bg-black text-white" : "text-[#8f8f8f] hover:text-black",
           )}
         >
           <span className="hidden sm:inline">{NOME_PAPEL[r].longo}</span>
@@ -181,8 +182,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                         className={cn(
                           "flex h-10 items-center gap-2 rounded-full transition-[background-color,color,padding] duration-200 ease-page",
                           active
-                            ? "bg-ink px-4 text-ink-foreground"
-                            : "w-10 justify-center text-muted-foreground hover:bg-secondary hover:text-foreground",
+                            ? "bg-black px-4 text-white"
+                            : "w-10 justify-center text-[#8f8f8f] hover:bg-[#f0f0f0] hover:text-black",
                         )}
                       >
                         <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.25 : 1.75} />
@@ -211,7 +212,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button
                   onClick={signOut}
                   aria-label="Sair"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[#f0f0f0] text-[#8f8f8f] transition-colors hover:border-black hover:text-black"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -240,7 +241,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Fechar"
             onClick={() => setMaisAberto(false)}
-            className="absolute inset-0 bg-black/45"
+            className="absolute inset-0 bg-black/70"
           />
 
           <div
@@ -253,7 +254,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={() => setMaisAberto(false)}
                 aria-label="Fechar"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground hover:bg-[#e6e6e6]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0] text-black hover:bg-[#e6e6e6]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -267,7 +268,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   onClick={() => navigate(item.path)}
                   className={cn(
                     "flex min-h-[52px] w-full items-center gap-3 rounded-2xl px-3 text-[15px] tracking-corpo transition-colors",
-                    active ? "bg-ink text-ink-foreground" : "text-foreground hover:bg-secondary",
+                    active ? "bg-black text-white" : "text-black hover:bg-[#f0f0f0]",
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
@@ -301,7 +302,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex min-w-0 flex-col items-center gap-1 rounded-[24px] py-2 transition-colors",
-                    active ? "bg-ink text-ink-foreground" : "text-muted-foreground",
+                    active ? "bg-black text-white" : "text-[#8f8f8f]",
                   )}
                 >
                   <item.icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
@@ -318,8 +319,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "flex min-w-0 flex-col items-center gap-1 rounded-[24px] py-2 transition-colors",
                   // Aceso também quando a tela atual mora dentro do "Mais".
                   maisAberto || emMais.some((i) => isActive(i.path))
-                    ? "bg-ink text-ink-foreground"
-                    : "text-muted-foreground",
+                    ? "bg-black text-white"
+                    : "text-[#8f8f8f]",
                 )}
               >
                 <MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />

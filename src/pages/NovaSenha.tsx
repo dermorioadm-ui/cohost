@@ -135,7 +135,7 @@ export default function NovaSenha() {
           </p>
         </div>
 
-        <form onSubmit={save} className="space-y-4 rounded-panel bg-white p-6 shadow-frame">
+        <form onSubmit={save} className="paper-frame space-y-4 !rounded-panel p-6">
           <div className="space-y-1.5">
             <Label htmlFor="nova">Nova senha</Label>
             <Input

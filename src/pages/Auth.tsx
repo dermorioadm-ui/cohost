@@ -88,8 +88,9 @@ export default function Auth() {
         ? "Enviamos um link para você criar uma senha nova."
         : "Bem-vindo de volta.";
 
-  // A mesma pílula da página de vendas no alto, e a folha branca com a sombra
-  // longa embaixo: quem veio do "Assinar" reconhece o lugar sem ler nada.
+  // A mesma pílula branca da página de vendas no alto, sobre o mesmo preto do
+  // herói, e o cartão de vidro embaixo: quem veio do "Assinar" reconhece o
+  // lugar sem ler nada.
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed inset-x-3 top-3 z-30 flex justify-center">
@@ -99,7 +100,7 @@ export default function Auth() {
           </Link>
           <Link
             to="/"
-            className="flex h-10 items-center rounded-full border border-border px-4 text-[13px] tracking-corpo text-foreground transition-colors hover:border-foreground"
+            className="flex h-10 items-center rounded-full border border-[#f0f0f0] px-4 text-[13px] tracking-corpo text-black transition-colors hover:border-black"
           >
             Ver a página
           </Link>
@@ -116,7 +117,7 @@ export default function Auth() {
         </div>
 
         {mode === "reset" && resetSent ? (
-          <div className="mt-7 space-y-4 rounded-panel bg-white p-6 shadow-frame animate-rise-in [animation-delay:120ms]">
+          <div className="paper-frame mt-7 space-y-4 !rounded-panel p-6 animate-rise-in [animation-delay:120ms]">
             <p className="text-[15px] leading-relaxed">
               Se existir uma conta com <span className="font-medium">{form.email.trim().toLowerCase()}</span>, o
               link de recuperação chega em instantes. Ele vale por 1 hora e só funciona uma vez.
@@ -140,7 +141,7 @@ export default function Auth() {
         ) : (
         <form
           onSubmit={submit}
-          className="mt-7 space-y-4 rounded-panel bg-white p-6 shadow-frame animate-rise-in [animation-delay:120ms]"
+          className="paper-frame mt-7 space-y-4 !rounded-panel p-6 animate-rise-in [animation-delay:120ms]"
         >
           {mode === "signup" && (
             <>

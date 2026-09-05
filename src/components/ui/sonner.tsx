@@ -3,25 +3,25 @@ import { Toaster as Sonner, toast } from "sonner";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 /**
- * Aviso no tom da página: papel branco, fio, sombra da pílula. O erro é o único
- * que ganha cor de fundo — e é coral, porque na página o coral é o que pede
+ * Aviso no tom do painel: vidro sobre o preto, fio branco, sombra longa. O
+ * erro é o único que ganha cor — laranja, que na identidade é recusa e
  * atenção.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme="light"
+      theme="dark"
       className="toaster group"
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:rounded-2xl group-[.toaster]:border-[#f0f0f0] group-[.toaster]:bg-white group-[.toaster]:text-black group-[.toaster]:shadow-pill group-[.toaster]:font-sans group-[.toaster]:tracking-corpo",
+            "group toast group-[.toaster]:rounded-2xl group-[.toaster]:border-white/15 group-[.toaster]:bg-[#141414] group-[.toaster]:text-white group-[.toaster]:shadow-pill group-[.toaster]:font-sans group-[.toaster]:tracking-corpo",
           description: "group-[.toast]:text-[#8f8f8f]",
-          actionButton: "group-[.toast]:rounded-full group-[.toast]:bg-black group-[.toast]:text-white",
-          cancelButton: "group-[.toast]:rounded-full group-[.toast]:bg-[#f0f0f0] group-[.toast]:text-black",
-          success: "group-[.toaster]:bg-white group-[.toaster]:text-black",
+          actionButton: "group-[.toast]:rounded-full group-[.toast]:bg-white group-[.toast]:text-black",
+          cancelButton: "group-[.toast]:rounded-full group-[.toast]:bg-white/10 group-[.toast]:text-white",
+          success: "group-[.toaster]:bg-[#141414] group-[.toaster]:text-white group-[.toaster]:border-success/40",
           error:
-            "group-[.toaster]:bg-primary group-[.toaster]:text-white group-[.toaster]:border-primary",
+            "group-[.toaster]:bg-[#141414] group-[.toaster]:text-white group-[.toaster]:border-destructive",
         },
       }}
       {...props}

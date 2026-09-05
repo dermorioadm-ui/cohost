@@ -623,7 +623,7 @@ export default function GuestChat() {
         {/* O cabeçalho fica fixo porque é ele que responde "onde eu estou e
             quanto falta". Rolando junto com o formulário, a resposta some
             exatamente no trecho longo em que a pergunta aparece. */}
-        <header className="sticky top-0 z-20 border-b border-border bg-white/92 backdrop-blur-md">
+        <header className="sticky top-0 z-20 border-b border-border bg-black/85 backdrop-blur-md">
           <div className="mx-auto w-full max-w-md px-4 pb-2 pt-3">
             <div className="flex items-center gap-2">
               {/* Sem esta volta, a escolha vira porta de mão única: o hóspede
@@ -1237,7 +1237,7 @@ export default function GuestChat() {
     <div className="mesh-gradient flex min-h-screen flex-col">
       <div className="mesh-blob-3 animate-blob" aria-hidden />
 
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-white/92 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-black/85 px-4 py-3 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setMode("choice")}

@@ -39,6 +39,7 @@ export function MarcaSimbolo({
           width: size * 0.16,
           height: size * 0.19,
           background: pino,
+          borderRadius: `0 0 ${size * 0.08}px ${size * 0.08}px`,
           clipPath: "polygon(28% 0, 72% 0, 100% 100%, 0 100%)",
         }}
       />
