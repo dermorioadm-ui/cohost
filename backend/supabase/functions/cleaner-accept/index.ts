@@ -91,22 +91,43 @@ export default handler(async (req) => {
 
   // Já existe conta com esse contato? Reaproveita — a diarista que atende
   // vários donos usa UM login para todos.
-  const { data: existingProfile } = await db
+  //
+  // Pode haver MAIS de uma conta com o mesmo contato: a diarista que, sem
+  // achar o link, se cadastra pela tela normal vira uma segunda conta (de
+  // dona) com o mesmo telefone. Isto aqui usava `.maybeSingle()`, que devolve
+  // erro (e nada) quando acha duas linhas; o código então tentava CRIAR a
+  // conta dela de novo, o Auth recusava o e-mail repetido e ela via "Não foi
+  // possível criar seu acesso". Agora listamos todas e escolhemos a que já é
+  // diarista; se nenhuma for, a mais antiga.
+  const { data: candidates } = await db
     .from("profiles")
-    .select("user_id")
+    .select("user_id, created_at")
     .or(
       [
         invite.cleaner_email ? `email.eq.${invite.cleaner_email}` : null,
         invite.cleaner_phone_e164 ? `phone_e164.eq.${invite.cleaner_phone_e164}` : null,
       ].filter(Boolean).join(","),
     )
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  let cleanerId: string;
+  let cleanerId: string | null = null;
 
-  if (existingProfile) {
-    cleanerId = existingProfile.user_id;
-  } else {
+  if (candidates && candidates.length > 0) {
+    cleanerId = candidates[0].user_id;
+    if (candidates.length > 1) {
+      const ids = candidates.map((c) => c.user_id as string);
+      const { data: jaDiarista } = await db
+        .from("user_roles")
+        .select("user_id")
+        .in("user_id", ids)
+        .eq("role", "cleaner")
+        .limit(1)
+        .maybeSingle();
+      if (jaDiarista?.user_id) cleanerId = jaDiarista.user_id;
+    }
+  }
+
+  if (!cleanerId) {
     const { data: created, error } = await db.auth.admin.createUser({
       email: syntheticEmail,
       email_confirm: true,
@@ -130,6 +151,12 @@ export default handler(async (req) => {
     cleanerId = created.user.id;
   }
 
+  // O link mágico é emitido para o e-mail REAL da conta escolhida. Quando a
+  // conta reaproveitada é uma conta comum (e-mail de verdade), o sintético
+  // não existe no Auth e a sessão falharia depois do vínculo criado.
+  const { data: contaAuth } = await db.auth.admin.getUserById(cleanerId);
+  const loginEmail = contaAuth?.user?.email ?? syntheticEmail;
+
   const { error: acceptError } = await db.rpc("accept_cleaner_invite", {
     _token: token,
     _cleaner_id: cleanerId,
@@ -148,7 +175,7 @@ export default handler(async (req) => {
   // Sessão sem senha: link mágico trocado por tokens de acesso.
   const { data: link, error: linkError } = await db.auth.admin.generateLink({
     type: "magiclink",
-    email: syntheticEmail,
+    email: loginEmail,
   });
 
   if (linkError || !link.properties?.hashed_token) {
