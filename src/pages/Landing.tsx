@@ -985,15 +985,20 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------- emprego */}
-      {/* No celular o título vem antes da foto: é o respiro de texto entre
-          duas dobras de fotografia (a varanda acima, o anfitrião aqui). */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div className="md:grid md:grid-cols-12 md:grid-rows-[auto_auto] md:gap-x-8">
-          <div className="md:col-span-6 md:col-start-7 md:row-start-1 md:self-end">
+      {/* Recorte editorial: o texto na coluna de leitura e a foto sangrando
+          até a borda direita da tela, sem moldura. No celular o título vem
+          antes da foto, que vai de borda a borda. */}
+      <section className="pt-24 md:pt-40">
+        <div className="md:grid md:grid-cols-2 md:items-center">
+          <div className="mx-auto w-full max-w-[1120px] px-5 md:mx-0 md:max-w-none md:pl-[max(20px,calc((100vw-1120px)/2+20px))] md:pr-16">
             <Rotulo className="mb-5 block text-primary">A rotina</Rotulo>
-            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={h2} />
+            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[14ch]")} />
+            <p data-reveal="up" style={delay(200)} className="mt-6 hidden max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:block md:text-xl">
+              Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
+              automatização completa — e esquece por dias que tem um Airbnb.
+            </p>
           </div>
-          <figure data-cena="atravessar" className="relative mt-8 overflow-hidden rounded-[28px] bg-[#1a1a1a] md:col-span-5 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0" style={{ aspectRatio: "4 / 5" }}>
+          <figure data-cena="atravessar" className="relative mt-8 aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:mt-0 md:aspect-auto md:h-[78svh] md:rounded-l-[36px]">
             <img
               src="/lp/emprego.webp"
               alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
@@ -1001,7 +1006,7 @@ export default function Landing() {
               className="cena-parallax block h-full w-full object-cover"
             />
           </figure>
-          <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:col-span-6 md:col-start-7 md:row-start-2 md:mt-6 md:self-start md:text-xl">
+          <p data-reveal="up" style={delay(200)} className="mx-auto mt-6 w-full max-w-[1120px] px-5 text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:hidden">
             Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
             automatização completa — e esquece por dias que tem um Airbnb.
           </p>
@@ -1011,7 +1016,7 @@ export default function Landing() {
       {/* ---------------------------------------------------------- a orla */}
       {/* A cena entre o emprego e o resto: o anfitrião longe do celular.
           É a única foto da página em que ninguém está trabalhando. */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-16 md:pt-24">
+      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
         <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:aspect-auto md:h-[82svh]">
           <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
             <img
@@ -1043,32 +1048,30 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------- e ainda */}
-      {/* O trilho corre na horizontal enquanto a página desce: o título é
-          o primeiro cartão, e os quatro recursos vêm em fila. */}
+      {/* O título fica parado no alto da tela fixa e o trilho corre por
+          baixo dele: nada é cortado, e o título é lido o tempo todo. */}
       <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-24 md:mt-40">
         <div className="cena-fixo">
-          <div data-trilho className="trilho">
-            <div className="trilho-cartao flex w-[min(86vw,420px)] shrink-0 flex-col justify-center gap-5">
-              <Rotulo className="text-primary">E ainda</Rotulo>
-              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={h2} />
-              <Traco />
-              <p data-reveal="up" style={delay(300)} className="max-w-[30ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
-                Quatro coisas que passam a acontecer sozinhas depois que o calendário liga.
-              </p>
-              <span aria-hidden className="mt-2 inline-flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-[#8f8f8f]">
-                <span className="h-px w-8 bg-[#d9d9d9]" />
-                Continue rolando
-              </span>
+          <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-5 md:flex-row md:items-end md:justify-between md:gap-10">
+            <div>
+              <Rotulo className="mb-4 block text-primary">E ainda</Rotulo>
+              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={cn(h2, "max-w-[14ch]")} />
+              <Traco className="mt-5" />
             </div>
+            <p data-reveal="up" style={delay(200)} className="max-w-[32ch] text-base leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:pb-1 md:text-lg">
+              Quatro coisas que passam a acontecer sozinhas depois que o calendário liga.
+            </p>
+          </div>
+          <div data-trilho className="trilho">
             {E_AINDA.map((a, i) => (
-              <article key={a.rotulo} className="trilho-cartao flex w-[min(78vw,400px)] shrink-0 flex-col gap-4">
-                <div className={cn("relative overflow-hidden rounded-[22px]", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 5" }}>
+              <article key={a.rotulo} className="flex w-[min(74vw,360px)] shrink-0 flex-col gap-4">
+                <div className={cn("relative overflow-hidden rounded-[22px]", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 3" }}>
                   <img src={a.foto} alt={a.alt} loading="lazy" className="block h-full w-full object-cover" />
                   {a.canais && (
                     <>
                       <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.42) 100%)" }} />
-                      <div className="absolute inset-x-0 bottom-4 flex items-center justify-center">
-                        <Logos tamanho={48} sombra />
+                      <div className="absolute inset-x-0 bottom-3 flex items-center justify-center">
+                        <Logos tamanho={40} sombra />
                       </div>
                     </>
                   )}
@@ -1076,9 +1079,9 @@ export default function Landing() {
                     0{i + 1}
                   </span>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   <Rotulo className="text-primary">{a.rotulo}</Rotulo>
-                  <h3 className="text-[clamp(20px,2.4vw,26px)] font-normal leading-[1.15] tracking-[-0.02em] text-black [text-wrap:balance]">{a.titulo}</h3>
+                  <h3 className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.15] tracking-[-0.02em] text-black [text-wrap:balance]">{a.titulo}</h3>
                   <p className="text-[15px] leading-[1.45] tracking-[-0.012em] text-[#666666] [text-wrap:pretty]">{a.texto}</p>
                 </div>
               </article>
@@ -1089,32 +1092,29 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------ esquecer */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-16 md:pt-24">
-        <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#e9e9e9] md:aspect-auto md:h-[86svh]">
-          <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+      {/* Depois de duas cenas de foto cheia, uma página de revista: o
+          título grande no branco e a foto pequena, quadrada, deslocada. */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
+        <div className="md:grid md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-7">
+            <Rotulo className="mb-5 block text-primary">A meta</Rotulo>
+            <Titulo
+              texto="Nossa meta é você *esquecer* que o HospedePay existe."
+              className="max-w-[12ch] text-[clamp(38px,6.4vw,84px)] font-normal leading-[0.98] tracking-display text-black"
+            />
+            <p data-reveal="up" style={delay(300)} className="mt-7 max-w-[36ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
+              Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
+            </p>
+          </div>
+          <figure data-cena="atravessar" className="relative mt-10 ml-auto aspect-square w-[78%] overflow-hidden rounded-3xl bg-[#e9e9e9] md:col-span-4 md:col-start-9 md:mt-24 md:w-full">
             <img
               src="/lp/esquecer.webp"
               alt="Mulher sorrindo, relaxada no sofá da própria casa, com o celular apagado sobre a mesa"
               loading="lazy"
               className="cena-parallax block h-full w-full object-cover [object-position:50%_20%]"
             />
-          </div>
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 26%, rgba(0,0,0,0.58) 48%, rgba(0,0,0,0.8) 70%, rgba(0,0,0,0.9) 100%)" }}
-          />
-          <figcaption className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1120px] flex-col gap-4 px-7 py-8 md:px-10 md:py-12">
-            <Titulo
-              texto="Nossa meta é você *esquecer* que o HospedePay existe."
-              as="p"
-              className="max-w-[16ch] text-[clamp(32px,5.4vw,64px)] font-normal leading-[1.0] tracking-display text-white"
-            />
-            <p data-reveal="up" style={delay(300)} className="max-w-[40ch] text-[17px] leading-[1.4] tracking-corpo text-white/[0.86] md:text-lg">
-              Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
-            </p>
-          </figcaption>
-        </figure>
+          </figure>
+        </div>
       </section>
 
       {/* ---------------------------------------------- gestora × hospedepay */}
@@ -1214,101 +1214,93 @@ export default function Landing() {
       </section>
 
       {/* -------------------------------------------------------- planos */}
+      {/* Sem caixas: três colunas separadas por um fio, o preço grande e um
+          botão por plano. No celular, três blocos separados por fio. */}
       <section id="planos" ref={planosRef} className="scroll-mt-6 mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-5">
-            <div className="lg:sticky lg:top-24">
-              <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
-              <Titulo texto="Escolha o plano. Eu ligo seu calendário *hoje*." className={h2} />
-              <Traco className="mt-6" />
-              <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
-                Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
-                implementação e suporte inclusos.
-              </p>
-              {checkoutCancelado && (
-                <p className="mt-5 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-                  Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
-                </p>
-              )}
-              {erroPlano && (
-                <p role="alert" className="mt-5 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-                  {erroPlano}
-                </p>
-              )}
-              <p data-reveal="up" style={delay(300)} className="mt-6 hidden lg:block">
-                <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
-                  Mais de 5 imóveis? Toca no botão que a conversa é outra.
-                </button>
-              </p>
-            </div>
+        <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
+          <div className="md:col-span-7">
+            <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
+            <Titulo texto="Escolha o plano. Eu ligo seu calendário *hoje*." className={h2} />
+            <Traco className="mt-6" />
           </div>
-          <div className="mt-10 flex flex-col gap-5 lg:col-span-7 lg:mt-0">
-            {PLANOS.map((p, i) => (
-              <article
-                key={p.tier}
-                id={p.tier}
-                data-reveal="up"
-                style={{ ...delay(i * 80), scrollMarginTop: 24 }}
-                className={cn(
-                  "flex flex-col overflow-hidden rounded-[28px] border bg-white",
-                  p.tier === "pro" ? "border-black" : "border-[#ececec]",
-                )}
-              >
-                <div className="flex items-center justify-between gap-3 border-b border-[#ececec] bg-[#f7f7f7] px-[22px] py-[18px]">
-                  <h3 className="text-[clamp(20px,3vw,24px)] font-normal leading-[1.2] tracking-[-0.02em] text-black">{p.nome}</h3>
-                  <span className="inline-flex h-[30px] items-center whitespace-nowrap rounded-[20px] bg-black px-3.5 text-[13px] leading-none tracking-[-0.02em] text-white">
-                    {p.imoveis}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-5 px-[22px] py-6 md:grid md:grid-cols-2 md:items-center md:gap-8">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="numero-grande text-[clamp(40px,5vw,56px)] text-black">{brl(p.anual)}</span>
-                        <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
-                      </div>
-                      <div className="text-base tracking-corpo text-black tabular-nums">
-                        ou <span className="text-primary">10x de {brl(p.mensal)}</span> no cartão
-                      </div>
-                    </div>
-                    <ul className="flex flex-col gap-2.5">
-                      {["Implementação incluída", "Suporte incluído", "Garantia de 30 dias"].map((l) => (
-                        <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
-                          <Check />
-                          <span>{l}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <button
-                      type="button"
-                      onClick={() => assinar(p.tier, "annual")}
-                      disabled={abrindo !== null}
-                      className="flex h-14 items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
-                    >
-                      {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                      Assinar o {p.nome} anual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => assinar(p.tier, "monthly")}
-                      disabled={abrindo !== null}
-                      className="text-center text-sm leading-normal tracking-[-0.02em] text-[#666666] underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
-                    >
-                      {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-            <p data-reveal="up" className="mt-2 text-center lg:hidden">
-              <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
-                Mais de 5 imóveis? Toca no botão que a conversa é outra.
-              </button>
-            </p>
-          </div>
+          <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:col-span-4 md:col-start-9 md:mt-0">
+            Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
+            implementação e suporte inclusos.
+          </p>
         </div>
+        {checkoutCancelado && (
+          <p className="mt-6 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+            Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
+          </p>
+        )}
+        {erroPlano && (
+          <p role="alert" className="mt-6 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+            {erroPlano}
+          </p>
+        )}
+        <div className="mt-12 border-t border-[#e6e6e6] md:grid md:grid-cols-3">
+          {PLANOS.map((p, i) => (
+            <article
+              key={p.tier}
+              id={p.tier}
+              data-reveal="up"
+              style={{ ...delay(i * 80), scrollMarginTop: 24 }}
+              className={cn(
+                "flex flex-col gap-6 border-b border-[#e6e6e6] py-8 md:border-b-0 md:py-10",
+                i > 0 && "md:border-l md:pl-8",
+                i < PLANOS.length - 1 && "md:pr-8",
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-[clamp(20px,2.4vw,26px)] font-normal leading-[1.2] tracking-[-0.02em] text-black">{p.nome}</h3>
+                <span className="inline-flex h-[30px] items-center whitespace-nowrap rounded-pill bg-black px-3.5 text-[13px] leading-none tracking-[-0.02em] text-white">
+                  {p.imoveis}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="numero-grande text-[clamp(44px,4.6vw,60px)] text-black">{brl(p.anual)}</span>
+                  <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
+                </div>
+                <div className="text-base tracking-corpo text-black tabular-nums">
+                  ou <span className="text-primary">10x de {brl(p.mensal)}</span> no cartão
+                </div>
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {["Implementação incluída", "Suporte incluído", "Garantia de 30 dias"].map((l) => (
+                  <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
+                    <Check />
+                    <span>{l}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-auto flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => assinar(p.tier, "annual")}
+                  disabled={abrindo !== null}
+                  className="flex h-14 items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
+                >
+                  {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  Assinar o {p.nome} anual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => assinar(p.tier, "monthly")}
+                  disabled={abrindo !== null}
+                  className="text-center text-sm leading-normal tracking-[-0.02em] text-[#666666] underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
+                >
+                  {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <p data-reveal="up" className="mt-8 text-center md:text-left">
+          <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
+            Mais de 5 imóveis? Toca no botão que a conversa é outra.
+          </button>
+        </p>
       </section>
 
       {/* ------------------------------------------------------ garantia */}
@@ -1579,13 +1571,12 @@ const LP_CSS = `
 .cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
-.cena-drift { position: relative; height: 380svh; }
-@media (min-width: 768px) { .cena-drift { height: 300svh; } }
-.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: flex-start; padding-top: 96px; overflow: hidden; }
-@media (min-width: 768px) { .cena-fixo { align-items: center; padding-top: 0; } }
-.trilho { display: flex; align-items: stretch; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
+.cena-drift { position: relative; height: 320svh; }
+@media (min-width: 768px) { .cena-drift { height: 260svh; } }
+.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; padding-top: 72px; }
+@media (min-width: 768px) { .cena-fixo { gap: 40px; padding-top: 48px; } }
+.trilho { display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 @media (min-width: 768px) { .trilho { gap: 28px; padding-left: max(20px, calc((100vw - 1120px) / 2 + 20px)); } }
-.trilho-cartao { min-height: min(70svh, 640px); }
 
 /* --- crescer até a borda da tela --------------------------------------- */
 .cena-cresce { --g: var(--p, 0); border-radius: calc(32px * (1 - var(--g))); margin-inline: calc((100% - 100vw) / 2 * var(--g)); }
