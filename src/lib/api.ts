@@ -153,6 +153,7 @@ export type Estagio =
   | "sem_diarista"
   | "sem_mensagem"
   | "consolidado"
+  | "nao_pagou"
   | "perdido";
 
 export interface PipelineLinha {

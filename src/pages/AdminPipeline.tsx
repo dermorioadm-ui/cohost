@@ -34,11 +34,13 @@ const ESTAGIO: Record<Estagio, { rotulo: string; curto: string; grave?: boolean 
   sem_diarista:               { rotulo: "Sem diarista vinculada", curto: "Sem diarista" },
   sem_mensagem:               { rotulo: "Sem mensagem automática", curto: "Sem mensagem" },
   consolidado:                { rotulo: "Consolidado", curto: "Pronto" },
-  perdido:                    { rotulo: "Cancelou", curto: "Perdido" },
+  // Sem assinatura na Stripe nunca houve pagamento: é cadastro, não cancelamento.
+  nao_pagou:                  { rotulo: "Cadastrou e não pagou", curto: "Não pagou", grave: true },
+  perdido:                    { rotulo: "Cancelou", curto: "Cancelou" },
 };
 
 const ORDEM: Estagio[] = [
-  "pagamento_falhou", "calendario_quebrado", "sem_imovel", "sem_calendario",
+  "pagamento_falhou", "calendario_quebrado", "nao_pagou", "sem_imovel", "sem_calendario",
   "calendario_sem_sincronizar", "sem_diarista", "sem_mensagem", "consolidado", "perdido",
 ];
 
@@ -112,7 +114,10 @@ export default function AdminPipeline() {
     );
   }
 
-  const urgentes = (porEstagio.get("pagamento_falhou") ?? 0) + (porEstagio.get("calendario_quebrado") ?? 0);
+  const urgentes =
+    (porEstagio.get("pagamento_falhou") ?? 0) +
+    (porEstagio.get("calendario_quebrado") ?? 0) +
+    (porEstagio.get("nao_pagou") ?? 0);
 
   return (
     <div className="space-y-5">
@@ -209,8 +214,9 @@ export default function AdminPipeline() {
                     {l.full_name ?? l.email ?? "Sem nome"}
                   </Link>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {l.plano ?? "sem plano"} · {l.imoveis} imóve{l.imoveis === 1 ? "l" : "is"} ·
-                    assinou {desde(l.assinou_em)}
+                    {l.estagio === "nao_pagou"
+                      ? `cadastrou ${desde(l.assinou_em)} · escolheu ${l.plano ?? "nenhum plano"} · sem pagamento`
+                      : `${l.plano ?? "sem plano"} · ${l.imoveis} imóve${l.imoveis === 1 ? "l" : "is"} · assinou ${desde(l.assinou_em)}`}
                   </p>
                 </div>
                 <Badge variant={info.grave ? "default" : "secondary"} className="shrink-0">
