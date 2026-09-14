@@ -78,6 +78,16 @@ verify_jwt = false
 [functions.signup]
 verify_jwt = false
 
+# Checkout direto da página de vendas: a conta nasce depois do pagamento.
+# Público de propósito; só aceita tier e ciclo, o preço vem de `plans`.
+[functions.billing-checkout-public]
+verify_jwt = false
+
+# A volta do checkout: valida a sessão NA STRIPE, cria a conta e devolve a
+# sessão do Supabase. O id da sessão de checkout é a credencial, e vale uma vez.
+[functions.billing-checkout-complete]
+verify_jwt = false
+
 # Diarista entrando pelo link mágico. Autoriza pelo token do convite.
 [functions.cleaner-accept]
 verify_jwt = false

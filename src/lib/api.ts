@@ -451,6 +451,25 @@ export const api = {
     portal: () => request<{ url: string }>("billing-portal", {}),
   },
 
+  /**
+   * Checkout sem conta, direto da página de vendas. A conta nasce depois do
+   * pagamento, com o e-mail dado na Stripe; `complete` troca o id da sessão
+   * de checkout por uma sessão do Supabase, uma única vez.
+   */
+  billingPublico: {
+    checkout: (body: { tier: string; cycle: string }) =>
+      request<{ url: string }>("billing-checkout-public", { body, auth: false }),
+    complete: (session_id: string) =>
+      request<{
+        ok: boolean;
+        estado: "ativo" | "pendente";
+        email?: string;
+        conta_nova?: boolean;
+        ja_entrou?: boolean;
+        session?: { access_token: string; refresh_token: string };
+      }>("billing-checkout-complete", { body: { session_id }, auth: false }),
+  },
+
   // Recuperação de senha. A resposta é a mesma exista a conta ou não — a tela
   // precisa refletir isso e nunca dizer "e-mail não encontrado".
   auth: {

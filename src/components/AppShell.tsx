@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  BadgeCheck, CalendarDays, CalendarCheck, DoorOpen, FileText, Home, LayoutDashboard,
+  BadgeCheck, CalendarDays, CalendarCheck, CreditCard, DoorOpen, FileText, Home, LayoutDashboard,
   LogOut, MessageSquare, MoreHorizontal, Sparkles, Target, Users, Wallet, X,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
@@ -52,6 +52,9 @@ const NAV: Record<AppRole, NavItem[]> = {
     { label: "Conversas", short: "Chat", icon: MessageSquare, path: "/conversas" },
     { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
     { label: "Faturas da limpeza", short: "Faturas", icon: FileText, path: "/faturas" },
+    // Fica por último de propósito: assinatura se olha uma vez por mês, e o
+    // caminho até ela era só um link no fim da tela de Financeiro.
+    { label: "Meu plano", short: "Plano", icon: CreditCard, path: "/plano" },
   ],
   // A diarista: o dia (agenda), o mês (calendário), o que ela precisa
   // responder (aprovações) e quanto ela recebe (ganhos). A ordem é a do uso.

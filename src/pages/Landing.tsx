@@ -2,9 +2,11 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
   type CSSProperties, type FormEvent, type ReactNode,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { Marca, MarcaSimbolo } from "@/components/Marca";
 import { cn } from "@/lib/utils";
+import { api, ApiError, supabase } from "@/lib/api";
 
 /**
  * Página de vendas: "Check-in Blindado".
@@ -46,10 +48,12 @@ const FOTO = (ENV.VITE_LP_FOTO ?? "").trim();
 const PROVA = { reservas: 19, hospedes: 27, termos: 15, cadastros: 26 };
 
 /**
- * Espelha public.plans. Os três planos são IGUAIS; a única variável é quantos
- * imóveis rodam. Anual paga 10 meses e usa 12.
+ * Reserva de public.plans, usada até a tabela responder (e se ela não
+ * responder). Os três planos são IGUAIS; a única variável é quantos imóveis
+ * rodam. Anual paga 10 meses e usa 12. O valor de verdade é o da tabela: é
+ * dela que o checkout cobra, e a página nunca pode prometer outro número.
  */
-const PLANOS = [
+const PLANOS_RESERVA = [
   { tier: "essencial", nome: "Essencial", imoveis: "1 imóvel", mensal: 97, anual: 970 },
   { tier: "pro", nome: "Profissional", imoveis: "2 ou 3 imóveis", mensal: 197, anual: 1970 },
   { tier: "ilimitado", nome: "Portfólio", imoveis: "4 ou 5 imóveis", mensal: 297, anual: 2970 },
@@ -299,9 +303,37 @@ const PERGUNTAS = [
 
 /* -------------------------------------------------------------- página */
 
+type Plano = (typeof PLANOS_RESERVA)[number];
+
+const IMOVEIS_LABEL = (n: number | null) =>
+  n === null ? "sem limite de imóveis" : n === 1 ? "1 imóvel" : n === 3 ? "2 ou 3 imóveis" : n === 5 ? "4 ou 5 imóveis" : `até ${n} imóveis`;
+
 export default function Landing() {
   const raiz = useRef<HTMLDivElement>(null);
   useReveal(raiz);
+
+  // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
+  // acima segura a página; se a tabela mudar, a página acompanha sem deploy.
+  const [PLANOS, setPlanos] = useState<Plano[]>(PLANOS_RESERVA);
+  useEffect(() => {
+    supabase
+      .from("plans")
+      .select("tier, name, monthly_cents, annual_cents, max_properties")
+      .eq("active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        setPlanos(
+          data.map((p) => ({
+            tier: p.tier as string,
+            nome: p.name as string,
+            imoveis: IMOVEIS_LABEL(p.max_properties as number | null),
+            mensal: Math.round((p.monthly_cents as number) / 100),
+            anual: Math.round((p.annual_cents as number) / 100),
+          })),
+        );
+      });
+  }, []);
 
   // Estado "online": fixo pelo ambiente, ou lido de uma URL a cada 60s.
   const [onlineAuto, setOnlineAuto] = useState(false);
@@ -335,6 +367,25 @@ export default function Landing() {
     }),
     [on],
   );
+
+  // Assinar abre a Stripe na hora. Nome, e-mail e telefone são pedidos lá,
+  // uma vez só; a conta nasce depois do pagamento. Nenhuma tela nossa antes
+  // do cartão — cada uma era um lugar para desistir.
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+  const [erroPlano, setErroPlano] = useState<string | null>(null);
+  const [params] = useSearchParams();
+  const checkoutCancelado = params.get("checkout") === "cancelado";
+  const assinar = async (tier: string, cycle: "annual" | "monthly") => {
+    setErroPlano(null);
+    setAbrindo(`${tier}:${cycle}`);
+    try {
+      const { url } = await api.billingPublico.checkout({ tier, cycle });
+      window.location.href = url;
+    } catch (e) {
+      setErroPlano(e instanceof ApiError ? e.message : "Não consegui abrir o pagamento agora. Tente de novo.");
+      setAbrindo(null);
+    }
+  };
 
   // Formulário "me liga".
   const [formAberto, setFormAberto] = useState(false);
@@ -694,6 +745,16 @@ export default function Landing() {
             Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
             implementação e suporte inclusos.
           </p>
+          {checkoutCancelado && (
+            <p className="mt-5 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+              Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
+            </p>
+          )}
+          {erroPlano && (
+            <p role="alert" className="mt-5 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+              {erroPlano}
+            </p>
+          )}
           <div className="mt-7 grid gap-3.5">
             {PLANOS.map((p, i) => (
               <article
@@ -712,18 +773,23 @@ export default function Landing() {
                   <span className="text-sm tracking-titulo text-muted-foreground">por ano</span>
                 </div>
                 <div className="text-sm tracking-titulo text-muted-foreground">10x de {brl(p.mensal)}</div>
-                <Link
-                  to={`/entrar?modo=cadastro&plano=${p.tier}&ciclo=anual`}
-                  className="mt-2 flex h-14 items-center justify-center rounded-xl bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985]"
+                <button
+                  type="button"
+                  onClick={() => assinar(p.tier, "annual")}
+                  disabled={abrindo !== null}
+                  className="mt-2 flex h-14 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
                 >
+                  {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
                   Assinar o {p.nome} anual
-                </Link>
-                <Link
-                  to={`/entrar?modo=cadastro&plano=${p.tier}&ciclo=mensal`}
-                  className="text-center text-sm leading-normal tracking-titulo text-muted-foreground underline decoration-1 underline-offset-[3px] hover:text-black"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => assinar(p.tier, "monthly")}
+                  disabled={abrindo !== null}
+                  className="text-center text-sm leading-normal tracking-titulo text-muted-foreground underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
                 >
-                  Mensal: {brl(p.mensal)}/mês
-                </Link>
+                  {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
+                </button>
               </article>
             ))}
           </div>

@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, supabase } from "@/lib/api";
 import { Marca } from "@/components/Marca";
+import { guardarPlano, NOME_TIER, planoDaQuery, planoGuardado } from "@/lib/planoEscolhido";
 import { Link } from "react-router-dom";
 
 /**
@@ -21,6 +22,12 @@ export default function Auth() {
     params.get("modo") === "cadastro" ? "signup" : "signin",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+
+  // O plano escolhido na página de vendas atravessa o cadastro e o e-mail de
+  // confirmação pelo localStorage; a query só existe nesta primeira tela.
+  const daQuery = planoDaQuery(params);
+  if (daQuery) guardarPlano(daQuery);
+  const plano = daQuery ?? planoGuardado();
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
@@ -70,7 +77,7 @@ export default function Auth() {
           password: form.password,
         });
         if (error) throw new Error("E-mail ou senha incorretos");
-        navigate("/painel");
+        navigate(planoGuardado() ? "/assinatura" : "/painel");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não consegui continuar");
@@ -114,6 +121,15 @@ export default function Auth() {
           </p>
           <h1 className="mt-2 text-[34px] font-normal leading-[1.02] tracking-titulo">{titulo}</h1>
           <p className="mt-2 text-[15px] leading-snug text-muted-foreground">{apoio}</p>
+          {plano && mode !== "reset" && (
+            <p className="mt-4 flex items-center gap-2.5 rounded-2xl border border-border px-3.5 py-2.5 text-[13px] leading-snug tracking-corpo">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+              <span>
+                Plano {NOME_TIER[plano.tier]} {plano.cycle === "annual" ? "anual" : "mensal"}
+                <span className="text-muted-foreground"> · o pagamento vem depois da conta</span>
+              </span>
+            </p>
+          )}
         </div>
 
         {mode === "reset" && resetSent ? (
