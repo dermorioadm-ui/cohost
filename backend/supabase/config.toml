@@ -142,3 +142,6 @@ verify_jwt = true
 
 [functions.ops-stripe-webhook]
 verify_jwt = false
+
+[functions.ops-stripe-marca]
+verify_jwt = false

@@ -62,6 +62,13 @@ export default handler(async (req) => {
     cancel_url: `${base}/?checkout=cancelado#planos`,
     locale: "pt-BR",
     allow_promotion_codes: true,
+    // A frase embaixo do botão de pagar: o que acontece no segundo seguinte.
+    // É a resposta à única dúvida que sobra na hora do cartão.
+    custom_text: {
+      submit: {
+        message: "Depois do pagamento você entra direto, sem senha e sem cadastro. Eu te ligo em até 15 minutos para ligar o seu calendário.",
+      },
+    },
   });
 
   await db.from("audit_log").insert({
