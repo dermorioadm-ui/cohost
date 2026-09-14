@@ -1008,6 +1008,40 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ---------------------------------------------------------- a orla */}
+      {/* A cena entre o emprego e o resto: o anfitrião longe do celular.
+          É a única foto da página em que ninguém está trabalhando. */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-16 md:pt-24">
+        <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:aspect-auto md:h-[82svh]">
+          <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+            <img
+              src="/lp/orla.webp"
+              alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso e o Pão de Açúcar ao fundo"
+              loading="lazy"
+              className="cena-parallax block h-full w-full object-cover [object-position:50%_30%]"
+            />
+          </div>
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.88) 100%)" }}
+          />
+          <span className="vidro absolute left-5 top-5 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
+            Sexta, 18h40
+          </span>
+          <figcaption className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1120px] flex-col gap-4 px-7 py-8 md:px-10 md:py-12">
+            <Titulo
+              as="p"
+              texto="Hóspede chega amanhã. Você nem sabe. E não *precisa*."
+              className="max-w-[16ch] text-[clamp(32px,5.4vw,64px)] font-normal leading-[1.0] tracking-display text-white"
+            />
+            <p data-reveal="up" style={delay(300)} className="max-w-[40ch] text-[17px] leading-[1.4] tracking-corpo text-white/[0.86] md:text-lg">
+              O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.
+            </p>
+          </figcaption>
+        </figure>
+      </section>
+
       {/* ------------------------------------------------------- e ainda */}
       {/* O trilho corre na horizontal enquanto a página desce: o título é
           o primeiro cartão, e os quatro recursos vêm em fila. */}
