@@ -552,8 +552,8 @@ function VideoProva() {
 function Celular({ altura = 620 }: { altura?: number }) {
   return (
     <div
-      className="relative max-w-full rounded-[48px] bg-[#0b0b0d] p-2.5"
-      style={{ height: altura, aspectRatio: "9 / 19.5", boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
+      className="relative rounded-[48px] bg-[#0b0b0d] p-2.5"
+      style={{ height: altura, width: Math.round((altura * 9) / 19.5), boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
     >
       <div aria-hidden className="absolute -left-0.5 top-[19%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
       <div aria-hidden className="absolute -left-0.5 top-[29%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
@@ -998,7 +998,7 @@ export default function Landing() {
               automatização completa — e esquece por dias que tem um Airbnb.
             </p>
           </div>
-          <figure data-cena="atravessar" className="relative mt-8 aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:mt-0 md:aspect-auto md:h-[78svh] md:rounded-l-[36px]">
+          <figure data-cena="atravessar" className="relative ml-5 mr-auto mt-8 aspect-[4/5] w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#1a1a1a] md:ml-0 md:mt-0 md:aspect-auto md:h-[78svh] md:w-auto md:max-w-none md:rounded-l-[36px] md:rounded-r-none">
             <img
               src="/lp/emprego.webp"
               alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
@@ -1015,36 +1015,28 @@ export default function Landing() {
 
       {/* ---------------------------------------------------------- a orla */}
       {/* A cena entre o emprego e o resto: o anfitrião longe do celular.
-          É a única foto da página em que ninguém está trabalhando. */}
+          Mesmo padrão de revista das outras duas, com a foto do outro lado. */}
       <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:aspect-auto md:h-[82svh]">
-          <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-8">
+          <figure data-cena="atravessar" className="relative ml-auto aspect-[3/4] w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#1a1a1a] md:col-span-5 md:ml-0 md:w-full md:max-w-none md:aspect-[4/5]">
             <img
               src="/lp/orla.webp"
               alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso e o Pão de Açúcar ao fundo"
               loading="lazy"
               className="cena-parallax block h-full w-full object-cover [object-position:50%_30%]"
             />
-          </div>
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.88) 100%)" }}
-          />
-          <span className="vidro absolute left-5 top-5 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
-            Sexta, 18h40
-          </span>
-          <figcaption className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1120px] flex-col gap-4 px-7 py-8 md:px-10 md:py-12">
-            <Titulo
-              as="p"
-              texto="Hóspede chega amanhã. Você nem sabe. E não *precisa*."
-              className="max-w-[16ch] text-[clamp(32px,5.4vw,64px)] font-normal leading-[1.0] tracking-display text-white"
-            />
-            <p data-reveal="up" style={delay(300)} className="max-w-[40ch] text-[17px] leading-[1.4] tracking-corpo text-white/[0.86] md:text-lg">
+            <span className="vidro absolute left-3 top-3 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
+              Sexta, 18h40
+            </span>
+          </figure>
+          <div className="mt-8 md:col-span-6 md:col-start-7 md:mt-0">
+            <Rotulo className="mb-5 block text-primary">Enquanto isso</Rotulo>
+            <Titulo texto="Hóspede chega amanhã. Você nem sabe. E não *precisa*." className={cn(h2, "max-w-[14ch]")} />
+            <p data-reveal="up" style={delay(300)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
               O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.
             </p>
-          </figcaption>
-        </figure>
+          </div>
+        </div>
       </section>
 
       {/* ------------------------------------------------------- e ainda */}
@@ -1106,7 +1098,7 @@ export default function Landing() {
               Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
             </p>
           </div>
-          <figure data-cena="atravessar" className="relative mt-10 ml-auto aspect-square w-[78%] overflow-hidden rounded-3xl bg-[#e9e9e9] md:col-span-4 md:col-start-9 md:mt-24 md:w-full">
+          <figure data-cena="atravessar" className="relative mr-auto mt-10 aspect-square w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#e9e9e9] md:col-span-4 md:col-start-9 md:mt-24 md:w-full md:max-w-none">
             <img
               src="/lp/esquecer.webp"
               alt="Mulher sorrindo, relaxada no sofá da própria casa, com o celular apagado sobre a mesa"
