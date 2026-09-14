@@ -5,6 +5,7 @@ import {
 import { Link } from "react-router-dom";
 import { Marca, MarcaSimbolo } from "@/components/Marca";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/api";
 
 /**
  * Página de vendas: "Check-in Blindado".
@@ -46,10 +47,12 @@ const FOTO = (ENV.VITE_LP_FOTO ?? "").trim();
 const PROVA = { reservas: 19, hospedes: 27, termos: 15, cadastros: 26 };
 
 /**
- * Espelha public.plans. Os três planos são IGUAIS; a única variável é quantos
- * imóveis rodam. Anual paga 10 meses e usa 12.
+ * Reserva de public.plans, usada até a tabela responder (e se ela não
+ * responder). Os três planos são IGUAIS; a única variável é quantos imóveis
+ * rodam. Anual paga 10 meses e usa 12. O valor de verdade é o da tabela: é
+ * dela que o checkout cobra, e a página nunca pode prometer outro número.
  */
-const PLANOS = [
+const PLANOS_RESERVA = [
   { tier: "essencial", nome: "Essencial", imoveis: "1 imóvel", mensal: 97, anual: 970 },
   { tier: "pro", nome: "Profissional", imoveis: "2 ou 3 imóveis", mensal: 197, anual: 1970 },
   { tier: "ilimitado", nome: "Portfólio", imoveis: "4 ou 5 imóveis", mensal: 297, anual: 2970 },
@@ -299,9 +302,37 @@ const PERGUNTAS = [
 
 /* -------------------------------------------------------------- página */
 
+type Plano = (typeof PLANOS_RESERVA)[number];
+
+const IMOVEIS_LABEL = (n: number | null) =>
+  n === null ? "sem limite de imóveis" : n === 1 ? "1 imóvel" : n === 3 ? "2 ou 3 imóveis" : n === 5 ? "4 ou 5 imóveis" : `até ${n} imóveis`;
+
 export default function Landing() {
   const raiz = useRef<HTMLDivElement>(null);
   useReveal(raiz);
+
+  // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
+  // acima segura a página; se a tabela mudar, a página acompanha sem deploy.
+  const [PLANOS, setPlanos] = useState<Plano[]>(PLANOS_RESERVA);
+  useEffect(() => {
+    supabase
+      .from("plans")
+      .select("tier, name, monthly_cents, annual_cents, max_properties")
+      .eq("active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        setPlanos(
+          data.map((p) => ({
+            tier: p.tier as string,
+            nome: p.name as string,
+            imoveis: IMOVEIS_LABEL(p.max_properties as number | null),
+            mensal: Math.round((p.monthly_cents as number) / 100),
+            anual: Math.round((p.annual_cents as number) / 100),
+          })),
+        );
+      });
+  }, []);
 
   // Estado "online": fixo pelo ambiente, ou lido de uma URL a cada 60s.
   const [onlineAuto, setOnlineAuto] = useState(false);

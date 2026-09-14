@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/api";
+import { planoGuardado } from "@/lib/planoEscolhido";
 
 /**
  * Onde o link de confirmação de cadastro cai.
@@ -43,9 +44,11 @@ export default function Confirmar() {
         // O token vale uma vez. Limpar a barra de endereço evita que um refresh
         // tente reusá-lo e mostre "link inválido" para quem já confirmou.
         window.history.replaceState(null, "", "/confirmar");
-        // Um instante na tela de sucesso antes do onboarding: sem isso o
-        // clique no e-mail terminaria num formulário sem explicação.
-        setTimeout(() => navigate("/comecar", { replace: true }), 1200);
+        // Um instante na tela de sucesso antes do próximo passo: sem isso o
+        // clique no e-mail terminaria num formulário sem explicação. Quem
+        // escolheu um plano na página de vendas paga antes de configurar.
+        const destino = planoGuardado() ? "/assinatura" : "/comecar";
+        setTimeout(() => navigate(destino, { replace: true }), 1200);
       });
 
     return () => {

@@ -30,11 +30,40 @@ vercel --prod
 `vercel.json` já traz o rewrite de SPA e os headers de segurança. As duas
 variáveis do `.env.example` precisam estar configuradas no painel da Vercel.
 
+### Checklist para o hospedepay.org vender de verdade
+
+O código já faz o caminho inteiro: página de vendas → cadastro → e-mail de
+confirmação → `/assinatura` → checkout da Stripe → webhook ativa a conta →
+onboarding. O que fica fora do repositório:
+
+1. **Domínio.** Na Vercel, projeto `cohost` → Settings → Domains → adicionar
+   `hospedepay.org` e `www.hospedepay.org`; no registrador, o A/CNAME que a
+   Vercel mostrar. O certificado sai sozinho.
+2. **Base dos links.** Secret `APP_BASE_URL=https://hospedepay.org` nas Edge
+   Functions do Supabase. É ele que monta o link do e-mail de confirmação, o
+   retorno do checkout e o link do chat do hóspede.
+3. **Stripe em produção.** Secret `STRIPE_SECRET_KEY` com a chave `sk_live_`.
+   Depois, `SELECT private.call_job('billing-sync-plans')` no banco: a
+   function cria os produtos e preços em produção a partir de `public.plans`
+   (R$ 97 / 197 / 297 mensal, R$ 970 / 1.970 / 2.970 anual) e grava os
+   `price_...` de volta na tabela. Nunca digite price id à mão.
+4. **Webhook da Stripe.** Endpoint
+   `https://hukjxwpwnrsepgneopqd.supabase.co/functions/v1/stripe-webhook`
+   com os eventos `checkout.session.completed`, `customer.subscription.*`,
+   `invoice.paid`, `invoice.payment_failed`; o `whsec_...` vai no secret
+   `STRIPE_WEBHOOK_SECRET`. Sem isso o pagamento passa e a conta não ativa.
+5. **Formulário "me liga" da página.** `VITE_WHATSAPP` (ou
+   `VITE_LEAD_ENDPOINT`) na Vercel. Sem nenhum dos dois, o botão manda criar
+   a conta.
+6. **Teste de ponta a ponta** com um cartão real e reembolso, ou com a chave
+   `sk_test_` e o cartão 4242 antes de trocar para a `sk_live_`.
+
 ## Rotas
 
 | Rota | Acesso | Tela |
 |---|---|---|
 | `/entrar` | público | login e cadastro |
+| `/assinatura` | dono | escolha do plano, checkout da Stripe e retorno do pagamento |
 | `/comecar` | dono | onboarding guiado em 5 passos |
 | `/painel` | dono | saídas do mês, o que está travado, alertas |
 | `/agenda` | diarista | limpezas do mês, concluir em um toque |

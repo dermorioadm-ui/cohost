@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/useAuth";
 import { AppShell } from "@/components/AppShell";
+import { planoGuardado } from "@/lib/planoEscolhido";
 
 const Auth = lazy(() => import("@/pages/Auth"));
 const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
@@ -27,6 +28,7 @@ const CleanerGanhos = lazy(() => import("@/pages/CleanerGanhos"));
 const Financeiro = lazy(() => import("@/pages/Financeiro"));
 const Hospedes = lazy(() => import("@/pages/Hospedes"));
 const Plano = lazy(() => import("@/pages/Plano"));
+const Assinatura = lazy(() => import("@/pages/Assinatura"));
 const AdminVisaoGeral = lazy(() => import("@/pages/AdminVisaoGeral"));
 const AdminFinanceiro = lazy(() => import("@/pages/AdminFinanceiro"));
 const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
@@ -86,6 +88,10 @@ function Home() {
   const { user, role, loading } = useAuth();
   if (loading) return <Splash />;
   if (!user) return <Landing />;
+  // Quem escolheu um plano na página de vendas e ainda não pagou vai para o
+  // pagamento antes do painel. A tela de assinatura apaga a escolha quando o
+  // pagamento confirma ou quando a pessoa decide seguir sem assinar.
+  if (role === "owner" && planoGuardado()) return <Navigate to="/assinatura" replace />;
   // Cada papel entra na sua casa. Sem o caso do admin aqui, quem alternasse
   // para "Plataforma" e clicasse no logo voltaria para o painel de host.
   return (
@@ -120,6 +126,30 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/entrar" element={<Auth />} />
+
+                      <Route
+
+
+                        path="/assinatura"
+
+
+                        element={
+
+
+                          <Protected allow={["owner"]} shell={false}>
+
+
+                            <Assinatura />
+
+
+                          </Protected>
+
+
+                        }
+
+
+                      />
+
 
                       <Route
                         path="/comecar"

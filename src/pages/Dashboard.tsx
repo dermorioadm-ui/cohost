@@ -35,6 +35,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activation, setActivation] = useState<ActivationState[]>([]);
+  /** Estado da assinatura: sem ela o backend não sincroniza calendário nem cadastra hóspede. */
+  const [assinatura, setAssinatura] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [properties, setProperties] = useState<Record<string, string>>({});
   /** reservation_id -> canal, para a tarja lateral do cartão. */
@@ -49,7 +51,7 @@ export default function Dashboard() {
         .toISOString()
         .slice(0, 10);
 
-      const [act, props, tsk, res] = await Promise.all([
+      const [act, props, tsk, res, perfil] = await Promise.all([
         supabase.rpc("my_activation"),
         supabase.from("properties").select("id, name").is("archived_at", null),
         supabase
@@ -66,9 +68,11 @@ export default function Dashboard() {
           .eq("status", "confirmed")
           .gte("checkout_date", today)
           .lte("checkout_date", monthEnd),
+        supabase.from("profiles").select("subscription_status").eq("user_id", user.id).maybeSingle(),
       ]);
 
       setActivation((act.data ?? []) as ActivationState[]);
+      setAssinatura((perfil.data?.subscription_status as string | undefined) ?? null);
       setProperties(
         Object.fromEntries(((props.data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name])),
       );
@@ -134,6 +138,29 @@ export default function Dashboard() {
           </Link>
         </Button>
       </header>
+
+      {/* Sem assinatura ativa nada roda: o job de calendário e o cadastro do
+          hóspede checam `subscription_is_active` no backend. É o primeiro
+          bloco da tela porque é o único que trava todos os outros. */}
+      {assinatura && assinatura !== "active" && assinatura !== "past_due" && (
+        <Link
+          to="/assinatura"
+          className="glass-accent flex items-center justify-between gap-3 rounded-[30px] px-5 py-4"
+        >
+          <div className="min-w-0">
+            <p className="rotulo text-primary">Assinatura</p>
+            <p className="mt-1 text-[17px] leading-tight tracking-titulo">
+              Sua conta ainda não está ativa.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              O calendário só sincroniza e o hóspede só se cadastra depois do pagamento.
+            </p>
+          </div>
+          <span className="flex h-11 shrink-0 items-center rounded-full bg-ink px-4 text-[14px] text-ink-foreground">
+            Assinar
+          </span>
+        </Link>
+      )}
 
       {/* A sugestão vem DEPOIS dos problemas e ANTES dos números: quem tem
           calendário fora do ar não precisa de dica, precisa de conserto. */}
