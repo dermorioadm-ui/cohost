@@ -22,7 +22,7 @@ import { api, ApiError, supabase } from "@/lib/api";
  * As três travas são três telas cheias que se empilham (a de cima encolhe e
  * escurece enquanto a próxima desliza por cima); o "e ainda" corre na
  * horizontal enquanto a página desce; a comparação escura cresce até tomar a
- * largura toda; a garantia entra como cortina. Todo movimento é ligado à
+ * largura toda; a garantia cresce até a borda. Todo movimento é ligado à
  * rolagem — nada acontece sozinho — e é interpolado com inércia, para a
  * página deslizar em vez de pular. Com `prefers-reduced-motion` tudo vira
  * estático e a leitura é a mesma.
@@ -80,7 +80,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
  *
  *   2. CENA. Tudo o que tem `data-cena` recebe uma variável CSS `--p`, de 0
  *      a 1, com o quanto a rolagem já atravessou aquele elemento. A CSS
- *      transforma `--p` em movimento (empilhar, deslizar, crescer, cortina).
+ *      transforma `--p` em movimento (empilhar, deslizar, crescer, acender).
  *      O valor é interpolado com inércia a cada frame — é isso que faz a
  *      página deslizar em vez de acompanhar o dedo aos trancos.
  *
@@ -548,20 +548,20 @@ function VideoProva() {
   );
 }
 
-/** O celular, com o vídeo dentro. */
-function Celular({ altura = 620 }: { altura?: number }) {
+/** O celular, com o vídeo dentro. Compacto no celular (ao lado dos passos), cheio no desktop. */
+function Celular() {
   return (
     <div
-      className="relative rounded-[48px] bg-[#0b0b0d] p-2.5"
-      style={{ height: altura, width: Math.round((altura * 9) / 19.5), boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
+      className="relative h-[320px] w-[148px] rounded-[34px] bg-[#0b0b0d] p-2 lg:h-[620px] lg:w-[286px] lg:rounded-[48px] lg:p-2.5"
+      style={{ boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
     >
       <div aria-hidden className="absolute -left-0.5 top-[19%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
       <div aria-hidden className="absolute -left-0.5 top-[29%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
       <div aria-hidden className="absolute -right-0.5 top-[23%] h-[13%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
-      <div className="relative h-full w-full overflow-hidden rounded-[39px] bg-black">
+      <div className="relative h-full w-full overflow-hidden rounded-[27px] bg-black lg:rounded-[39px]">
         <VideoProva />
-        <div aria-hidden className="absolute left-1/2 top-[9px] h-[22px] w-[34%] -translate-x-1/2 rounded-[20px] bg-black" />
-        <div aria-hidden className="absolute bottom-[7px] left-1/2 h-1 w-[36%] -translate-x-1/2 rounded-[2px] bg-white/85" />
+        <div aria-hidden className="absolute left-1/2 top-[6px] h-[14px] w-[34%] -translate-x-1/2 rounded-[20px] bg-black lg:top-[9px] lg:h-[22px]" />
+        <div aria-hidden className="absolute bottom-[5px] left-1/2 h-[3px] w-[36%] -translate-x-1/2 rounded-[2px] bg-white/85 lg:bottom-[7px] lg:h-1" />
       </div>
     </div>
   );
@@ -911,30 +911,32 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------ o que o hóspede vê */}
+      {/* No celular os passos ficam ao lado de um celular menor; no desktop o celular fica fixo à direita. */}
       <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-36">
-        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-6">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 lg:grid-cols-12 lg:items-start lg:gap-x-10">
+          <div className="col-span-2 lg:col-span-6">
             <Titulo texto="É isso que o seu hóspede *vê*." className={h2} />
             <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
               Ele faz sozinho, em menos de um minuto. Você recebe o contrato pronto.
             </p>
-
-            <ol data-cena="atravessar" className="passos mt-10 flex flex-col">
-              <span aria-hidden className="passos-trilho" />
-              {PASSOS.map((p, i) => (
-                <li key={p.nome} className="passo flex items-center gap-4 py-[18px]" style={cssVar({ "--i": i })}>
-                  <span className="passo-icone flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-primary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                      {p.icone}
-                    </svg>
-                  </span>
-                  <span className="text-[18px] leading-[1.3] tracking-corpo text-black md:text-[20px]">{p.nome}</span>
-                  <span className="ml-auto text-xs tracking-[0.08em] text-[#8f8f8f] tabular-nums">0{i + 1}</span>
-                </li>
-              ))}
-            </ol>
           </div>
-          <div data-reveal="scale" className="mt-12 flex justify-center lg:col-span-6 lg:mt-0 lg:items-start lg:justify-end">
+
+          <ol data-cena="atravessar" className="passos mt-8 flex flex-col lg:col-span-6 lg:mt-10">
+            <span aria-hidden className="passos-trilho" />
+            {PASSOS.map((p, i) => (
+              <li key={p.nome} className="passo flex items-center gap-3 py-3 lg:gap-4 lg:py-[18px]" style={cssVar({ "--i": i })}>
+                <span className="passo-icone flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-primary lg:h-9 lg:w-9 lg:rounded-[11px]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-[14px] w-[14px] lg:h-4 lg:w-4">
+                    {p.icone}
+                  </svg>
+                </span>
+                <span className="text-[15px] leading-[1.25] tracking-corpo text-black lg:text-[20px] lg:leading-[1.3]">{p.nome}</span>
+                <span className="ml-auto hidden text-xs tracking-[0.08em] text-[#8f8f8f] tabular-nums lg:inline">0{i + 1}</span>
+              </li>
+            ))}
+          </ol>
+
+          <div data-reveal="scale" className="mt-8 flex justify-end self-center lg:col-span-6 lg:col-start-7 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-stretch">
             <div className="lg:sticky lg:top-24">
               <Celular />
             </div>
@@ -1307,7 +1309,6 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------ garantia */}
-      {/* A cortina coral desce sobre a foto conforme a seção entra. */}
       <section id="garantia" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
         <div data-cena="entrar" className="cena-cresce relative overflow-hidden bg-[#f0f0f0] md:grid md:grid-cols-12">
           <div className="relative md:col-span-6" style={{ aspectRatio: "4 / 3" }}>
@@ -1318,7 +1319,7 @@ export default function Landing() {
               className="absolute inset-0 block h-full w-full object-cover"
             />
           </div>
-          <div className="cena-cortina flex flex-col justify-center gap-7 bg-primary px-6 py-8 text-white md:col-span-6 md:px-12 md:py-16">
+          <div className="flex flex-col justify-center gap-7 bg-primary px-6 py-8 text-white md:col-span-6 md:px-12 md:py-16">
             <div className="flex flex-col gap-2">
               <Titulo as="p" texto="Garantia incondicional de 30 dias." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" />
               <p data-reveal="up" style={delay(300)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Não gostou, devolvo. Sem asterisco.</p>
@@ -1589,12 +1590,10 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 /* --- parallax leve dentro das molduras --------------------------------- */
 .cena-parallax { transform: translate3d(0, calc((var(--p, .5) - .5) * -10%), 0) scale(1.12); will-change: transform; }
 
-/* --- a cortina coral da garantia --------------------------------------- */
-.cena-cortina { clip-path: inset(calc((1 - clamp(0, calc(var(--p, 0) * 1.6 - 0.3), 1)) * 100%) 0 0 0); }
-
 /* --- os passos do hóspede acendem conforme a lista passa ---------------- */
 .passos { position: relative; }
-.passos-trilho { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 2px; background: #ececec; }
+.passos-trilho { position: absolute; left: 15px; top: 14px; bottom: 14px; width: 2px; background: #ececec; }
+@media (min-width: 1024px) { .passos-trilho { left: 17px; top: 18px; bottom: 18px; } }
 .passos-trilho::after { content: ""; position: absolute; inset: 0; background: #FF385C; transform-origin: top; transform: scaleY(clamp(0, calc((var(--p, 0) - .18) / .5), 1)); }
 .passo { --k: clamp(0, calc((var(--p, 0) - .18 - var(--i) * .1) / .08), 1); opacity: calc(0.28 + 0.72 * var(--k)); position: relative; }
 .passo + .passo { border-top: 1px solid #f0f0f0; }
@@ -1618,7 +1617,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .cena-painel { transform: none; border-radius: 0; }
   .cena-painel .cena-foto, .cena-parallax { transform: none; }
   .cena-painel .cena-sombra { opacity: 0; }
-  .cena-cortina { clip-path: none; }
   .passo { opacity: 1; }
 }
 `;
