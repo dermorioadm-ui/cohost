@@ -985,9 +985,15 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------- emprego */}
+      {/* No celular o título vem antes da foto: é o respiro de texto entre
+          duas dobras de fotografia (a varanda acima, o anfitrião aqui). */}
       <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div className="md:grid md:grid-cols-12 md:items-center md:gap-8">
-          <figure data-cena="atravessar" className="relative overflow-hidden rounded-[28px] bg-[#1a1a1a] md:col-span-5 md:col-start-2" style={{ aspectRatio: "4 / 5" }}>
+        <div className="md:grid md:grid-cols-12 md:grid-rows-[auto_auto] md:gap-x-8">
+          <div className="md:col-span-6 md:col-start-7 md:row-start-1 md:self-end">
+            <Rotulo className="mb-5 block text-primary">A rotina</Rotulo>
+            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={h2} />
+          </div>
+          <figure data-cena="atravessar" className="relative mt-8 overflow-hidden rounded-[28px] bg-[#1a1a1a] md:col-span-5 md:col-start-1 md:row-span-2 md:row-start-1 md:mt-0" style={{ aspectRatio: "4 / 5" }}>
             <img
               src="/lp/emprego.webp"
               alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
@@ -995,15 +1001,10 @@ export default function Landing() {
               className="cena-parallax block h-full w-full object-cover"
             />
           </figure>
-          <div className="relative z-[1] -mt-16 md:col-span-6 md:col-start-7 md:mt-0">
-            <div className="rounded-[28px] bg-white/90 p-6 backdrop-blur-md md:bg-transparent md:p-0 md:backdrop-blur-0">
-              <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={h2} />
-              <p data-reveal="up" style={delay(300)} className="mt-6 max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
-                Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
-                automatização completa — e esquece por dias que tem um Airbnb.
-              </p>
-            </div>
-          </div>
+          <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:col-span-6 md:col-start-7 md:row-start-2 md:mt-6 md:self-start md:text-xl">
+            Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
+            automatização completa — e esquece por dias que tem um Airbnb.
+          </p>
         </div>
       </section>
 
@@ -1013,12 +1014,17 @@ export default function Landing() {
       <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-24 md:mt-40">
         <div className="cena-fixo">
           <div data-trilho className="trilho">
-            <div className="trilho-cartao flex w-[min(86vw,420px)] shrink-0 flex-col justify-between">
+            <div className="trilho-cartao flex w-[min(86vw,420px)] shrink-0 flex-col justify-center gap-5">
               <Rotulo className="text-primary">E ainda</Rotulo>
-              <div>
-                <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={h2} />
-                <Traco className="mt-6" />
-              </div>
+              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={h2} />
+              <Traco />
+              <p data-reveal="up" style={delay(300)} className="max-w-[30ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
+                Quatro coisas que passam a acontecer sozinhas depois que o calendário liga.
+              </p>
+              <span aria-hidden className="mt-2 inline-flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-[#8f8f8f]">
+                <span className="h-px w-8 bg-[#d9d9d9]" />
+                Continue rolando
+              </span>
             </div>
             {E_AINDA.map((a, i) => (
               <article key={a.rotulo} className="trilho-cartao flex w-[min(78vw,400px)] shrink-0 flex-col gap-4">
