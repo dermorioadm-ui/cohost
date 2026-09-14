@@ -572,6 +572,17 @@ export default function Landing() {
   useReveal(raiz);
   useCenas(raiz);
 
+  // O app é escuro; a página é clara. Sem isto o corpo do documento fica
+  // preto e aparece atrás dos cantos do herói e no "puxa" da rolagem.
+  useEffect(() => {
+    document.documentElement.classList.add("tema-claro");
+    document.body.classList.add("tema-claro");
+    return () => {
+      document.documentElement.classList.remove("tema-claro");
+      document.body.classList.remove("tema-claro");
+    };
+  }, []);
+
   // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
   // acima segura a página; se a tabela mudar, a página acompanha sem deploy.
   const [PLANOS, setPlanos] = useState<Plano[]>(PLANOS_RESERVA);
@@ -784,7 +795,7 @@ export default function Landing() {
           />
         </div>
 
-        <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-[720px] flex-col justify-between gap-[38px] px-5 pb-[76px] pt-24">
+        <div className="relative z-[1] mx-auto flex min-h-[calc(100svh-72px)] max-w-[720px] flex-col justify-between gap-[38px] px-5 pb-16 pt-24 md:min-h-[100svh] md:pb-[76px]">
           <div data-reveal="up" className="flex flex-wrap items-center justify-center gap-2.5">
             <span className="text-[13px] leading-normal tracking-[0.06em] text-white">Check‑in blindado com:</span>
             <Logos tamanho={40} />
@@ -1519,6 +1530,7 @@ export default function Landing() {
  * no elemento marcado com `data-cena` e os filhos herdam.
  */
 const LP_CSS = `
+html.tema-claro, body.tema-claro { background: #ffffff; }
 .acento { font-family: "Instrument Serif", Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
 
 /* --- revelação -------------------------------------------------------- */
