@@ -41,9 +41,8 @@ Confirmado em produção em 14/09/2026: `STRIPE_SECRET_KEY` é a chave live e
 os seis preços de `plans` existem na Stripe (o `billing-checkout-public`
 devolveu uma sessão `cs_live_`). O que ainda fica fora do repositório:
 
-1. **Domínio.** Na Vercel, projeto `cohost` → Settings → Domains → adicionar
-   `hospedepay.org` e `www.hospedepay.org`; no registrador, o A/CNAME que a
-   Vercel mostrar. O certificado sai sozinho.
+1. **Domínio.** `hospedepay.org` já aponta para o projeto `cohost` na Vercel;
+   produção é o que está na `main`.
 2. **Base dos links.** Secret `APP_BASE_URL=https://hospedepay.org` nas Edge
    Functions do Supabase. É ele que monta o retorno do checkout, o link do
    e-mail e o link do chat do hóspede. Sem ele o padrão já é hospedepay.org.
@@ -64,6 +63,7 @@ devolveu uma sessão `cs_live_`). O que ainda fica fora do repositório:
 
 | Rota | Acesso | Tela |
 |---|---|---|
+| `/pagina` | público | a página de vendas, mesmo logado (a raiz manda o dono para o painel) |
 | `/entrar` | público | login e cadastro |
 | `/assinatura` | público/dono | retorno do checkout da página (cria a conta), ou escolha e checkout para quem já tem conta |
 | `/comecar` | dono | onboarding guiado em 5 passos |

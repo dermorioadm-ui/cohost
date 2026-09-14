@@ -125,6 +125,11 @@ export default function App() {
                   <AuthProvider>
                     <Routes>
                       <Route path="/" element={<Home />} />
+                      {/* A raiz manda quem está logado para o painel. Este
+                          atalho mostra a página de vendas mesmo assim — para
+                          o dono conferir o que o visitante vê sem sair da
+                          conta. */}
+                      <Route path="/pagina" element={<Landing />} />
                       <Route path="/entrar" element={<Auth />} />
 
                       {/* Sem Protected de propósito: quem volta do checkout da página ainda
