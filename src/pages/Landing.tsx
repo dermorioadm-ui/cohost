@@ -1547,7 +1547,8 @@ const LP_CSS = `
 /* --- o trilho que corre na horizontal ---------------------------------- */
 .cena-drift { position: relative; height: 380svh; }
 @media (min-width: 768px) { .cena-drift { height: 300svh; } }
-.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: center; overflow: hidden; }
+.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: flex-start; padding-top: 96px; overflow: hidden; }
+@media (min-width: 768px) { .cena-fixo { align-items: center; padding-top: 0; } }
 .trilho { display: flex; align-items: stretch; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 @media (min-width: 768px) { .trilho { gap: 28px; padding-left: max(20px, calc((100vw - 1120px) / 2 + 20px)); } }
 .trilho-cartao { min-height: min(70svh, 640px); }
