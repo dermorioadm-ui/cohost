@@ -1,7 +1,7 @@
 import Stripe from "npm:stripe@^18.5.0";
 import { corsHeaders, json } from "../_shared/lib/http.ts";
 import { admin, adminNotifyEmails } from "../_shared/lib/db.ts";
-import { env } from "../_shared/lib/env.ts";
+import { env, optional } from "../_shared/lib/env.ts";
 import { contaDoCheckout } from "../_shared/lib/checkout-publico.ts";
 
 /**
@@ -20,6 +20,23 @@ import { contaDoCheckout } from "../_shared/lib/checkout-publico.ts";
  */
 
 const stripe = new Stripe(env.stripeSecret(), { apiVersion: "2025-08-27.basil" });
+
+/**
+ * Assinaturas com que validar o evento, em ordem: a variável de ambiente
+ * (quando alguém a colou no painel) e a guardada em `private.secrets` pela
+ * `ops-stripe-webhook` ao criar o endpoint pela API. As duas são tentadas
+ * porque um endpoint recriado invalida o segredo antigo sem avisar ninguém —
+ * e o painel não tem como saber qual dos dois está vivo.
+ */
+async function segredosDoWebhook(db: ReturnType<typeof admin>): Promise<string[]> {
+  const lista: string[] = [];
+  const doAmbiente = optional("STRIPE_WEBHOOK_SECRET");
+  if (doAmbiente) lista.push(doAmbiente);
+  const { data, error } = await db.rpc("private_secret", { _name: "stripe_webhook_secret" });
+  if (error) console.error("Falha ao ler a assinatura do webhook no banco:", error.message);
+  else if (typeof data === "string" && data.length > 0 && !lista.includes(data)) lista.push(data);
+  return lista;
+}
 
 const RELEVANT = new Set([
   "checkout.session.completed",
@@ -150,6 +167,16 @@ async function notifyNewSubscriber(
   }
 }
 
+/**
+ * Fim do período corrente. Nas versões novas da API (basil) o campo saiu da
+ * assinatura e foi para cada item; contas antigas ainda mandam no topo.
+ */
+function fimDoPeriodo(sub: Stripe.Subscription): string | null {
+  const legado = (sub as unknown as { current_period_end?: number }).current_period_end;
+  const fim = sub.items?.data?.[0]?.current_period_end ?? legado ?? null;
+  return fim ? new Date(fim * 1000).toISOString() : null;
+}
+
 /** Descobre o tier a partir do price id gravado na tabela plans. */
 async function resolvePlan(
   db: ReturnType<typeof admin>,
@@ -177,20 +204,28 @@ Deno.serve(async (req) => {
   if (!signature) return json({ error: "assinatura ausente" }, 400);
 
   const raw = await req.text();
+  const db = admin();
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(
-      raw,
-      signature,
-      env.stripeWebhookSecret(),
-    );
-  } catch (e) {
-    console.error("Assinatura do webhook inválida:", e instanceof Error ? e.message : e);
-    return json({ error: "assinatura inválida" }, 400);
+  const segredos = await segredosDoWebhook(db);
+  if (segredos.length === 0) {
+    console.error("Webhook da Stripe sem assinatura configurada (STRIPE_WEBHOOK_SECRET ou private.secrets)");
+    return json({ error: "webhook não configurado" }, 500);
   }
 
-  const db = admin();
+  let event: Stripe.Event | null = null;
+  let falha: unknown = null;
+  for (const segredo of segredos) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(raw, signature, segredo);
+      break;
+    } catch (e) {
+      falha = e;
+    }
+  }
+  if (!event) {
+    console.error("Assinatura do webhook inválida:", falha instanceof Error ? falha.message : falha);
+    return json({ error: "assinatura inválida" }, 400);
+  }
 
   // Idempotência: o Stripe reenvia. A UNIQUE em stripe_event_id barra o replay.
   const { error: dupError } = await db.from("billing_events").insert({
@@ -307,9 +342,7 @@ Deno.serve(async (req) => {
           subscription_status: status,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
-          current_period_end: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString()
-            : null,
+          current_period_end: fimDoPeriodo(sub),
         };
 
         if (plan) {
