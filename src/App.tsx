@@ -127,28 +127,16 @@ export default function App() {
                       <Route path="/" element={<Home />} />
                       <Route path="/entrar" element={<Auth />} />
 
-                      <Route
+                      {/* Sem Protected de propósito: quem volta do checkout da página ainda
 
 
-                        path="/assinatura"
+                          não tem sessão — é a própria tela que a cria a partir do pagamento.
 
 
-                        element={
+                          Logado, ela segue o fluxo normal de escolher e pagar. */}
 
 
-                          <Protected allow={["owner"]} shell={false}>
-
-
-                            <Assinatura />
-
-
-                          </Protected>
-
-
-                        }
-
-
-                      />
+                      <Route path="/assinatura" element={<Assinatura />} />
 
 
                       <Route

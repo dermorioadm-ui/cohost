@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Marca } from "@/components/Marca";
 import { api, ApiError, supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,23 +14,27 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * A tela entre a conta e o pagamento.
+ * A tela entre o pagamento e o produto.
  *
- * Três momentos passam por aqui, e a URL diz qual:
+ * O caminho principal começa NA PÁGINA DE VENDAS: o botão do plano abre a
+ * Stripe direto, sem conta. A Stripe pede nome, e-mail e telefone; ao voltar,
+ * a pessoa cai aqui em `/assinatura?status=ok&session=cs_...` sem estar
+ * logada. A tela troca o id da sessão de checkout por conta + sessão no
+ * backend (`billing-checkout-complete`), pede uma senha para as próximas
+ * entradas e manda para o onboarding. Duas telas depois do cartão, nenhuma
+ * antes.
  *
- *   /assinatura                  — conta criada, plano escolhido na página de
- *                                  vendas: confirma o valor e manda para o
- *                                  checkout da Stripe.
- *   /assinatura?status=ok        — voltou do checkout. O webhook da Stripe é
- *                                  quem ativa a assinatura, e ele chega segundos
- *                                  depois; a tela espera por ele antes de soltar
- *                                  a pessoa no onboarding.
- *   /assinatura?status=cancelado — desistiu no checkout. Oferece tentar de novo
- *                                  ou entrar sem assinar.
+ * Os outros momentos que passam por aqui:
  *
- * O preço nunca vem daqui: o backend lê `plans` e só aceita tier e ciclo. O
- * que esta tela mostra é lido da mesma tabela, para nunca prometer um valor e
- * cobrar outro.
+ *   /assinatura                  — logado, sem assinatura ativa (veio do
+ *                                  aviso do painel ou do "Meu plano"):
+ *                                  escolhe e paga pelo checkout amarrado à
+ *                                  conta (`billing-checkout`).
+ *   /assinatura?status=ok        — logado, voltou do checkout: espera o
+ *                                  webhook ativar antes de soltar no painel.
+ *   /assinatura?status=cancelado — desistiu no checkout logado.
+ *
+ * O preço nunca vem daqui: o backend lê `plans` e só aceita tier e ciclo.
  */
 
 interface Plan {
@@ -39,13 +45,24 @@ interface Plan {
   max_properties: number | null;
 }
 
-type Estado = "carregando" | "escolher" | "abrindo" | "esperando" | "ativo" | "cancelado";
+type Estado =
+  | "carregando"
+  | "escolher"
+  | "abrindo"
+  | "esperando"
+  | "senha"
+  | "ativo"
+  | "cancelado"
+  | "entrar";
+
+const MIN_SENHA = 8;
 
 export default function Assinatura() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const status = params.get("status");
+  const sessaoCheckout = params.get("session");
 
   const inicial = useMemo<PlanoEscolhido>(
     () => planoDaQuery(params) ?? planoGuardado() ?? { tier: "essencial", cycle: "annual" },
@@ -56,11 +73,55 @@ export default function Assinatura() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [estado, setEstado] = useState<Estado>("carregando");
   const [erro, setErro] = useState<string | null>(null);
+  const [email, setEmail] = useState<string>("");
+  const [senha, setSenha] = useState("");
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+  // A troca do checkout por sessão acontece uma vez, mesmo que o React rode
+  // o efeito duas vezes ou a sessão chegue no meio.
+  const trocando = useRef(false);
 
-  // Carrega os planos e o estado da assinatura. Quem já paga não precisa
-  // passar por aqui: vai direto para o painel.
+  // ---- 1. Volta do checkout da página: sem sessão, com o id da Stripe -----
   useEffect(() => {
-    if (!user) return;
+    if (loading || user || status !== "ok" || !sessaoCheckout || trocando.current) return;
+    trocando.current = true;
+
+    (async () => {
+      try {
+        const r = await api.billingPublico.complete(sessaoCheckout);
+        if (!r.ok) {
+          // Pagamento ainda processando (boleto, 3DS pendente): dá o benefício
+          // da dúvida por alguns segundos e tenta de novo.
+          setEstado("esperando");
+          setTimeout(() => {
+            trocando.current = false;
+          }, 4000);
+          return;
+        }
+        if (r.email) setEmail(r.email);
+        if (r.session) {
+          await supabase.auth.setSession(r.session);
+          // A URL com o id de checkout não deve ficar no histórico: ele já
+          // foi usado, e um refresh acusaria "já entrou".
+          window.history.replaceState(null, "", "/assinatura?status=ok");
+          esquecerPlano();
+          setEstado(r.conta_nova ? "senha" : "ativo");
+          return;
+        }
+        // Já entrou antes por este link: a sessão não é reemitida.
+        setEstado("entrar");
+      } catch (e) {
+        setErro(e instanceof ApiError ? e.message : "Não consegui confirmar o pagamento. Entre com seu e-mail.");
+        setEstado("entrar");
+      }
+    })();
+  }, [loading, user, status, sessaoCheckout, estado]);
+
+  // ---- 2. Logado: planos e estado da assinatura ---------------------------
+  useEffect(() => {
+    if (loading || !user) return;
+    // A sessão acabou de ser criada pela troca acima: o estado já está certo.
+    if (estado === "senha" || estado === "ativo" || estado === "entrar") return;
+
     (async () => {
       const [pl, pr] = await Promise.all([
         supabase
@@ -81,11 +142,17 @@ export default function Assinatura() {
       else if (status === "cancelado") setEstado("cancelado");
       else setEstado("escolher");
     })();
-  }, [user, status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user, status]);
 
-  // Voltou do checkout: o webhook ativa a assinatura em segundos. Espera até
-  // 40s consultando o perfil; passado isso, segue mesmo assim — o acesso abre
-  // sozinho quando o webhook chegar, e ninguém fica preso numa tela de espera.
+  // ---- 3. Sem sessão e sem checkout: não há o que fazer aqui ---------------
+  useEffect(() => {
+    if (loading || user) return;
+    if (status === "ok" && sessaoCheckout) return;
+    navigate("/entrar", { replace: true });
+  }, [loading, user, status, sessaoCheckout, navigate]);
+
+  // ---- 4. Logado, voltou do checkout: espera o webhook ---------------------
   useEffect(() => {
     if (estado !== "esperando" || !user) return;
     let vivo = true;
@@ -123,6 +190,23 @@ export default function Assinatura() {
     }
   };
 
+  const salvarSenha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (senha.length < MIN_SENHA) {
+      setErro(`A senha precisa de ao menos ${MIN_SENHA} caracteres.`);
+      return;
+    }
+    setErro(null);
+    setSalvandoSenha(true);
+    const { error } = await supabase.auth.updateUser({ password: senha });
+    setSalvandoSenha(false);
+    if (error) {
+      setErro("Não consegui salvar a senha. Você pode definir depois em \"esqueci minha senha\".");
+      return;
+    }
+    navigate("/comecar", { replace: true });
+  };
+
   const seguirSemAssinar = () => {
     esquecerPlano();
     navigate("/comecar", { replace: true });
@@ -150,7 +234,7 @@ export default function Assinatura() {
           </div>
         )}
 
-        {/* ------------------------------------------------ pagamento ok */}
+        {/* ------------------------------------------ pagamento confirmado */}
         {(estado === "esperando" || estado === "ativo") && (
           <div className="animate-rise-in text-center">
             <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
@@ -176,6 +260,74 @@ export default function Assinatura() {
           </div>
         )}
 
+        {/* ---------------------------------- conta nova: só falta a senha */}
+        {estado === "senha" && (
+          <form onSubmit={salvarSenha} className="animate-rise-in">
+            <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle2 className="h-7 w-7 text-success" aria-hidden />
+            </span>
+            <p className="rotulo mt-5 text-primary">Pagamento confirmado</p>
+            <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
+              Sua conta está criada.
+            </h1>
+            <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
+              Você já está dentro. Escolha uma senha para entrar das próximas vezes
+              {email ? <> com <span className="text-foreground">{email}</span></> : null}.
+            </p>
+
+            <div className="paper-frame mt-7 space-y-4 !rounded-panel p-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="senha">Senha</Label>
+                <Input
+                  id="senha"
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  autoComplete="new-password"
+                  autoFocus
+                  minLength={MIN_SENHA}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Ao menos {MIN_SENHA} caracteres.</p>
+              </div>
+              {erro && (
+                <p role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  {erro}
+                </p>
+              )}
+              <Button type="submit" size="lg" className="w-full" disabled={salvandoSenha}>
+                {salvandoSenha && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar e configurar meu imóvel
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/comecar", { replace: true })}
+              className="mt-6 w-full text-center text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] hover:text-foreground"
+            >
+              Definir a senha depois
+            </button>
+          </form>
+        )}
+
+        {/* ------------------------------- link já usado: entra pelo e-mail */}
+        {estado === "entrar" && (
+          <div className="animate-rise-in">
+            <p className="rotulo text-primary">Pagamento confirmado</p>
+            <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
+              Sua conta já existe.
+            </h1>
+            <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
+              {erro ??
+                `Entre com ${email || "o e-mail do pagamento"}. Se ainda não tem senha, use "esqueci minha senha" na tela de entrada.`}
+            </p>
+            <Button asChild size="lg" className="mt-7 w-full">
+              <Link to="/entrar">Entrar</Link>
+            </Button>
+          </div>
+        )}
+
         {/* ------------------------------------------------- cancelado */}
         {estado === "cancelado" && (
           <div className="animate-rise-in">
@@ -197,10 +349,10 @@ export default function Assinatura() {
           </div>
         )}
 
-        {/* -------------------------------------------------- escolher */}
+        {/* ---------------------------------------- logado: escolher e pagar */}
         {(estado === "escolher" || estado === "abrindo") && (
           <div className="animate-rise-in">
-            <p className="rotulo text-primary">Último passo</p>
+            <p className="rotulo text-primary">Assinatura</p>
             <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
               Confirme o plano e pague.
             </h1>
@@ -209,7 +361,6 @@ export default function Assinatura() {
             </p>
 
             <div className="paper-frame mt-7 space-y-4 !rounded-panel p-5">
-              {/* Ciclo */}
               <div className="flex rounded-full bg-secondary p-1 text-[13px]">
                 {(["annual", "monthly"] as const).map((c) => (
                   <button
@@ -227,7 +378,6 @@ export default function Assinatura() {
                 ))}
               </div>
 
-              {/* Planos */}
               <div className="space-y-2">
                 {plans.map((p) => {
                   const sel = p.tier === tier;
@@ -272,9 +422,7 @@ export default function Assinatura() {
               )}
 
               <Button size="lg" className="w-full" onClick={pagar} disabled={estado === "abrindo" || !plano}>
-                {estado === "abrindo" ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
+                {estado === "abrindo" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {plano ? `Pagar ${brl(preco)}${cycle === "annual" ? " por ano" : " por mês"}` : "Carregando planos…"}
               </Button>
               <p className="text-center text-xs leading-relaxed text-muted-foreground">
@@ -290,13 +438,6 @@ export default function Assinatura() {
             >
               Entrar sem assinar por enquanto
             </button>
-
-            <p className="mt-8 text-center text-xs text-muted-foreground">
-              Já assinou por outra conta?{" "}
-              <Link to="/entrar" className="underline decoration-1 underline-offset-[3px] hover:text-foreground">
-                Entrar com ela
-              </Link>
-            </p>
           </div>
         )}
       </div>

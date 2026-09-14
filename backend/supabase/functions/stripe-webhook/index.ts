@@ -2,6 +2,7 @@ import Stripe from "npm:stripe@^18.5.0";
 import { corsHeaders, json } from "../_shared/lib/http.ts";
 import { admin, adminNotifyEmails } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
+import { contaDoCheckout } from "../_shared/lib/checkout-publico.ts";
 
 /**
  * Webhook do Stripe — reconciliação de assinaturas.
@@ -256,9 +257,18 @@ Deno.serve(async (req) => {
         }
 
         const customerId = typeof s.customer === "string" ? s.customer : s.customer?.id ?? null;
-        const userId =
+        let userId =
           (s.client_reference_id as string | null) ??
           (await resolveUserId(db, customerId, s.customer_details?.email ?? null));
+
+        // Checkout vindo direto da página: a conta ainda não existe. É aqui
+        // que ela nasce quando a pessoa fechou a aba antes de voltar ao site
+        // (a volta normal passa por billing-checkout-complete, que chama a
+        // mesma função — os dois lados são idempotentes entre si).
+        if (!userId && s.mode === "subscription") {
+          const conta = await contaDoCheckout(db, s);
+          userId = conta?.userId ?? null;
+        }
 
         if (userId && customerId) {
           await db
