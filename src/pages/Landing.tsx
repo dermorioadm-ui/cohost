@@ -3,7 +3,8 @@ import {
   type CSSProperties, type FormEvent, type ReactNode,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import "./Landing.css";
+import { ArrowUpRight, ArrowDown, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
 import { Marca } from "@/components/Marca";
 import { cn } from "@/lib/utils";
 import { api, ApiError, supabase } from "@/lib/api";
@@ -17,20 +18,9 @@ import { api, ApiError, supabase } from "@/lib/api";
  * página mora no mesmo app, e não num site à parte: a pílula que flutua no
  * alto desta tela é a mesma que o cliente vê depois de entrar.
  *
- * Esta versão é o desenho definitivo (feito no Claude Design): fotografia de
- * verdade em cada trava, o celular com o vídeo do cadastro, a conta da
- * gestora feita na frente do cliente e o Renato de corpo presente — no botão,
- * na foto e na garantia. Três decisões que sustentam a página:
- *
- *   1. UMA PERGUNTA NO TOPO, e não uma promessa. "Você deixaria um estranho
- *      entrar na sua casa?" é a dor; o produto é a resposta, três travas
- *      depois.
- *   2. QUEM RESPONDE É UMA PESSOA. O botão principal não diz "assinar", diz
- *      "falar agora", e mostra o rosto de quem atende. Num ticket de R$ 97 a
- *      objeção não é preço, é "isso funciona no meu prédio?" — e isso se
- *      resolve numa chamada de 15 minutos, não num FAQ.
- *   3. O PREÇO É COMPARADO, não escondido. R$ 97 fixos ao lado dos 15–25% da
- *      gestora, com a conta feita: R$ 8.630 por ano.
+ * Layout editorial responsivo: capa clara, vídeo em recorte vertical,
+ * seções assimétricas e comparação de planos lado a lado no desktop.
+ * Estilos isolados em Landing.css; integrações compartilhadas preservadas.
  *
  * As fotos e os vídeos vivem em `public/lp/`. O que a página lê do ambiente
  * (todos opcionais, ver `.env.example`): endpoint do formulário, número de
@@ -114,44 +104,6 @@ function contar(el: HTMLElement, alvo: number) {
     else el.textContent = String(alvo);
   };
   requestAnimationFrame(tick);
-}
-
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-
-/**
- * O herói encolhe e escurece conforme sai de cena, e o título some antes do
- * resto. É o mesmo gesto do desenho original: a página "fecha" a capa e abre
- * o papel branco por baixo.
- */
-function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefObject<HTMLElement>) {
-  useEffect(() => {
-    const el = hero.current;
-    if (!el) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    let raf = 0;
-    const tick = () => {
-      raf = 0;
-      const r = el.getBoundingClientRect();
-      const raw = clamp01(-r.top / (r.height * 0.55));
-      const p = raw * raw * (3 - 2 * raw);
-      el.style.transform = p > 0.001 ? `scale(${(1 - 0.22 * p).toFixed(4)}) translateY(${(p * 40).toFixed(1)}px)` : "";
-      el.style.borderRadius = p > 0.001 ? `${(56 * p).toFixed(1)}px` : "";
-      el.style.filter = p > 0.001 ? `brightness(${(1 - 0.34 * p).toFixed(3)})` : "";
-      if (titulo.current) {
-        const rolado = Math.max(0, -r.top) / r.height;
-        titulo.current.style.opacity = String(clamp01(1 - (rolado - 0.25) / 0.5));
-      }
-    };
-    const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-    window.addEventListener("scroll", on, { passive: true });
-    window.addEventListener("resize", on);
-    tick();
-    return () => {
-      window.removeEventListener("scroll", on);
-      window.removeEventListener("resize", on);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [hero, titulo]);
 }
 
 const delay = (ms: number): CSSProperties => ({ transitionDelay: `${ms}ms` });
@@ -563,7 +515,6 @@ export default function Landing() {
   const heroRef = useRef<HTMLElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
   const planosRef = useRef<HTMLElement>(null);
-  useEncolherHero(heroRef, tituloRef);
   const [sobreHero, setSobreHero] = useState(true);
   const [sobrePlanos, setSobrePlanos] = useState(false);
   useEffect(() => {
@@ -605,12 +556,13 @@ export default function Landing() {
   };
 
   return (
-    <div ref={raiz} className="tema-claro relative min-h-screen overflow-x-hidden bg-white text-black">
+    <div ref={raiz} className="lp-editorial tema-claro relative min-h-screen overflow-x-hidden bg-white text-black">
       <style>{LP_CSS}</style>
 
       {/* ------------------------------------------------------------ nav */}
-      <nav className="fixed left-1/2 top-3 z-[60] flex w-[calc(100%-24px)] max-w-[720px] -translate-x-1/2 items-center justify-between gap-3 rounded-[52px] bg-white py-2 pl-4 pr-2 shadow-pill">
-        <Marca size={32} />
+      <nav aria-label="Navegação principal" className="lp-nav fixed left-1/2 top-3 z-[60] flex w-[calc(100%-24px)] max-w-[720px] -translate-x-1/2 items-center justify-between gap-3 rounded-[52px] bg-white py-2 pl-4 pr-2 shadow-pill">
+        <a href="#inicio" aria-label="HospedePay — início"><Marca size={32} /></a>
+        <div className="lp-nav-links"><a href="#como-funciona">Como funciona</a><a href="#prova">Na vida real</a><a href="#planos">Planos</a></div>
         <Link
           to="/entrar"
           className="flex h-10 items-center whitespace-nowrap rounded-pill border border-[#ececec] bg-[#f7f7f7] px-[18px] text-sm leading-none tracking-corpo text-black underline decoration-1 underline-offset-[3px] transition-colors hover:bg-[#ececec]"
@@ -619,70 +571,31 @@ export default function Landing() {
         </Link>
       </nav>
 
-      {/* ----------------------------------------------------------- herói */}
-      <section ref={heroRef} className="relative origin-top overflow-hidden rounded-b-[28px] bg-black text-white">
-        <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%]" />
-        <div className="absolute inset-0 z-0">
-          <div className="absolute -inset-[6%] overflow-hidden">
-            <video
-              src="/lp/hero.mp4"
-              poster="/lp/hero-poster.webp"
-              autoPlay
-              muted
-              loop
-              playsInline
-              aria-hidden
-              className="absolute left-0 block w-full object-cover"
-              style={{ top: "-22.73%", height: "145.45%" }}
-            />
-          </div>
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(180deg, #000 0%, rgba(0,0,0,0.75) 8%, rgba(0,0,0,0.28) 20%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.30) 46%, rgba(0,0,0,0.62) 70%, rgba(0,0,0,0.86) 88%, #000 100%)" }}
-          />
+      <section id="inicio" ref={heroRef} className="lp-hero">
+        <div className="lp-hero-copy">
+          <div className="lp-eyebrow"><span /> SUA CASA. SUAS REGRAS.</div>
+          <h1 ref={tituloRef}>Você deixaria um <em>estranho</em> entrar na sua casa?</h1>
+          <p className="lp-hero-intro">O Airbnb te dá o primeiro nome e você reza pra não precisar do AirCover.</p>
+          <p className="lp-hero-answer">Documento, selfie e assinatura digital.<br /><strong>O contrato vem antes da chave.</strong></p>
+          <div className="lp-hero-cta"><BotaoFalar on={on} label={textos.btn} onClick={abrir} /><p>{textos.linha}</p></div>
+          <a href="#como-funciona" className="lp-explore">Conheça o check-in blindado <ArrowDown size={16} /></a>
         </div>
-
-        <div className="relative z-[1] mx-auto flex min-h-[100svh] max-w-[720px] flex-col justify-between gap-[38px] px-5 pb-[76px] pt-24">
-          <div data-reveal="up" className="flex flex-wrap items-center justify-center gap-2.5">
-            <span className="text-[13px] leading-normal tracking-[0.06em] text-white">Check‑in blindado com:</span>
-            <Logos tamanho={40} />
+        <div className="lp-hero-scene">
+          <div className="lp-film">
+            <video src="/lp/hero.mp4" poster="/lp/hero-poster.webp" autoPlay muted loop playsInline aria-hidden />
+            <div className="lp-film-shade" />
+            <span className="lp-film-label"><span /> CHECK-IN BLINDADO</span>
+            <div className="lp-film-caption">Uma chave abre a porta.<br /><em>Confiança vem antes.</em></div>
           </div>
-
-          <div className="flex flex-col gap-7">
-            <h1
-              ref={tituloRef}
-              className="flex flex-wrap gap-x-[0.22em] text-[clamp(36px,10.5vw,60px)] font-normal leading-[0.96] tracking-display text-white [text-wrap:balance]"
-            >
-              {"Você deixaria um estranho entrar na sua casa?".split(" ").map((w, i) => (
-                <span key={i} data-reveal="word" style={delay(120 + i * 70)} className="inline-block">
-                  {w}
-                </span>
-              ))}
-            </h1>
-            <p data-reveal="up" style={delay(700)} className="max-w-[34ch] text-[17px] leading-[1.33] tracking-[-0.01em] text-white/[0.68] [text-wrap:pretty]">
-              O Airbnb te dá o primeiro nome e você reza pra não precisar do AirCover.
-            </p>
-
-            <div
-              data-reveal="up"
-              style={delay(820)}
-              className="flex flex-col gap-3 rounded-3xl border border-white/[0.18] bg-white/[0.08] px-[18px] py-5 backdrop-blur-lg backdrop-saturate-150"
-            >
-              <p className="text-base leading-[1.43] tracking-corpo text-white [text-wrap:pretty]">
-                Reserva confirmada, documento com foto, selfie e assinatura digital. Contrato vem
-                antes da chave.
-              </p>
-              <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mt-0.5" />
-              <p className="text-center text-sm leading-normal tracking-titulo text-white/70">{textos.linha}</p>
-            </div>
-          </div>
+          <div className="lp-check-card"><div className="lp-check-icon"><KeyRound size={23} /></div><div><span>ANTES DE ENTREGAR A CHAVE</span><strong>Você sabe quem entra.</strong><p>Documento · Selfie · Contrato</p></div><CheckCircle2 size={20} className="lp-check-done" /></div>
+          <div className="lp-scene-index"><span>01 / TRANQUILIDADE COMEÇA AQUI</span><ArrowUpRight size={21} /></div>
         </div>
+        <div className="lp-channel-strip"><span>Seu anúncio continua onde está.<br /><strong>A segurança começa aqui.</strong></span><Logos tamanho={36} /><span className="lp-strip-note">Airbnb, Booking e Vrbo.<br />Uma experiência HospedePay.</span></div>
       </section>
 
-      <main className="mx-auto max-w-[720px] px-5">
+      <main className="lp-main mx-auto px-5">
         {/* -------------------------------------------------------- a cena */}
-        <section className="pt-14">
+        <section className="lp-pain pt-14">
           <div data-reveal="scale" className="rounded-[32px] bg-[#f0f0f0] px-5 py-6">
             <H2>Você sabe como é.</H2>
             <Traco className="mb-7 mt-5" />
@@ -710,7 +623,7 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="flex flex-col gap-6">
+          <div className="lp-locks flex flex-col gap-6">
             {TRAVAS.map((t, i) => (
               <article key={t.rotulo} data-reveal="up" className="overflow-hidden rounded-3xl border border-[#ececec] bg-white">
                 <div className="flex flex-col gap-2.5 px-[22px] pt-[18px]">
@@ -728,7 +641,7 @@ export default function Landing() {
           </div>
 
           {/* O celular: o que o hóspede vê, sem ninguém explicar. */}
-          <figure data-reveal="scale" className="mt-16 flex flex-col items-center gap-5">
+          <figure data-reveal="scale" className="lp-demo mt-16 flex flex-col items-center gap-5">
             <figcaption className="order-[-1] flex w-full flex-col gap-3">
               <span className="text-[clamp(34px,4.4vw,48px)] font-normal leading-[1.02] tracking-[-0.027em] text-black [text-wrap:balance]">
                 É isso que o seu hóspede vê.
@@ -754,7 +667,7 @@ export default function Landing() {
             </div>
           </figure>
 
-          <ul className="mt-10 flex flex-col overflow-hidden">
+          <ul className="lp-steps mt-10 flex flex-col overflow-hidden">
             {PASSOS.map((p, i) => (
               <li
                 key={p.nome}
@@ -822,7 +735,7 @@ export default function Landing() {
         </section>
 
         {/* ------------------------------------------------------- emprego */}
-        <section className="pt-[120px]">
+        <section className="lp-employment pt-[120px]">
           <figure data-reveal="scale" className="relative mt-6 overflow-hidden rounded-[32px] bg-[#1a1a1a]" style={{ aspectRatio: "4 / 5" }}>
             <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
               <img
@@ -875,7 +788,7 @@ export default function Landing() {
         </section>
 
         {/* ------------------------------------------------------ esquecer */}
-        <section className="pt-[120px]">
+        <section className="lp-peace pt-[120px]">
           <figure data-reveal="scale" className="relative overflow-hidden rounded-[32px] bg-[#e9e9e9]" style={{ aspectRatio: "4 / 5" }}>
             <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
               <img
@@ -999,7 +912,7 @@ export default function Landing() {
               {erroPlano}
             </p>
           )}
-          <div className="mt-10 flex flex-col gap-6">
+          <div className="lp-plans mt-10 flex flex-col gap-6">
             {PLANOS.map((p, i) => (
               <article
                 key={p.tier}
@@ -1111,17 +1024,14 @@ export default function Landing() {
           <Traco className="mb-3 mt-5" />
           <div className="flex flex-col">
             {PERGUNTAS.map(([q, a], i) => (
-              <div key={q} data-reveal="up" className={cn("flex flex-col gap-2 py-[22px]", i < PERGUNTAS.length - 1 && "border-b border-[#f0f0f0]")}>
-                <H3>{q}</H3>
-                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666]">{a}</p>
-              </div>
+              <details key={q} className="lp-faq"><summary><span className="lp-faq-number">{String(i + 1).padStart(2, "0")}</span>{q}<span className="lp-faq-plus" aria-hidden>+</span></summary><p>{a}</p></details>
             ))}
           </div>
         </section>
       </main>
 
       {/* ---------------------------------------------------------- fechamento */}
-      <section className="relative overflow-hidden bg-black text-white">
+      <section className="lp-closing relative overflow-hidden bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%] opacity-80" />
         <div className="relative z-[1] mx-auto flex max-w-[720px] flex-col gap-10 px-5 pb-[150px] pt-[120px]">
           <h2 data-reveal="up" className="max-w-[20ch] text-[clamp(34px,5vw,44px)] font-normal leading-[1.04] tracking-titulo text-primary [text-wrap:balance]">
@@ -1133,7 +1043,7 @@ export default function Landing() {
           </div>
           <footer className="mt-6 flex flex-col gap-[22px] border-t border-white/[0.14] pt-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Marca size={22} tom="tinta" />
+              <Marca size={22} />
               <Link
                 to="/entrar"
                 className="inline-flex h-9 items-center whitespace-nowrap rounded-[20px] border border-white/[0.28] px-3.5 text-[13px] tracking-corpo text-white transition-colors hover:bg-white/10"
@@ -1163,7 +1073,7 @@ export default function Landing() {
       {/* -------------------------------------------------------------- fab */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl transition-[transform,opacity] duration-500 ease-page",
+          "lp-fab fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl transition-[transform,opacity] duration-500 ease-page",
           fab && !formAberto ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0",
         )}
         style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))" }}
