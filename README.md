@@ -68,6 +68,21 @@ SELECT private.call_job('ops-stripe-webhook', '{"acao":"instalar"}');    -- cria
 SELECT status_code, content FROM net._http_response ORDER BY id DESC LIMIT 1;
 ```
 
+Marca no Checkout da Stripe (14/09/2026): os três planos já têm imagem,
+descrição e descritor `HOSPEDEPAY` (gravados pela `ops-stripe-marca`). O que
+a API da Stripe não deixa gravar na conta própria, e só o painel resolve
+(Configurações → Branding e Configurações → Dados públicos): nome público
+"HospedePay", site hospedepay.org, e-mail de suporte, cor `#FF385C`, logo e
+ícone (os arquivos estão em `public/stripe/`; a `ops-stripe-marca` com
+`{"acao":"marcar"}` já os sobe para a Stripe e tenta gravar). Atenção: a
+conta é a mesma da RICC Mens Health e do CleanerBNB — mudar a marca muda o
+checkout de todos os produtos dela.
+
+```sql
+SELECT private.call_job('ops-stripe-marca', '{"acao":"inspecionar"}');
+SELECT private.call_job('ops-stripe-marca', '{"acao":"produtos"}');
+```
+
 O que ainda fica fora do repositório:
 
 1. **Teste de ponta a ponta** com um cartão real e reembolso pelo painel da
