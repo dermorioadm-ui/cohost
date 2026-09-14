@@ -139,3 +139,6 @@ verify_jwt = true
 # Duplicar imovel: roda no contexto do usuario, a funcao no banco autoriza.
 [functions.property-duplicate]
 verify_jwt = true
+
+[functions.ops-stripe-webhook]
+verify_jwt = false

@@ -38,7 +38,9 @@ import { api, ApiError, supabase } from "@/lib/api";
 
 const ENV = import.meta.env as Record<string, string | undefined>;
 const LEAD_ENDPOINT = (ENV.VITE_LEAD_ENDPOINT ?? "").trim();
-const WHATSAPP = (ENV.VITE_WHATSAPP ?? "").replace(/\D/g, "");
+// O número pode vir do build (VITE_WHATSAPP) ou do banco (app_settings via
+// landing_config), que é o caminho para trocar sem novo deploy.
+const WHATSAPP_BUILD = (ENV.VITE_WHATSAPP ?? "").replace(/\D/g, "");
 const ESTADO = (ENV.VITE_LP_ESTADO ?? "online") as "online" | "offline" | "auto";
 const STATUS_URL = (ENV.VITE_LP_STATUS_URL ?? "").trim();
 const VIDEO_PROVA = (ENV.VITE_LP_VIDEO_PROVA ?? "").trim();
@@ -333,6 +335,16 @@ export default function Landing() {
           })),
         );
       });
+  }, []);
+
+  // WhatsApp do formulário: o do build vale primeiro; sem ele, o do banco.
+  const [WHATSAPP, setWhatsapp] = useState(WHATSAPP_BUILD);
+  useEffect(() => {
+    if (WHATSAPP_BUILD) return;
+    supabase.rpc("landing_config").then(({ data }) => {
+      const n = String((data as { landing_whatsapp?: string } | null)?.landing_whatsapp ?? "").replace(/\D/g, "");
+      if (n) setWhatsapp(n);
+    });
   }, []);
 
   // Estado "online": fixo pelo ambiente, ou lido de uma URL a cada 60s.

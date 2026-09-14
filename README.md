@@ -37,26 +37,43 @@ na página → checkout da Stripe (nome, e-mail e telefone pedidos lá) →
 conta criada com o pagamento confirmado → senha (opcional) → onboarding.
 Nenhuma tela nossa antes do cartão.
 
-Confirmado em produção em 14/09/2026: `STRIPE_SECRET_KEY` é a chave live e
-os seis preços de `plans` existem na Stripe (o `billing-checkout-public`
-devolveu uma sessão `cs_live_`). O que ainda fica fora do repositório:
+Confirmado em produção em 14/09/2026:
 
-1. **Domínio.** `hospedepay.org` já aponta para o projeto `cohost` na Vercel;
-   produção é o que está na `main`.
-2. **Base dos links.** Secret `APP_BASE_URL=https://hospedepay.org` nas Edge
-   Functions do Supabase. É ele que monta o retorno do checkout, o link do
-   e-mail e o link do chat do hóspede. Sem ele o padrão já é hospedepay.org.
-3. **Webhook da Stripe.** Endpoint
-   `https://hukjxwpwnrsepgneopqd.supabase.co/functions/v1/stripe-webhook`
-   com os eventos `checkout.session.completed`, `customer.subscription.*`,
-   `invoice.paid`, `invoice.payment_failed`; o `whsec_...` vai no secret
-   `STRIPE_WEBHOOK_SECRET`. A volta do checkout já cria a conta sem ele, mas
-   é o webhook que acompanha renovação, cancelamento e cartão recusado.
-4. **Formulário "me liga" da página.** `VITE_WHATSAPP` (ou
-   `VITE_LEAD_ENDPOINT`) na Vercel. Sem nenhum dos dois, o botão manda criar
-   a conta.
-5. **Teste de ponta a ponta** com um cartão real e reembolso pelo painel da
-   Stripe. Se mudar de preço, `SELECT private.call_job('billing-sync-plans')`
+- `STRIPE_SECRET_KEY` é a chave live e os seis preços de `plans` existem na
+  Stripe (o `billing-checkout-public` devolveu uma sessão `cs_live_`).
+- O webhook da Stripe está instalado e validado: endpoint
+  `https://hukjxwpwnrsepgneopqd.supabase.co/functions/v1/stripe-webhook`
+  com `checkout.session.completed`, `customer.subscription.*`,
+  `invoice.paid` e `invoice.payment_failed`, assinatura em
+  `STRIPE_WEBHOOK_SECRET`. A sonda da `ops-stripe-webhook` (cria e apaga um
+  cliente de teste e espera o evento assinado chegar) passou.
+- `hospedepay.org` já aponta para o projeto `cohost` na Vercel; produção é o
+  que está na `main`. A base dos links (`APP_BASE_URL`) tem esse domínio
+  como padrão.
+- O WhatsApp do formulário "me liga" da página vem de
+  `app_settings.landing_whatsapp` (lido pela RPC pública `landing_config`);
+  `VITE_WHATSAPP` na Vercel, se existir, tem prioridade. Para trocar o
+  número: `UPDATE app_settings SET value = '55...' WHERE key = 'landing_whatsapp'`.
+
+Operação do webhook, sem passar pelo dashboard da Stripe nem pelo painel do
+Supabase — tudo pelo SQL Editor, com o segredo de cron:
+
+```sql
+SELECT private.call_job('ops-stripe-webhook', '{"acao":"inspecionar"}'); -- lista
+SELECT private.call_job('ops-stripe-webhook', '{"acao":"testar"}');      -- sonda ao vivo
+SELECT private.call_job('ops-stripe-webhook', '{"acao":"instalar"}');    -- cria se faltar
+-- {"acao":"instalar","forcar":true} recria o endpoint e guarda a assinatura
+-- nova em private.secrets; a stripe-webhook tenta o secret do ambiente e o
+-- do banco, então nada precisa ser colado à mão.
+SELECT status_code, content FROM net._http_response ORDER BY id DESC LIMIT 1;
+```
+
+O que ainda fica fora do repositório:
+
+1. **Teste de ponta a ponta** com um cartão real e reembolso pelo painel da
+   Stripe: assinar pela página, cair em `/assinatura` já com a conta criada
+   pedindo senha, e ver `profiles.subscription_status = 'active'`.
+2. Se mudar de preço, `SELECT private.call_job('billing-sync-plans')`
    recria os preços a partir de `plans` — nunca digite price id à mão.
 
 ## Rotas
