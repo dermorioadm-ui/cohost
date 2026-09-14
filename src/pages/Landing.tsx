@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useMemo, useRef, useState,
+  Fragment, useCallback, useEffect, useMemo, useRef, useState,
   type CSSProperties, type FormEvent, type ReactNode,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -17,20 +17,20 @@ import { api, ApiError, supabase } from "@/lib/api";
  * página mora no mesmo app, e não num site à parte: a pílula que flutua no
  * alto desta tela é a mesma que o cliente vê depois de entrar.
  *
- * Esta versão é o desenho definitivo (feito no Claude Design): fotografia de
- * verdade em cada trava, o celular com o vídeo do cadastro, a conta da
- * gestora feita na frente do cliente e o Renato de corpo presente — no botão,
- * na foto e na garantia. Três decisões que sustentam a página:
+ * A página é montada como uma sessão de cinema, não como um anúncio: o
+ * herói é a capa, e daí para baixo cada seção é uma CENA que puxa a próxima.
+ * As três travas são três telas cheias que se empilham (a de cima encolhe e
+ * escurece enquanto a próxima desliza por cima); o "e ainda" corre na
+ * horizontal enquanto a página desce; a comparação escura cresce até tomar a
+ * largura toda; a garantia entra como cortina. Todo movimento é ligado à
+ * rolagem — nada acontece sozinho — e é interpolado com inércia, para a
+ * página deslizar em vez de pular. Com `prefers-reduced-motion` tudo vira
+ * estático e a leitura é a mesma.
  *
- *   1. UMA PERGUNTA NO TOPO, e não uma promessa. "Você deixaria um estranho
- *      entrar na sua casa?" é a dor; o produto é a resposta, três travas
- *      depois.
- *   2. QUEM RESPONDE É UMA PESSOA. O botão principal não diz "assinar", diz
- *      "falar agora", e mostra o rosto de quem atende. Num ticket de R$ 97 a
- *      objeção não é preço, é "isso funciona no meu prédio?" — e isso se
- *      resolve numa chamada de 15 minutos, não num FAQ.
- *   3. O PREÇO É COMPARADO, não escondido. R$ 97 fixos ao lado dos 15–25% da
- *      gestora, com a conta feita: R$ 8.630 por ano.
+ * A tipografia continua fina (DM Sans 400/500), com um único gesto novo: uma
+ * palavra por título em serifa itálica (Instrument Serif) — a palavra que
+ * carrega a emoção da frase. É o que separa uma página editorial de um
+ * anúncio de imóvel.
  *
  * As fotos e os vídeos vivem em `public/lp/`. O que a página lê do ambiente
  * (todos opcionais, ver `.env.example`): endpoint do formulário, número de
@@ -67,13 +67,25 @@ const PLANOS_RESERVA = [
 ];
 
 const brl = (n: number) => `R$${n.toLocaleString("pt-BR")}`;
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 /* -------------------------------------------------------------------------
- * Movimento. Um observador só, para tudo o que tem `data-reveal`: quando o
- * elemento entra na tela ele ganha `is-in` e a CSS faz o resto. As barras de
- * progresso (`data-fill`) e os contadores (`data-count`) usam o mesmo
- * observador. Sem JS o conteúdo aparece igual — a classe `lp-js` só esconde o
- * que vai ser revelado depois que o observador existe.
+ * Movimento.
+ *
+ * Dois mecanismos, e só dois:
+ *
+ *   1. REVELAÇÃO. Um observador para tudo o que tem `data-reveal`: quando o
+ *      elemento entra na tela ganha `is-in` e a CSS faz o resto (máscara nas
+ *      palavras dos títulos, subida nos blocos, traço que cresce, contador).
+ *
+ *   2. CENA. Tudo o que tem `data-cena` recebe uma variável CSS `--p`, de 0
+ *      a 1, com o quanto a rolagem já atravessou aquele elemento. A CSS
+ *      transforma `--p` em movimento (empilhar, deslizar, crescer, cortina).
+ *      O valor é interpolado com inércia a cada frame — é isso que faz a
+ *      página deslizar em vez de acompanhar o dedo aos trancos.
+ *
+ * Sem JS o conteúdo aparece igual — a classe `lp-js` só esconde o que vai
+ * ser revelado depois que o observador existe.
  * ---------------------------------------------------------------------- */
 function useReveal(root: React.RefObject<HTMLElement>) {
   useEffect(() => {
@@ -116,12 +128,84 @@ function contar(el: HTMLElement, alvo: number) {
   requestAnimationFrame(tick);
 }
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+/**
+ * `--p` para cada `data-cena`. Três modos de medir:
+ *   pin        — o elemento é mais alto que a tela e tem um filho sticky;
+ *                0 quando encosta no topo, 1 quando o fim chega ao topo.
+ *   entrar     — 0 quando o topo aparece embaixo, 1 quando chega a 30% da tela.
+ *   atravessar — 0 quando entra por baixo, 1 quando sai por cima.
+ * Quem tem um `data-trilho` dentro também recebe `--dx`: quantos pixels o
+ * trilho precisa andar para mostrar o último cartão.
+ */
+function useCenas(root: React.RefObject<HTMLElement>) {
+  useEffect(() => {
+    const raiz = root.current;
+    if (!raiz) return;
+    const reduz = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    type Item = { el: HTMLElement; modo: string; cur: number; alvo: number; trilho: HTMLElement | null };
+    let itens: Item[] = [];
+    let raf = 0;
+
+    const coletar = () => {
+      itens = Array.from(raiz.querySelectorAll<HTMLElement>("[data-cena]")).map((el) => ({
+        el, modo: el.dataset.cena ?? "entrar", cur: -1, alvo: 0,
+        trilho: el.querySelector<HTMLElement>("[data-trilho]"),
+      }));
+    };
+
+    const medir = () => {
+      const vh = window.innerHeight;
+      for (const it of itens) {
+        const r = it.el.getBoundingClientRect();
+        let p = 0;
+        if (it.modo === "pin") p = r.height > vh ? -r.top / (r.height - vh) : 0;
+        else if (it.modo === "atravessar") p = (vh - r.top) / (vh + r.height);
+        else p = (vh * 0.92 - r.top) / (vh * 0.62);
+        it.alvo = clamp01(p);
+        if (it.trilho) {
+          const dx = it.trilho.scrollWidth - it.el.clientWidth;
+          it.el.style.setProperty("--dx", `${-Math.max(0, dx)}px`);
+        }
+      }
+    };
+
+    const loop = () => {
+      raf = 0;
+      let vivo = false;
+      for (const it of itens) {
+        const d = it.alvo - it.cur;
+        if (it.cur < 0 || reduz || Math.abs(d) < 0.0006) {
+          if (it.cur !== it.alvo) { it.cur = it.alvo; it.el.style.setProperty("--p", it.cur.toFixed(4)); }
+          continue;
+        }
+        it.cur += d * 0.16;
+        it.el.style.setProperty("--p", it.cur.toFixed(4));
+        vivo = true;
+      }
+      if (vivo) raf = requestAnimationFrame(loop);
+    };
+
+    const rolar = () => { medir(); if (!raf) raf = requestAnimationFrame(loop); };
+    const redimensionar = () => { coletar(); rolar(); };
+
+    coletar();
+    rolar();
+    window.addEventListener("scroll", rolar, { passive: true });
+    window.addEventListener("resize", redimensionar);
+    // Fontes e imagens mudam alturas depois do primeiro frame.
+    const t = window.setTimeout(redimensionar, 600);
+    return () => {
+      window.removeEventListener("scroll", rolar);
+      window.removeEventListener("resize", redimensionar);
+      window.clearTimeout(t);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [root]);
+}
 
 /**
  * O herói encolhe e escurece conforme sai de cena, e o título some antes do
- * resto. É o mesmo gesto do desenho original: a página "fecha" a capa e abre
- * o papel branco por baixo.
+ * resto: a página "fecha" a capa e abre o papel branco por baixo.
  */
 function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefObject<HTMLElement>) {
   useEffect(() => {
@@ -155,8 +239,47 @@ function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefOb
 }
 
 const delay = (ms: number): CSSProperties => ({ transitionDelay: `${ms}ms` });
+const cssVar = (obj: Record<string, string | number>): CSSProperties => obj as CSSProperties;
 
 /* ----------------------------------------------------------------- peças */
+
+/**
+ * Título com as palavras saindo de uma máscara, uma a uma. A palavra entre
+ * asteriscos vira serifa itálica: é a que carrega a emoção da frase.
+ */
+function Titulo({
+  texto, as: Tag = "h2", className, atraso = 0,
+}: { texto: string; as?: "h1" | "h2" | "h3" | "p"; className?: string; atraso?: number }) {
+  // Quebra em palavras; a pontuação que vem depois de um trecho em itálico
+  // ("Niterói.") fica presa à palavra, e não vira uma "palavra" solta.
+  const tokens: { w: string; acento: boolean; sufixo: string }[] = [];
+  for (const parte of texto.split(/(\*[^*]+\*)/).filter(Boolean)) {
+    const acento = parte.startsWith("*");
+    const cru = acento ? parte.slice(1, -1) : parte;
+    for (const w of cru.trim().split(/\s+/).filter(Boolean)) {
+      if (/^[.,;:!?…]+$/.test(w) && tokens.length) tokens[tokens.length - 1].sufixo += w;
+      else tokens.push({ w, acento, sufixo: "" });
+    }
+    if (!acento && /^[.,;:!?…]/.test(cru) && tokens.length) {
+      const m = cru.match(/^[.,;:!?…]+/);
+      if (m && tokens[tokens.length - 1].sufixo === "") tokens[tokens.length - 1].sufixo = m[0];
+      const resto = tokens[tokens.length - 1];
+      if (resto && tokens.length > 1 && resto.w === m?.[0]) tokens.pop();
+    }
+  }
+  return (
+    <Tag data-reveal="mask" className={cn("flex flex-wrap gap-x-[0.24em]", className)}>
+      {tokens.map((t, i) => (
+        <span key={i} className="mask">
+          <span className="w" style={cssVar({ "--d": `${atraso + i * 55}ms` })}>
+            <span className={cn(t.acento && "acento")}>{t.w}</span>
+            {t.sufixo}
+          </span>
+        </span>
+      ))}
+    </Tag>
+  );
+}
 
 function Ponto({ on }: { on: boolean }) {
   return on ? (
@@ -195,50 +318,21 @@ function BotaoFalar({
   );
 }
 
-function H2({ children, className, escuro = false }: { children: ReactNode; className?: string; escuro?: boolean }) {
-  return (
-    <h2
-      data-reveal="up"
-      className={cn(
-        "max-w-[22ch] text-[clamp(34px,5vw,44px)] font-normal leading-[1.04] tracking-titulo [text-wrap:balance]",
-        escuro ? "text-white" : "text-black",
-        className,
-      )}
-    >
-      {children}
-    </h2>
-  );
-}
-
 /** O traço coral que sublinha cada título de seção. */
 function Traco({ className }: { className?: string }) {
   return (
     <div
       data-reveal="line"
-      style={delay(200)}
+      style={delay(300)}
       aria-hidden
       className={cn("h-[3px] w-14 origin-left rounded-[2px] bg-primary", className)}
     />
   );
 }
 
-function H3({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <h3 className={cn("text-[clamp(20px,3vw,24px)] font-normal leading-[1.2] tracking-[-0.02em] text-black [text-wrap:balance]", className)}>
-      {children}
-    </h3>
-  );
-}
-
-function Numeral({ n, rotulo }: { n: number; rotulo: string }) {
-  return (
-    <div className="flex w-full items-center gap-2.5">
-      <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-primary text-[14px] leading-none text-white tabular-nums">
-        {n}
-      </span>
-      <span className="text-xs leading-normal tracking-[0.08em] text-primary">{rotulo}</span>
-    </div>
-  );
+/** Rótulo em caixa alta, tracejado — o trabalho que outros sites dão à cor. */
+function Rotulo({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cn("text-xs leading-normal tracking-[0.08em] uppercase", className)}>{children}</span>;
 }
 
 function Check() {
@@ -250,7 +344,7 @@ function Check() {
 }
 
 function Logos({ tamanho = 40, sombra = false }: { tamanho?: number; sombra?: boolean }) {
-  const cls = cn("block rounded-[11px] object-cover", sombra && "shadow-[0_6px_18px_rgba(0,0,0,0.25)]");
+  const cls = cn("block object-cover", sombra && "shadow-[0_6px_18px_rgba(0,0,0,0.25)]");
   const st = { width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.27) };
   return (
     <div className="flex items-center gap-2">
@@ -261,45 +355,70 @@ function Logos({ tamanho = 40, sombra = false }: { tamanho?: number; sombra?: bo
   );
 }
 
+/** A faixa que corre: o que o produto entrega, em uma linha, sem parar. */
+function Faixa({ itens, escuro = false }: { itens: string[]; escuro?: boolean }) {
+  const lista = [...itens, ...itens];
+  return (
+    <div
+      aria-hidden
+      className={cn("faixa overflow-hidden border-y", escuro ? "border-white/[0.12]" : "border-[#ececec]")}
+    >
+      <div className="faixa-trilho flex w-max items-center py-3.5">
+        {lista.map((t, i) => (
+          <span key={i} className={cn("flex items-center gap-6 pr-6 text-xs uppercase tracking-[0.12em] whitespace-nowrap", escuro ? "text-white/70" : "text-[#666666]")}>
+            {t}
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* --------------------------------------------------------------- conteúdo */
+
+const FAIXA = ["Reserva confirmada", "Documento com foto", "Selfie", "Assinatura digital", "Contrato antes da chave", "Portaria avisada", "Checkout da diarista", "IA 24 horas"];
 
 const DORES: ReactNode[] = [
   <>
     A portaria liga: “tem um hóspede aqui dizendo que tem reserva pra hoje, mas não tem acesso.”{" "}
-    <span className="font-medium text-primary">Você esqueceu de cadastrar.</span>
+    <span className="text-primary">Você esqueceu de cadastrar.</span>
   </>,
   <>
     A diarista diz que o sofá está manchado.{" "}
-    <span className="font-medium text-primary">Sem contrato, sem compromisso</span> — e você não tem
+    <span className="text-primary">Sem contrato, sem compromisso</span> — e você não tem
     nome, documento nem assinatura pra cobrar de ninguém.
   </>,
   <>
-    <span className="font-medium text-primary">Você não sabe se o AirCover vai te ressarcir.</span>{" "}
+    <span className="text-primary">Você não sabe se o AirCover vai te ressarcir.</span>{" "}
     Dependendo da quebra, ficam dias com a reserva fechada pra reparo.
   </>,
 ];
 
 const TRAVAS = [
   {
-    rotulo: "RESERVA",
-    titulo: "Ladrão não deixa documento e selfie pra te roubar.",
+    rotulo: "Reserva",
+    titulo: "Ladrão não deixa documento e selfie pra te *roubar*.",
     foto: "/lp/trava-ladrao.webp",
     alt: "Ladrão saindo do apartamento com a TV embaixo do braço",
     texto: "Quem entra na sua casa deixa rosto, documento e assinatura antes da chave.",
+    posicao: "50% 30%",
   },
   {
-    rotulo: "CONTRATO",
-    titulo: "Ele cuida da sua casa como se fosse dele.",
+    rotulo: "Contrato",
+    titulo: "Ele cuida da sua casa como se fosse *dele*.",
     foto: "/lp/trava-sofa.webp",
     alt: "Anfitriã em descrença diante da mancha de vinho no sofá branco",
     texto: "Com contrato na mão, os prejuízos tendem a não ter recorrência.",
+    posicao: "60% 50%",
   },
   {
-    rotulo: "PORTARIA",
-    titulo: "Você não precisa mais cadastrar o hóspede.",
+    rotulo: "Portaria",
+    titulo: "Você não precisa mais *cadastrar* o hóspede.",
     foto: "/lp/trava-portaria.webp",
     alt: "Porteiro entregando a chave para a hóspede",
     texto: "O porteiro já sabe quem chega, com nome, documento e horário.",
+    posicao: "50% 40%",
   },
 ];
 
@@ -335,28 +454,28 @@ const PASSOS: { nome: string; icone: ReactNode }[] = [
 
 const E_AINDA = [
   {
-    rotulo: "CHECKOUT AUTOMÁTICO",
+    rotulo: "Checkout automático",
     titulo: "A limpeza tem o calendário dos seus apartamentos.",
     texto: "Ela sabe quem entra às 15h e quem sai às 11h, sem você avisar. Fecha o checkout com foto carimbada na hora.",
     foto: "/lp/ainda-limpeza.webp",
     alt: "Diarista conferindo o calendário no celular",
   },
   {
-    rotulo: "REPOSIÇÃO AUTOMÁTICA",
+    rotulo: "Reposição automática",
     titulo: "Você não se preocupa em repor o papel higiênico.",
     texto: "Taxa combinada por mês, gravada e aceita pela diarista no celular. Ela repõe, você aprova.",
     foto: "/lp/ainda-reposicao.webp",
     alt: "Reposição de papel higiênico e sabonetes no armário",
   },
   {
-    rotulo: "IA 24 HORAS",
+    rotulo: "IA 24 horas",
     titulo: "A IA atende o seu hóspede a qualquer hora.",
     texto: "Você alimenta com as informações do seu apartamento — senha do wi-fi, vaga, chuveiro — e ela responde na hora. Em português, inglês e espanhol.",
     foto: "/lp/ainda-ia.webp",
     alt: "Hóspede lendo a resposta da IA à noite",
   },
   {
-    rotulo: "TRÊS CANAIS, UM CALENDÁRIO",
+    rotulo: "Três canais, um calendário",
     titulo: "Airbnb, Booking e VRBO no mesmo calendário.",
     texto: "Sincronizado a cada 30 minutos. Data ocupada em um canal fecha nos outros três, sem você tocar.",
     foto: "/lp/ainda-calendario.webp",
@@ -367,7 +486,7 @@ const E_AINDA = [
 
 const COMPARACAO: { grupo: string; linhas: [string, boolean, boolean][] }[] = [
   {
-    grupo: "OS DOIS FAZEM",
+    grupo: "Os dois fazem",
     linhas: [
       ["Responde o hóspede", true, true],
       ["Coordena a limpeza", true, true],
@@ -375,7 +494,7 @@ const COMPARACAO: { grupo: string; linhas: [string, boolean, boolean][] }[] = [
     ],
   },
   {
-    grupo: "ONDE MUDA",
+    grupo: "Onde muda",
     linhas: [
       ["Check-in com documento e assinatura", false, true],
       ["Contrato em PDF com IP e hora", false, true],
@@ -429,9 +548,29 @@ function VideoProva() {
   );
 }
 
+/** O celular, com o vídeo dentro. */
+function Celular({ altura = 620 }: { altura?: number }) {
+  return (
+    <div
+      className="relative max-w-full rounded-[48px] bg-[#0b0b0d] p-2.5"
+      style={{ height: altura, aspectRatio: "9 / 19.5", boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
+    >
+      <div aria-hidden className="absolute -left-0.5 top-[19%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
+      <div aria-hidden className="absolute -left-0.5 top-[29%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
+      <div aria-hidden className="absolute -right-0.5 top-[23%] h-[13%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
+      <div className="relative h-full w-full overflow-hidden rounded-[39px] bg-black">
+        <VideoProva />
+        <div aria-hidden className="absolute left-1/2 top-[9px] h-[22px] w-[34%] -translate-x-1/2 rounded-[20px] bg-black" />
+        <div aria-hidden className="absolute bottom-[7px] left-1/2 h-1 w-[36%] -translate-x-1/2 rounded-[2px] bg-white/85" />
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const raiz = useRef<HTMLDivElement>(null);
   useReveal(raiz);
+  useCenas(raiz);
 
   // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
   // acima segura a página; se a tabela mudar, a página acompanha sem deploy.
@@ -604,8 +743,10 @@ export default function Landing() {
     );
   };
 
+  const h2 = "text-[clamp(34px,5.2vw,58px)] font-normal leading-[1.02] tracking-titulo text-black";
+
   return (
-    <div ref={raiz} className="tema-claro relative min-h-screen overflow-x-hidden bg-white text-black">
+    <div ref={raiz} className="tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
       <style>{LP_CSS}</style>
 
       {/* ------------------------------------------------------------ nav */}
@@ -650,16 +791,14 @@ export default function Landing() {
           </div>
 
           <div className="flex flex-col gap-7">
-            <h1
-              ref={tituloRef}
-              className="flex flex-wrap gap-x-[0.22em] text-[clamp(36px,10.5vw,60px)] font-normal leading-[0.96] tracking-display text-white [text-wrap:balance]"
-            >
-              {"Você deixaria um estranho entrar na sua casa?".split(" ").map((w, i) => (
-                <span key={i} data-reveal="word" style={delay(120 + i * 70)} className="inline-block">
-                  {w}
-                </span>
-              ))}
-            </h1>
+            <div ref={tituloRef}>
+              <Titulo
+                as="h1"
+                texto="Você deixaria um *estranho* entrar na sua casa?"
+                atraso={120}
+                className="text-[clamp(38px,10.5vw,64px)] font-normal leading-[0.96] tracking-display text-white"
+              />
+            </div>
             <p data-reveal="up" style={delay(700)} className="max-w-[34ch] text-[17px] leading-[1.33] tracking-[-0.01em] text-white/[0.68] [text-wrap:pretty]">
               O Airbnb te dá o primeiro nome e você reza pra não precisar do AirCover.
             </p>
@@ -680,458 +819,553 @@ export default function Landing() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-[720px] px-5">
-        {/* -------------------------------------------------------- a cena */}
-        <section className="pt-14">
-          <div data-reveal="scale" className="rounded-[32px] bg-[#f0f0f0] px-5 py-6">
-            <H2>Você sabe como é.</H2>
-            <Traco className="mb-7 mt-5" />
-            <div className="relative flex flex-col gap-6 pl-[30px]">
-              <div className="absolute bottom-1.5 left-0 top-1.5 w-[2px] overflow-hidden rounded-[2px] bg-[#d9d9d9]">
-                <div data-fill className="lp-fill-y absolute inset-0 origin-top bg-primary" />
-              </div>
-              {DORES.map((d, i) => (
-                <p key={i} data-reveal="left" style={delay(i * 90)} className="text-lg leading-[1.33] tracking-[-0.01em] text-black">
-                  <span className="mb-1.5 block text-sm leading-normal tracking-titulo text-[#666666]">DOR {i + 1}</span>
-                  {d}
-                </p>
-              ))}
+      <Faixa itens={FAIXA} />
+
+      {/* -------------------------------------------------------- a cena */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-32">
+        <div className="md:grid md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-5">
+            <Titulo texto="Você sabe *como é*." className={h2} />
+            <Traco className="mt-6" />
+          </div>
+          <div className="relative mt-10 flex flex-col gap-9 pl-8 md:col-span-6 md:col-start-7 md:mt-2 md:pl-10">
+            <div className="absolute bottom-2 left-0 top-2 w-[2px] overflow-hidden rounded-[2px] bg-[#e6e6e6]">
+              <div data-fill className="lp-fill-y absolute inset-0 origin-top bg-primary" />
             </div>
-          </div>
-        </section>
-
-        {/* --------------------------------------------------- três travas */}
-        <section id="como-funciona" className="scroll-mt-20 pt-[120px]">
-          <H2>Check‑in Blindado. Você sabe quem dorme na sua casa.</H2>
-          <div data-reveal="fade" className="mb-8 mt-10 grid grid-cols-3 gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-[3px] overflow-hidden rounded-[2px] bg-[#f0f0f0]">
-                <div data-fill className="lp-fill h-full origin-left bg-primary" style={delay(i * 180)} />
-              </div>
+            {DORES.map((d, i) => (
+              <p key={i} data-reveal="left" style={delay(i * 110)} className="text-[clamp(19px,2.2vw,24px)] leading-[1.3] tracking-[-0.015em] text-black [text-wrap:pretty]">
+                <Rotulo className="mb-2 block text-[#8f8f8f]">Dor 0{i + 1}</Rotulo>
+                {d}
+              </p>
             ))}
           </div>
-          <div className="flex flex-col gap-6">
-            {TRAVAS.map((t, i) => (
-              <article key={t.rotulo} data-reveal="up" className="overflow-hidden rounded-3xl border border-[#ececec] bg-white">
-                <div className="flex flex-col gap-2.5 px-[22px] pt-[18px]">
-                  <Numeral n={i + 1} rotulo={t.rotulo} />
-                  <H3>{t.titulo}</H3>
-                </div>
-                <div className="flex flex-col gap-4 px-[22px] pb-[22px] pt-4">
-                  <div className="relative overflow-hidden rounded-3xl bg-[#f0f0f0]" style={{ aspectRatio: "4 / 3" }}>
-                    <img src={t.foto} alt={t.alt} loading="lazy" className="block h-full w-full object-cover" />
-                  </div>
-                  <p className="text-base leading-[1.4] tracking-corpo text-black [text-wrap:pretty]">{t.texto}</p>
-                </div>
-              </article>
-            ))}
-          </div>
+        </div>
+      </section>
 
-          {/* O celular: o que o hóspede vê, sem ninguém explicar. */}
-          <figure data-reveal="scale" className="mt-16 flex flex-col items-center gap-5">
-            <figcaption className="order-[-1] flex w-full flex-col gap-3">
-              <span className="text-[clamp(34px,4.4vw,48px)] font-normal leading-[1.02] tracking-[-0.027em] text-black [text-wrap:balance]">
-                É isso que o seu hóspede vê.
-              </span>
-              <span className="text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
-                Ele faz sozinho, em menos de um minuto. Você recebe o contrato pronto.
-              </span>
-            </figcaption>
-            <div className="flex justify-center">
-              <div
-                className="relative h-[620px] max-w-full rounded-[48px] bg-[#0b0b0d] p-2.5"
-                style={{ aspectRatio: "9 / 19.5", boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
-              >
-                <div aria-hidden className="absolute -left-0.5 top-[19%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
-                <div aria-hidden className="absolute -left-0.5 top-[29%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
-                <div aria-hidden className="absolute -right-0.5 top-[23%] h-[13%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
-                <div className="relative h-full w-full overflow-hidden rounded-[39px] bg-black">
-                  <VideoProva />
-                  <div aria-hidden className="absolute left-1/2 top-[9px] h-[22px] w-[34%] -translate-x-1/2 rounded-[20px] bg-black" />
-                  <div aria-hidden className="absolute bottom-[7px] left-1/2 h-1 w-[36%] -translate-x-1/2 rounded-[2px] bg-white/85" />
-                </div>
-              </div>
-            </div>
-          </figure>
+      {/* --------------------------------------------------- três travas */}
+      <section id="como-funciona" className="scroll-mt-20 pt-24 md:pt-36">
+        <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
+          <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
+          <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
+        </div>
 
-          <ul className="mt-10 flex flex-col overflow-hidden">
-            {PASSOS.map((p, i) => (
-              <li
-                key={p.nome}
-                data-reveal="up"
-                style={delay(i * 60)}
-                className={cn("flex items-center gap-3 py-[18px]", i > 0 && "border-t border-[#f0f0f0]")}
-              >
-                <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[10px] bg-primary">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    {p.icone}
-                  </svg>
-                </span>
-                <span className="text-[17px] leading-[1.35] tracking-corpo text-black">{p.nome}</span>
-                <span className="ml-auto text-xs leading-none tracking-[0.06em] text-[#6b6b6b] tabular-nums">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* --------------------------------------------------------- prova */}
-        <section id="prova" className="scroll-mt-20 pt-[120px]">
-          <H2>Rodando no meu apartamento em Niterói.</H2>
-          <Traco className="mb-10 mt-5" />
-          <figure data-reveal="scale" className="relative overflow-hidden rounded-[32px] bg-[#1a1a1a]" style={{ aspectRatio: "4 / 5" }}>
-            <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
+        {/* Três telas cheias que se empilham: a de cima encolhe e escurece
+            enquanto a próxima desliza por cima. */}
+        <div data-cena="pin" className="cena-pilha" style={cssVar({ "--n": TRAVAS.length })}>
+          {TRAVAS.map((t, i) => (
+            <article key={t.rotulo} className="cena-painel bg-black text-white" style={cssVar({ "--i": i })}>
               <img
-                src="/lp/prova-varanda.webp"
-                alt="Varanda do apartamento em Niterói com vista para a baía e o Cristo Redentor"
-                loading="lazy"
-                className="block h-full w-full object-cover [object-position:50%_0%]"
+                src={t.foto}
+                alt={t.alt}
+                loading={i === 0 ? "eager" : "lazy"}
+                className="cena-foto absolute inset-0 h-full w-full object-cover"
+                style={{ objectPosition: t.posicao }}
               />
               <div
                 aria-hidden
                 className="absolute inset-0"
-                style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.72) 72%, rgba(0,0,0,0.9) 100%)" }}
+                style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.05) 28%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.88) 100%)" }}
+              />
+              <div className="cena-sombra absolute inset-0 bg-black" aria-hidden />
+
+              <div className="relative z-[1] mx-auto flex h-full max-w-[1120px] flex-col justify-between px-5 pb-28 pt-8 md:pb-14 md:pt-10">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
+                    <span className="tabular-nums">0{i + 1}</span>
+                    <span className="h-1 w-1 rounded-full bg-primary" />
+                    {t.rotulo}
+                  </span>
+                  <div className="flex w-[120px] gap-1.5 md:w-[180px]">
+                    {TRAVAS.map((_, k) => (
+                      <span key={k} className="h-[2px] flex-1 overflow-hidden rounded bg-white/25">
+                        <span className="cena-seg block h-full origin-left bg-white" style={cssVar({ "--i": k })} />
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="max-w-[720px]">
+                  <Titulo
+                    as="h3"
+                    texto={t.titulo}
+                    className="text-[clamp(32px,6vw,64px)] font-normal leading-[0.98] tracking-display text-white"
+                  />
+                  <p data-reveal="up" style={delay(350)} className="mt-5 max-w-[42ch] text-[17px] leading-[1.4] tracking-corpo text-white/80 md:text-lg">
+                    {t.texto}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ------------------------------------------ o que o hóspede vê */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-36">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-6">
+            <Titulo texto="É isso que o seu hóspede *vê*." className={h2} />
+            <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
+              Ele faz sozinho, em menos de um minuto. Você recebe o contrato pronto.
+            </p>
+
+            <ol data-cena="atravessar" className="passos mt-10 flex flex-col">
+              <span aria-hidden className="passos-trilho" />
+              {PASSOS.map((p, i) => (
+                <li key={p.nome} className="passo flex items-center gap-4 py-[18px]" style={cssVar({ "--i": i })}>
+                  <span className="passo-icone flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      {p.icone}
+                    </svg>
+                  </span>
+                  <span className="text-[18px] leading-[1.3] tracking-corpo text-black md:text-[20px]">{p.nome}</span>
+                  <span className="ml-auto text-xs tracking-[0.08em] text-[#8f8f8f] tabular-nums">0{i + 1}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div data-reveal="scale" className="mt-12 flex justify-center lg:col-span-6 lg:mt-0 lg:items-start lg:justify-end">
+            <div className="lg:sticky lg:top-24">
+              <Celular />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --------------------------------------------------------- prova */}
+      <section id="prova" className="scroll-mt-20 pt-24 md:pt-36">
+        <div className="mx-auto max-w-[1120px] px-5">
+          <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
+            <div className="md:col-span-7">
+              <Titulo texto="Rodando no meu apartamento em *Niterói*." className={h2} />
+              <Traco className="mt-6" />
+            </div>
+            <p data-reveal="fade" style={delay(300)} className="mt-6 text-sm tracking-[-0.02em] text-[#6b6b6b] md:col-span-4 md:col-start-9 md:mt-0 md:text-right">
+              <a href={ANUNCIO_AIRBNB} target="_blank" rel="noopener" className="underline decoration-1 underline-offset-[3px] hover:text-black">
+                Ver o anúncio no Airbnb
+              </a>
+            </p>
+          </div>
+        </div>
+        <div className="mx-auto mt-10 max-w-[1120px] px-5">
+          <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:aspect-auto md:h-[82svh]">
+            <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+              <img
+                src="/lp/prova-varanda.webp"
+                alt="Varanda do apartamento em Niterói com vista para a baía e o Cristo Redentor"
+                loading="lazy"
+                className="cena-parallax block h-full w-full object-cover [object-position:50%_0%]"
               />
             </div>
-            <span className="absolute left-4 top-4 inline-flex h-7 items-center whitespace-nowrap rounded-[20px] border border-white/[0.28] bg-white/[0.16] px-3 text-[11px] leading-none tracking-[0.08em] text-white backdrop-blur-md">
-              ÚLTIMOS 30 DIAS
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.72) 72%, rgba(0,0,0,0.9) 100%)" }}
+            />
+            <span className="vidro absolute left-5 top-5 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
+              Últimos 30 dias
             </span>
-            <figcaption className="absolute inset-x-0 bottom-0 p-[26px]">
-              <div className="grid grid-cols-2">
+            <figcaption className="absolute inset-x-0 bottom-0 mx-auto max-w-[1120px] p-6 md:p-10">
+              <div className="grid grid-cols-2 md:grid-cols-4">
                 {[
-                  [PROVA.reservas, "reservas", "border-b border-r pb-4 pr-3.5"],
-                  [PROVA.hospedes, "hóspedes", "border-b pb-4 pl-4"],
-                  [PROVA.termos, "contratos assinados", "border-r pr-3.5 pt-4"],
-                  [PROVA.cadastros, "cadastros na portaria", "pl-4 pt-4"],
+                  [PROVA.reservas, "reservas", "border-b border-r pb-4 pr-3.5 md:border-b-0 md:pb-0"],
+                  [PROVA.hospedes, "hóspedes", "border-b pb-4 pl-4 md:border-b-0 md:border-r md:pb-0 md:pr-3.5"],
+                  [PROVA.termos, "contratos assinados", "border-r pr-3.5 pt-4 md:pl-4 md:pt-0"],
+                  [PROVA.cadastros, "cadastros na portaria", "pl-4 pt-4 md:pt-0"],
                 ].map(([n, r, cls], i) => (
                   <div key={r} data-reveal="up" style={delay(i * 80)} className={cn("flex min-w-0 flex-col gap-1.5 border-white/[0.28]", cls as string)}>
                     <span aria-hidden className="mb-0.5 block h-0.5 w-[22px] rounded-[1px] bg-primary" />
-                    <div data-count={n} className="numero-grande text-[clamp(38px,6vw,56px)] text-white">{n}</div>
+                    <div data-count={n} className="numero-grande text-[clamp(38px,6vw,72px)] text-white">{n}</div>
                     <div className="text-sm leading-[1.35] tracking-[-0.02em] text-white/85">{r}</div>
                   </div>
                 ))}
               </div>
             </figcaption>
           </figure>
-          <p data-reveal="fade" style={delay(120)} className="mt-4 text-center text-sm leading-normal tracking-[-0.02em] text-[#6b6b6b]">
-            <a href={ANUNCIO_AIRBNB} target="_blank" rel="noopener" className="underline decoration-1 underline-offset-[3px] hover:text-black">
-              Ver o anúncio no Airbnb
-            </a>
-          </p>
-        </section>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------- emprego */}
-        <section className="pt-[120px]">
-          <figure data-reveal="scale" className="relative mt-6 overflow-hidden rounded-[32px] bg-[#1a1a1a]" style={{ aspectRatio: "4 / 5" }}>
-            <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
-              <img
-                src="/lp/emprego.webp"
-                alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
-                loading="lazy"
-                className="block h-full w-full object-cover"
-              />
-              <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.78) 100%)" }} />
-            </div>
-            <figcaption className="absolute inset-x-0 bottom-0 px-[30px] pb-[34px] pt-8 text-[clamp(30px,4.6vw,40px)] font-normal leading-[1.08] tracking-[-0.035em] text-white [text-wrap:balance]">
-              Você não comprou um apartamento. Você comprou um emprego.
-            </figcaption>
+      {/* ------------------------------------------------------- emprego */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-8">
+          <figure data-cena="atravessar" className="relative overflow-hidden rounded-[28px] bg-[#1a1a1a] md:col-span-5 md:col-start-2" style={{ aspectRatio: "4 / 5" }}>
+            <img
+              src="/lp/emprego.webp"
+              alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
+              loading="lazy"
+              className="cena-parallax block h-full w-full object-cover"
+            />
           </figure>
-          <p data-reveal="up" className="mt-6 text-[clamp(22px,3vw,26px)] font-normal leading-[1.25] tracking-[-0.025em] text-black [text-wrap:pretty]">
-            Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha automatização
-            completa — e esquece por dias que tem um Airbnb.
-          </p>
-        </section>
+          <div className="relative z-[1] -mt-16 md:col-span-6 md:col-start-7 md:mt-0">
+            <div className="rounded-[28px] bg-white/90 p-6 backdrop-blur-md md:bg-transparent md:p-0 md:backdrop-blur-0">
+              <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={h2} />
+              <p data-reveal="up" style={delay(300)} className="mt-6 max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
+                Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
+                automatização completa — e esquece por dias que tem um Airbnb.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------- e ainda */}
-        <section id="e-ainda" className="scroll-mt-20 pt-[120px]">
-          <H2>Você entra pelo check‑in. Fica pelo resto.</H2>
-          <Traco className="mt-5" />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+      {/* ------------------------------------------------------- e ainda */}
+      {/* O trilho corre na horizontal enquanto a página desce: o título é
+          o primeiro cartão, e os quatro recursos vêm em fila. */}
+      <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-24 md:mt-40">
+        <div className="cena-fixo">
+          <div data-trilho className="trilho">
+            <div className="trilho-cartao flex w-[min(86vw,420px)] shrink-0 flex-col justify-between">
+              <Rotulo className="text-primary">E ainda</Rotulo>
+              <div>
+                <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={h2} />
+                <Traco className="mt-6" />
+              </div>
+            </div>
             {E_AINDA.map((a, i) => (
-              <article key={a.rotulo} data-reveal="up" style={delay(i * 60)} className="flex flex-col gap-3.5">
-                <div className={cn("relative overflow-hidden rounded-2xl", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 3" }}>
+              <article key={a.rotulo} className="trilho-cartao flex w-[min(78vw,400px)] shrink-0 flex-col gap-4">
+                <div className={cn("relative overflow-hidden rounded-[22px]", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 5" }}>
                   <img src={a.foto} alt={a.alt} loading="lazy" className="block h-full w-full object-cover" />
                   {a.canais && (
                     <>
                       <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.42) 100%)" }} />
-                      <div className="absolute inset-x-0 bottom-3.5 flex items-center justify-center">
+                      <div className="absolute inset-x-0 bottom-4 flex items-center justify-center">
                         <Logos tamanho={48} sombra />
                       </div>
                     </>
                   )}
-                  <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary text-[15px] leading-none text-white tabular-nums">
-                    {i + 1}
+                  <span className="vidro absolute left-3 top-3 inline-flex h-8 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
+                    0{i + 1}
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs leading-normal tracking-[0.08em] text-primary">{a.rotulo}</span>
-                  <H3>{a.titulo}</H3>
-                  <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666] [text-wrap:pretty]">{a.texto}</p>
+                  <Rotulo className="text-primary">{a.rotulo}</Rotulo>
+                  <h3 className="text-[clamp(20px,2.4vw,26px)] font-normal leading-[1.15] tracking-[-0.02em] text-black [text-wrap:balance]">{a.titulo}</h3>
+                  <p className="text-[15px] leading-[1.45] tracking-[-0.012em] text-[#666666] [text-wrap:pretty]">{a.texto}</p>
                 </div>
               </article>
             ))}
+            <div className="w-5 shrink-0" aria-hidden />
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------ esquecer */}
-        <section className="pt-[120px]">
-          <figure data-reveal="scale" className="relative overflow-hidden rounded-[32px] bg-[#e9e9e9]" style={{ aspectRatio: "4 / 5" }}>
-            <div className="absolute inset-0 overflow-hidden rounded-[inherit]">
-              <img
-                src="/lp/esquecer.webp"
-                alt="Mulher sorrindo, relaxada no sofá da própria casa, com o celular apagado sobre a mesa"
-                loading="lazy"
-                className="block h-full w-full object-cover [object-position:50%_20%]"
-              />
-              <div
-                aria-hidden
-                className="absolute inset-0"
-                style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 26%, rgba(0,0,0,0.58) 48%, rgba(0,0,0,0.8) 70%, rgba(0,0,0,0.9) 100%)" }}
-              />
-            </div>
-            <figcaption className="absolute inset-x-0 bottom-0 flex flex-col gap-3 px-7 py-8">
-              <p className="text-[clamp(32px,4.6vw,44px)] font-normal leading-[1.06] tracking-[-0.035em] text-white [text-wrap:balance]">
-                Nossa meta é você esquecer que o HospedePay existe.
-              </p>
-              <p className="text-[17px] leading-[1.4] tracking-corpo text-white/[0.86] [text-wrap:pretty]">
-                Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
-              </p>
-            </figcaption>
-          </figure>
-        </section>
+      {/* ------------------------------------------------------ esquecer */}
+      <section className="mx-auto max-w-[1120px] px-5 pt-16 md:pt-24">
+        <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#e9e9e9] md:aspect-auto md:h-[86svh]">
+          <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+            <img
+              src="/lp/esquecer.webp"
+              alt="Mulher sorrindo, relaxada no sofá da própria casa, com o celular apagado sobre a mesa"
+              loading="lazy"
+              className="cena-parallax block h-full w-full object-cover [object-position:50%_20%]"
+            />
+          </div>
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 26%, rgba(0,0,0,0.58) 48%, rgba(0,0,0,0.8) 70%, rgba(0,0,0,0.9) 100%)" }}
+          />
+          <figcaption className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1120px] flex-col gap-4 px-7 py-8 md:px-10 md:py-12">
+            <Titulo
+              texto="Nossa meta é você *esquecer* que o HospedePay existe."
+              as="p"
+              className="max-w-[16ch] text-[clamp(32px,5.4vw,64px)] font-normal leading-[1.0] tracking-display text-white"
+            />
+            <p data-reveal="up" style={delay(300)} className="max-w-[40ch] text-[17px] leading-[1.4] tracking-corpo text-white/[0.86] md:text-lg">
+              Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
+            </p>
+          </figcaption>
+        </figure>
+      </section>
 
-        {/* ---------------------------------------------- gestora × hospedepay */}
-        <section id="comparacao" className="scroll-mt-20 pt-[120px]">
-          <div data-reveal="scale" className="rounded-[32px] bg-[#1c1c1e] px-[30px] py-9">
-            <H2 escuro>A gestora leva uma fatia do que você fatura. O HospedePay custa R$97 por mês. Fixo.</H2>
-            <Traco className="mt-5" />
-            <div className="mt-7 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-              <div data-reveal="up" className="flex flex-col gap-2 rounded-[20px] bg-white/[0.12] px-[18px] py-5">
-                <span className="text-xs leading-normal tracking-[0.08em] text-white/[0.72]">GESTORA</span>
-                <span className="numero-grande text-[clamp(34px,9vw,44px)] text-white">15–25%</span>
-                <span className="text-sm leading-[1.45] tracking-corpo text-white/[0.72]">do que o apartamento fatura, todo mês, por imóvel.</span>
+      {/* ---------------------------------------------- gestora × hospedepay */}
+      {/* A cena escura cresce até tomar a largura da tela: um intervalo
+          entre a promessa e o preço. */}
+      <section id="comparacao" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
+        <div data-cena="entrar" className="cena-cresce bg-black text-white">
+          <div className="mx-auto max-w-[1120px] px-6 py-14 md:px-10 md:py-24">
+            <div className="md:grid md:grid-cols-12 md:gap-8">
+              <div className="md:col-span-7">
+                <Rotulo className="mb-5 block text-white/60">Gestora × HospedePay</Rotulo>
+                <Titulo
+                  texto="A gestora leva uma fatia do que você fatura. O HospedePay custa R$97 por mês. *Fixo.*"
+                  className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-white"
+                />
+                <Traco className="mt-6" />
               </div>
-              <div data-reveal="up" style={delay(80)} className="flex flex-col gap-2 rounded-[20px] bg-primary px-[18px] py-5">
-                <span className="text-xs leading-normal tracking-[0.08em] text-white">HOSPEDEPAY</span>
-                <span className="numero-grande text-[clamp(34px,9vw,44px)] text-white">R$97</span>
-                <span className="text-sm leading-[1.45] tracking-corpo text-white">por mês. Fature R$2.000 ou R$10.000, é R$97.</span>
-              </div>
-            </div>
-
-            <div data-reveal="up" className="mt-6 overflow-hidden rounded-3xl bg-white">
-              <div className="grid grid-cols-[1fr_64px_84px] items-end gap-2 border-b border-[#f0f0f0] px-5 pb-3.5 pt-[18px]">
-                <span className="text-xs leading-normal tracking-[0.08em] text-[#666666]">O QUE FAZ</span>
-                <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
-                <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
-              </div>
-              {COMPARACAO.map((g) => (
-                <div key={g.grupo}>
-                  <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-5 pb-1.5 pt-2.5 text-xs tracking-[0.08em] text-[#666666]">{g.grupo}</div>
-                  {g.linhas.map(([nome, gestora, nos], i) => (
-                    <div
-                      key={nome}
-                      className={cn(
-                        "grid grid-cols-[1fr_64px_84px] items-center gap-2 px-5 py-3.5",
-                        i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
-                      )}
-                    >
-                      <span className="text-[15px] leading-[1.4] tracking-corpo text-black">{nome}</span>
-                      {[gestora, nos].map((sim, k) => (
-                        <span key={k} className="flex justify-center">
-                          <span
-                            aria-label={sim ? "sim" : "não"}
-                            className={cn(
-                              "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
-                              sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
-                            )}
-                          >
-                            {sim ? "✓" : "–"}
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  ))}
+              <div className="mt-10 grid grid-cols-2 gap-3 md:col-span-5 md:mt-0 md:self-end">
+                <div data-reveal="up" className="flex flex-col gap-2 rounded-[22px] border border-white/[0.12] bg-[#141416] px-5 py-6">
+                  <Rotulo className="text-white/[0.6]">Gestora</Rotulo>
+                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">15–25%</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-white/[0.6]">do que o apartamento fatura, todo mês, por imóvel.</span>
                 </div>
-              ))}
+                <div data-reveal="up" style={delay(80)} className="flex flex-col gap-2 rounded-[22px] bg-primary px-5 py-6">
+                  <Rotulo className="text-white">HospedePay</Rotulo>
+                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">R$97</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-white">por mês. Fature R$2.000 ou R$10.000, é R$97.</span>
+                </div>
+              </div>
             </div>
 
-            <div data-reveal="up" className="mt-10 flex flex-col gap-[18px] rounded-[28px] bg-[#2a2a2e] px-[26px] py-7">
-              <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-white/[0.72] [text-wrap:pretty]">
-                Faça a conta no seu. Um apartamento que fatura R$4.000 por mês:
-              </p>
-              <div className="flex flex-col">
-                {[["Gestora", "R$9.600"], ["HospedePay", "R$970"]].map(([q, v]) => (
-                  <div key={q} className="flex items-baseline justify-between gap-4 border-t border-white/[0.14] py-3">
-                    <span className="text-[22px] tracking-[-0.014em] text-white">{q}</span>
-                    <span className="whitespace-nowrap text-[22px] tracking-[-0.02em] text-white tabular-nums">
-                      {v}<span className="text-sm text-white/[0.72]"> / ano</span>
-                    </span>
+            <div className="mt-12 md:grid md:grid-cols-12 md:gap-8">
+              <div data-reveal="up" className="overflow-hidden rounded-3xl bg-white text-black md:col-span-7">
+                <div className="grid grid-cols-[1fr_64px_84px] items-end gap-2 border-b border-[#f0f0f0] px-5 pb-3.5 pt-[18px]">
+                  <Rotulo className="text-[#666666]">O que faz</Rotulo>
+                  <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
+                  <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
+                </div>
+                {COMPARACAO.map((g) => (
+                  <div key={g.grupo}>
+                    <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-5 pb-1.5 pt-2.5">
+                      <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
+                    </div>
+                    {g.linhas.map(([nome, gestora, nos], i) => (
+                      <div
+                        key={nome}
+                        className={cn(
+                          "grid grid-cols-[1fr_64px_84px] items-center gap-2 px-5 py-3.5",
+                          i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
+                        )}
+                      >
+                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">{nome}</span>
+                        {[gestora, nos].map((sim, k) => (
+                          <span key={k} className="flex justify-center">
+                            <span
+                              aria-label={sim ? "sim" : "não"}
+                              className={cn(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
+                                sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
+                              )}
+                            >
+                              {sim ? "✓" : "–"}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
-              <div className="flex flex-col gap-1 border-t-2 border-black pt-[18px]">
-                <span className="text-xs leading-normal tracking-[0.08em] text-white/[0.72]">A DIFERENÇA</span>
-                <div className="flex flex-wrap items-baseline gap-2.5">
-                  <span className="numero-grande text-[clamp(48px,6vw,64px)] text-[#FF8095]">R$8.630</span>
-                  <span className="text-base tracking-[-0.014em] text-white/[0.72]">por ano, no seu bolso</span>
+
+              <div data-reveal="up" style={delay(120)} className="mt-6 flex flex-col gap-[18px] rounded-[28px] border border-white/[0.12] bg-[#141416] px-6 py-7 md:col-span-5 md:mt-0 md:self-start">
+                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-white/[0.7] [text-wrap:pretty]">
+                  Faça a conta no seu. Um apartamento que fatura R$4.000 por mês:
+                </p>
+                <div className="flex flex-col">
+                  {[["Gestora", "R$9.600"], ["HospedePay", "R$970"]].map(([q, v]) => (
+                    <div key={q} className="flex items-baseline justify-between gap-4 border-t border-white/[0.14] py-3">
+                      <span className="text-[20px] tracking-[-0.014em] text-white">{q}</span>
+                      <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-white tabular-nums">
+                        {v}<span className="text-sm text-white/[0.6]"> / ano</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1 border-t border-white/[0.3] pt-[18px]">
+                  <Rotulo className="text-white/[0.6]">A diferença</Rotulo>
+                  <div className="flex flex-wrap items-baseline gap-2.5">
+                    <span className="numero-grande text-[clamp(48px,6vw,72px)] text-[#FF8095]">R$8.630</span>
+                    <span className="text-base tracking-[-0.014em] text-white/[0.7]">por ano, no seu bolso</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* -------------------------------------------------------- planos */}
-        <section id="planos" ref={planosRef} className="scroll-mt-6 pt-[120px]">
-          <H2>Escolha o plano. Eu ligo seu calendário hoje.</H2>
-          <Traco className="mt-5" />
-          <p data-reveal="up" style={delay(80)} className="mt-5 max-w-[46ch] text-lg leading-[1.33] tracking-[-0.01em] text-[#666666] [text-wrap:pretty]">
-            Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
-            implementação e suporte inclusos.
-          </p>
-          {checkoutCancelado && (
-            <p className="mt-5 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-              Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
-            </p>
-          )}
-          {erroPlano && (
-            <p role="alert" className="mt-5 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-              {erroPlano}
-            </p>
-          )}
-          <div className="mt-10 flex flex-col gap-6">
+      {/* -------------------------------------------------------- planos */}
+      <section id="planos" ref={planosRef} className="scroll-mt-6 mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-5">
+            <div className="lg:sticky lg:top-24">
+              <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
+              <Titulo texto="Escolha o plano. Eu ligo seu calendário *hoje*." className={h2} />
+              <Traco className="mt-6" />
+              <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
+                Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
+                implementação e suporte inclusos.
+              </p>
+              {checkoutCancelado && (
+                <p className="mt-5 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+                  Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
+                </p>
+              )}
+              {erroPlano && (
+                <p role="alert" className="mt-5 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
+                  {erroPlano}
+                </p>
+              )}
+              <p data-reveal="up" style={delay(300)} className="mt-6 hidden lg:block">
+                <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
+                  Mais de 5 imóveis? Toca no botão que a conversa é outra.
+                </button>
+              </p>
+            </div>
+          </div>
+          <div className="mt-10 flex flex-col gap-5 lg:col-span-7 lg:mt-0">
             {PLANOS.map((p, i) => (
               <article
                 key={p.tier}
                 id={p.tier}
                 data-reveal="up"
                 style={{ ...delay(i * 80), scrollMarginTop: 24 }}
-                className="flex flex-col overflow-hidden rounded-[28px] border border-[#ececec] bg-white"
+                className={cn(
+                  "flex flex-col overflow-hidden rounded-[28px] border bg-white",
+                  p.tier === "pro" ? "border-black" : "border-[#ececec]",
+                )}
               >
                 <div className="flex items-center justify-between gap-3 border-b border-[#ececec] bg-[#f7f7f7] px-[22px] py-[18px]">
-                  <H3>{p.nome}</H3>
+                  <h3 className="text-[clamp(20px,3vw,24px)] font-normal leading-[1.2] tracking-[-0.02em] text-black">{p.nome}</h3>
                   <span className="inline-flex h-[30px] items-center whitespace-nowrap rounded-[20px] bg-black px-3.5 text-[13px] leading-none tracking-[-0.02em] text-white">
                     {p.imoveis}
                   </span>
                 </div>
-                <div className="flex flex-col gap-5 px-[22px] py-6">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <span className="numero-grande text-[clamp(40px,5vw,56px)] text-black">{brl(p.anual)}</span>
-                      <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
+                <div className="flex flex-col gap-5 px-[22px] py-6 md:grid md:grid-cols-2 md:items-center md:gap-8">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="numero-grande text-[clamp(40px,5vw,56px)] text-black">{brl(p.anual)}</span>
+                        <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
+                      </div>
+                      <div className="text-base tracking-corpo text-black tabular-nums">
+                        ou <span className="text-primary">10x de {brl(p.mensal)}</span> no cartão
+                      </div>
                     </div>
-                    <div className="text-base tracking-corpo text-black tabular-nums">
-                      ou <span className="text-primary">10x de {brl(p.mensal)}</span> no cartão
-                    </div>
+                    <ul className="flex flex-col gap-2.5">
+                      {["Implementação incluída", "Suporte incluído", "Garantia de 30 dias"].map((l) => (
+                        <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
+                          <Check />
+                          <span>{l}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="flex flex-col gap-2.5">
-                    {["Implementação incluída", "Suporte incluído", "Garantia de 30 dias"].map((l) => (
-                      <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
-                        <Check />
-                        <span>{l}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() => assinar(p.tier, "annual")}
-                    disabled={abrindo !== null}
-                    className="flex h-14 items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
-                  >
-                    {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                    Assinar o {p.nome} anual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => assinar(p.tier, "monthly")}
-                    disabled={abrindo !== null}
-                    className="text-center text-sm leading-normal tracking-[-0.02em] text-[#666666] underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
-                  >
-                    {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
-                  </button>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => assinar(p.tier, "annual")}
+                      disabled={abrindo !== null}
+                      className="flex h-14 items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
+                    >
+                      {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                      Assinar o {p.nome} anual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => assinar(p.tier, "monthly")}
+                      disabled={abrindo !== null}
+                      className="text-center text-sm leading-normal tracking-[-0.02em] text-[#666666] underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
+                    >
+                      {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
+            <p data-reveal="up" className="mt-2 text-center lg:hidden">
+              <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
+                Mais de 5 imóveis? Toca no botão que a conversa é outra.
+              </button>
+            </p>
           </div>
-          <p data-reveal="up" className="mt-7 text-center">
-            <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
-              Mais de 5 imóveis? Toca no botão que a conversa é outra.
-            </button>
-          </p>
-        </section>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------------ garantia */}
-        <section id="garantia" className="scroll-mt-20 pt-16">
-          <div data-reveal="scale" className="overflow-hidden rounded-[32px] bg-primary">
-            <div className="bg-[#f0f0f0]" style={{ aspectRatio: "4 / 3" }}>
-              <img
-                src="/lp/garantia.webp"
-                alt="Aperto de mãos com a entrega das chaves na porta do apartamento"
-                loading="lazy"
-                className="block h-full w-full object-cover"
-              />
+      {/* ------------------------------------------------------ garantia */}
+      {/* A cortina coral desce sobre a foto conforme a seção entra. */}
+      <section id="garantia" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
+        <div data-cena="entrar" className="cena-cresce relative overflow-hidden bg-[#f0f0f0] md:grid md:grid-cols-12">
+          <div className="relative md:col-span-6" style={{ aspectRatio: "4 / 3" }}>
+            <img
+              src="/lp/garantia.webp"
+              alt="Aperto de mãos com a entrega das chaves na porta do apartamento"
+              loading="lazy"
+              className="absolute inset-0 block h-full w-full object-cover"
+            />
+          </div>
+          <div className="cena-cortina flex flex-col justify-center gap-7 bg-primary px-6 py-8 text-white md:col-span-6 md:px-12 md:py-16">
+            <div className="flex flex-col gap-2">
+              <Titulo as="p" texto="Garantia incondicional de 30 dias." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" />
+              <p data-reveal="up" style={delay(300)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Não gostou, devolvo. Sem asterisco.</p>
             </div>
-            <div className="flex flex-col gap-[22px] bg-primary px-5 py-6">
-              <div className="flex flex-col gap-1.5">
-                <p className="text-[clamp(23px,6.4vw,30px)] font-normal leading-[1.14] tracking-titulo text-white">Garantia incondicional de 30 dias.</p>
-                <p className="text-lg leading-[1.33] tracking-[-0.01em] text-white">Não gostou, devolvo. Sem asterisco.</p>
-              </div>
-              <div className="h-px bg-white/[0.28]" />
-              <div className="flex flex-col gap-1.5">
-                <p className="text-[clamp(23px,6.4vw,30px)] font-normal leading-[1.14] tracking-titulo text-white">Ativação em menos de 24 horas.</p>
-                <p className="text-lg leading-[1.33] tracking-[-0.01em] text-white">Escolha o anual e eu resolvo o resto.</p>
-              </div>
+            <div className="h-px bg-white/[0.3]" />
+            <div className="flex flex-col gap-2">
+              <Titulo as="p" texto="Ativação em menos de 24 horas." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" atraso={200} />
+              <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Escolha o anual e eu resolvo o resto.</p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ------------------------------------------------- quem responde */}
-        <section id="quem-responde" className="scroll-mt-20 pt-[120px]">
-          <div data-reveal="up" className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] items-start gap-7">
-            <div className="overflow-hidden rounded-[32px] bg-[#f0f0f0]" style={{ aspectRatio: "4 / 5" }}>
-              <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="block h-full w-full object-cover [object-position:50%_30%]" />
-            </div>
-            <div className="flex flex-col gap-5">
-              <p className="text-[clamp(23px,6.4vw,30px)] font-normal leading-[1.14] tracking-titulo text-black [text-wrap:pretty]">
-                Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu próprio apartamento.
-              </p>
-              <p className="text-lg leading-[1.33] tracking-[-0.01em] text-black">
-                Quem te atende sou eu. A implementação eu faço com você, numa chamada de 15 minutos.
-                Seu calendário fica ligado no mesmo dia.
-              </p>
+      {/* ------------------------------------------------- quem responde */}
+      <section id="quem-responde" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
+        <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
+          <figure data-cena="atravessar" className="relative overflow-hidden rounded-[28px] bg-[#f0f0f0] md:col-span-6" style={{ aspectRatio: "4 / 5" }}>
+            <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="cena-parallax block h-full w-full object-cover [object-position:50%_30%]" />
+            <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
+            <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
+              <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
+                <Ponto on={on} />
+                {on ? "Online agora" : "Te ligo em até 1 hora"}
+              </span>
+            </figcaption>
+          </figure>
+          <div className="mt-8 flex flex-col gap-5 md:col-span-6 md:mt-0 md:pb-4">
+            <Titulo
+              as="p"
+              texto="Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu *próprio* apartamento."
+              className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
+            />
+            <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
+              Quem te atende sou eu. A implementação eu faço com você, numa chamada de 15 minutos.
+              Seu calendário fica ligado no mesmo dia.
+            </p>
+            <div data-reveal="up" style={delay(400)} className="flex flex-col gap-2.5">
               <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-              <p className="-mt-2.5 text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+              <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ----------------------------------------------------- perguntas */}
-        <section id="perguntas" className="scroll-mt-20 pb-24 pt-[120px]">
-          <H2>Perguntas que todo mundo faz</H2>
-          <Traco className="mb-3 mt-5" />
-          <div className="flex flex-col">
+      {/* ----------------------------------------------------- perguntas */}
+      <section id="perguntas" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pb-24 pt-24 md:pb-36 md:pt-40">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-5">
+            <Titulo texto="Perguntas que *todo mundo* faz" className={h2} />
+            <Traco className="mt-6" />
+          </div>
+          <div className="mt-8 flex flex-col border-t border-[#e6e6e6] lg:col-span-7 lg:mt-0">
             {PERGUNTAS.map(([q, a], i) => (
-              <div key={q} data-reveal="up" className={cn("flex flex-col gap-2 py-[22px]", i < PERGUNTAS.length - 1 && "border-b border-[#f0f0f0]")}>
-                <H3>{q}</H3>
-                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666]">{a}</p>
-              </div>
+              <details key={q} data-reveal="up" style={delay(i * 50)} className="pergunta group border-b border-[#e6e6e6]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 [&::-webkit-details-marker]:hidden">
+                  <span className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.25] tracking-[-0.02em] text-black">{q}</span>
+                  <span aria-hidden className="pergunta-mais relative h-8 w-8 shrink-0 rounded-full border border-[#d9d9d9]">
+                    <span className="absolute left-1/2 top-1/2 h-[1.5px] w-3.5 -translate-x-1/2 -translate-y-1/2 bg-black" />
+                    <span className="pergunta-v absolute left-1/2 top-1/2 h-3.5 w-[1.5px] -translate-x-1/2 -translate-y-1/2 bg-black" />
+                  </span>
+                </summary>
+                <p className="max-w-[56ch] pb-7 text-base leading-[1.5] tracking-[-0.012em] text-[#666666]">{a}</p>
+              </details>
             ))}
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
       {/* ---------------------------------------------------------- fechamento */}
       <section className="relative overflow-hidden bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%] opacity-80" />
-        <div className="relative z-[1] mx-auto flex max-w-[720px] flex-col gap-10 px-5 pb-[150px] pt-[120px]">
-          <h2 data-reveal="up" className="max-w-[20ch] text-[clamp(34px,5vw,44px)] font-normal leading-[1.04] tracking-titulo text-primary [text-wrap:balance]">
-            Ninguém dorme no seu apartamento sem ter assinado.
-          </h2>
-          <div data-reveal="up" style={delay(120)} className="flex flex-col gap-2.5">
+        <Faixa itens={FAIXA} escuro />
+        <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-10 px-5 pb-[150px] pt-[100px] md:pt-[140px]">
+          <Titulo
+            texto="Ninguém dorme no seu apartamento sem ter *assinado*."
+            className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-primary"
+          />
+          <div data-reveal="up" style={delay(300)} className="flex flex-col gap-2.5 md:max-w-[520px]">
             <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
             <p className="text-center text-sm leading-normal tracking-titulo text-white/70">{textos.linha}</p>
           </div>
-          <footer className="mt-6 flex flex-col gap-[22px] border-t border-white/[0.14] pt-7">
+          <footer className="mt-10 flex flex-col gap-[22px] border-t border-white/[0.14] pt-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Marca size={22} tom="tinta" />
               <Link
@@ -1141,7 +1375,7 @@ export default function Landing() {
                 Entrar na plataforma
               </Link>
             </div>
-            <nav aria-label="Links do rodapé" className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] leading-normal tracking-corpo">
+            <nav aria-label="Links do rodapé" className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] leading-normal tracking-corpo md:flex md:flex-wrap md:gap-x-8">
               <button type="button" onClick={abrir} className="text-left text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">
                 Pedir devolução (30 dias)
               </button>
@@ -1163,12 +1397,12 @@ export default function Landing() {
       {/* -------------------------------------------------------------- fab */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl transition-[transform,opacity] duration-500 ease-page",
+          "fab fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl transition-[transform,opacity] duration-500 ease-page",
+          "md:inset-x-auto md:bottom-6 md:right-6 md:w-[360px] md:border-0 md:bg-transparent md:px-0 md:pt-0 md:backdrop-blur-0",
           fab && !formAberto ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0",
         )}
-        style={{ paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mx-auto max-w-[720px]" />
+        <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mx-auto max-w-[720px] md:shadow-[0_12px_40px_rgba(0,0,0,0.28)]" />
       </div>
 
       {/* ------------------------------------------------------- formulário */}
@@ -1254,26 +1488,101 @@ export default function Landing() {
 }
 
 /**
- * CSS das revelações. Vive aqui, e não no index.css, porque só esta página
+ * CSS do movimento. Vive aqui, e não no index.css, porque só esta página
  * tem entrada cinematográfica — o painel abre pronto, sem cortina.
+ *
+ * Tudo o que depende da rolagem lê `--p` (0 a 1), que o `useCenas` escreve
+ * no elemento marcado com `data-cena` e os filhos herdam.
  */
 const LP_CSS = `
-.lp-js [data-reveal] { opacity: 0; transition: opacity 1.15s cubic-bezier(.22,.61,.36,1), transform 1.15s cubic-bezier(.22,.61,.36,1), filter 1.15s cubic-bezier(.22,.61,.36,1); }
-.lp-js [data-reveal="up"] { transform: translateY(44px); filter: blur(8px); }
-.lp-js [data-reveal="left"] { transform: translateX(-36px); filter: blur(8px); }
-.lp-js [data-reveal="scale"] { transform: scale(.92) translateY(28px); filter: blur(8px); }
-.lp-js [data-reveal="word"] { transform: translateY(.35em); filter: blur(12px); transition-duration: 1s; }
+.acento { font-family: "Instrument Serif", Georgia, "Times New Roman", serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
+
+/* --- revelação -------------------------------------------------------- */
+.lp-js [data-reveal] { opacity: 0; transition: opacity 1.1s cubic-bezier(.22,.61,.36,1), transform 1.1s cubic-bezier(.22,.61,.36,1); }
+.lp-js [data-reveal="up"] { transform: translateY(28px); }
+.lp-js [data-reveal="left"] { transform: translateX(-24px); }
+.lp-js [data-reveal="scale"] { transform: scale(.96) translateY(24px); }
 .lp-js [data-reveal="fade"] { transform: none; }
-.lp-js [data-reveal="line"] { transform: scaleX(0); opacity: 1; transition: transform .8s cubic-bezier(.22,.61,.36,1); }
-.lp-js [data-reveal].is-in { opacity: 1; transform: none; filter: none; }
+.lp-js [data-reveal="line"] { transform: scaleX(0); opacity: 1; transition: transform .9s cubic-bezier(.22,.61,.36,1); }
+.lp-js [data-reveal="mask"] { opacity: 1; transition: none; }
+.lp-js [data-reveal].is-in { opacity: 1; transform: none; }
 .lp-js [data-reveal="line"].is-in { transform: scaleX(1); }
-.lp-js .lp-fill { transform: scaleX(0); transition: transform .9s cubic-bezier(.22,.61,.36,1); }
-.lp-js .lp-fill.is-in { transform: scaleX(1); }
-.lp-js .lp-fill-y { transform: scaleY(0); transition: transform 1.4s cubic-bezier(.22,.61,.36,1); }
+.mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0.06em 0.04em 0.14em 0; margin: -0.06em -0.04em -0.14em 0; }
+.mask .w { display: inline-block; }
+.lp-js .mask .w { transform: translateY(112%); transition: transform 1.05s cubic-bezier(.22,.61,.36,1) var(--d, 0ms); }
+.lp-js .is-in .mask .w { transform: none; }
+.lp-js .lp-fill-y { transform: scaleY(0); transition: transform 1.6s cubic-bezier(.22,.61,.36,1); }
 .lp-js .lp-fill-y.is-in { transform: scaleY(1); }
+
+/* --- faixa que corre ---------------------------------------------------- */
+.faixa-trilho { animation: faixa 42s linear infinite; }
+.fab { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 768px) { .fab { padding-bottom: 0; } }
+@keyframes faixa { to { transform: translate3d(-50%, 0, 0); } }
+
+/* --- vidro -------------------------------------------------------------- */
+.vidro { background: rgba(200,200,200,0.14); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: rgba(0,0,0,0.25) 0 10px 30px, inset 0 1px 0 rgba(255,255,255,0.12); }
+
+/* --- as três telas que se empilham ---------------------------------- */
+.cena-pilha { position: relative; height: calc(var(--n) * 100svh); background: #000; }
+.cena-painel {
+  position: sticky; top: 0; height: 100svh; overflow: hidden;
+  --c: clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i)), 1);
+  --a: clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1);
+  transform: scale(calc(1 - 0.08 * var(--c))) translateY(calc(-32px * var(--c)));
+  transform-origin: 50% 35%;
+  border-radius: calc(36px * (1 - var(--a))) calc(36px * (1 - var(--a))) 0 0;
+  will-change: transform;
+}
+.cena-painel .cena-foto { transform: scale(calc(1.12 - 0.12 * var(--a))) translateY(calc(-3% * var(--c))); transform-origin: 50% 50%; }
+.cena-painel .cena-sombra { opacity: calc(0.7 * var(--c)); pointer-events: none; }
+.cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
+
+/* --- o trilho que corre na horizontal ---------------------------------- */
+.cena-drift { position: relative; height: 380svh; }
+@media (min-width: 768px) { .cena-drift { height: 300svh; } }
+.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: center; overflow: hidden; }
+.trilho { display: flex; align-items: stretch; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
+@media (min-width: 768px) { .trilho { gap: 28px; padding-left: max(20px, calc((100vw - 1120px) / 2 + 20px)); } }
+.trilho-cartao { min-height: min(70svh, 640px); }
+
+/* --- crescer até a borda da tela --------------------------------------- */
+.cena-cresce { --g: var(--p, 0); border-radius: calc(32px * (1 - var(--g))); margin-inline: calc((100% - 100vw) / 2 * var(--g)); }
+@media (min-width: 1200px) { .cena-cresce { margin-inline: calc((100% - min(100vw, 1440px)) / 2 * var(--g)); } }
+
+/* --- parallax leve dentro das molduras --------------------------------- */
+.cena-parallax { transform: translate3d(0, calc((var(--p, .5) - .5) * -10%), 0) scale(1.12); will-change: transform; }
+
+/* --- a cortina coral da garantia --------------------------------------- */
+.cena-cortina { clip-path: inset(calc((1 - clamp(0, calc(var(--p, 0) * 1.6 - 0.3), 1)) * 100%) 0 0 0); }
+
+/* --- os passos do hóspede acendem conforme a lista passa ---------------- */
+.passos { position: relative; }
+.passos-trilho { position: absolute; left: 17px; top: 18px; bottom: 18px; width: 2px; background: #ececec; }
+.passos-trilho::after { content: ""; position: absolute; inset: 0; background: #FF385C; transform-origin: top; transform: scaleY(clamp(0, calc((var(--p, 0) - .18) / .5), 1)); }
+.passo { --k: clamp(0, calc((var(--p, 0) - .18 - var(--i) * .1) / .08), 1); opacity: calc(0.28 + 0.72 * var(--k)); position: relative; }
+.passo + .passo { border-top: 1px solid #f0f0f0; }
+.passo-icone { position: relative; z-index: 1; transform: scale(calc(0.86 + 0.14 * var(--k))); }
+
+/* --- perguntas ---------------------------------------------------------- */
+.pergunta .pergunta-v { transition: transform .35s cubic-bezier(.22,.61,.36,1); }
+.pergunta[open] .pergunta-v { transform: translate(-50%, -50%) rotate(90deg); }
+.pergunta .pergunta-mais { transition: background-color .25s, border-color .25s; }
+.pergunta[open] .pergunta-mais { background: #000; border-color: #000; }
+.pergunta[open] .pergunta-mais span { background: #fff; }
+
 .lp-glow { pointer-events: none; filter: blur(34px); opacity: .9;
   background: radial-gradient(40% 35% at 20% 25%, rgba(255,56,92,.45), transparent 70%),
               radial-gradient(35% 30% at 80% 70%, rgba(0,166,153,.25), transparent 70%),
               radial-gradient(45% 40% at 55% 90%, rgba(252,100,45,.22), transparent 70%); }
-@media (prefers-reduced-motion: reduce) { .lp-js [data-reveal], .lp-js .lp-fill, .lp-js .lp-fill-y { transition: none !important; opacity: 1; transform: none !important; filter: none !important; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-js [data-reveal], .lp-js .lp-fill-y, .lp-js .mask .w { transition: none !important; opacity: 1; transform: none !important; }
+  .faixa-trilho { animation: none; }
+  .cena-painel { transform: none; border-radius: 0; }
+  .cena-painel .cena-foto, .cena-parallax { transform: none; }
+  .cena-painel .cena-sombra { opacity: 0; }
+  .cena-cortina { clip-path: none; }
+  .passo { opacity: 1; }
+}
 `;
