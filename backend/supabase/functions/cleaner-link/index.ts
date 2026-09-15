@@ -120,16 +120,29 @@ export default handler(async (req) => {
   const accessUrl = `${env.appBaseUrl()}/d/${token}`;
   const firstName = cleanerName.split(" ")[0];
 
+  // Junto com o link vai um código de 6 dígitos: é a segunda porta dela, para
+  // entrar por hospedepay.org ("Sou diarista") quando não achar o link. Troca
+  // a cada geração, como o link — o dono manda os dois na mesma mensagem.
+  const accessCode = novoCodigo();
+  const { error: codeError } = await db.rpc("cleaner_set_code", {
+    _cleaner_id: cleaner_id,
+    _code: accessCode,
+  });
+  if (codeError) throw errors.upstream(`Falha ao gerar o código: ${codeError.message}`);
+
   const message =
     `Oi, ${firstName}! Este é o link da sua agenda de limpeza. ` +
     `Salva ele no celular — é por aqui que você vê as saídas do dia e marca a ` +
-    `limpeza como feita. Só precisa digitar o seu telefone, senha não tem: ${accessUrl}`;
+    `limpeza como feita. Só precisa digitar o seu telefone, senha não tem: ${accessUrl}\n\n` +
+    `Se perder o link, entra em ${env.appBaseUrl()} em "Sou diarista" com o seu ` +
+    `WhatsApp e este código: ${accessCode}`;
 
   return json({
     ok: true,
     invite_id: inviteId,
     cleaner_name: cleanerName,
     access_url: accessUrl,
+    access_code: accessCode,
     whatsapp_link: profile?.phone_e164
       ? `https://wa.me/${profile.phone_e164}?text=${encodeURIComponent(message)}`
       : null,
@@ -139,3 +152,9 @@ export default handler(async (req) => {
     replaced_previous: Boolean(invite),
   });
 });
+
+/** Seis dígitos de fonte criptográfica, com zero à esquerda quando der. */
+function novoCodigo(): string {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+  return String(n).padStart(6, "0");
+}

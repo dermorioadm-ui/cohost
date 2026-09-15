@@ -168,6 +168,7 @@ export default function Imovel() {
   const [panelLink, setPanelLink] = useState<{
     cleaner_id: string;
     access_url: string;
+    access_code: string;
     whatsapp_link: string | null;
     replaced_previous: boolean;
   } | null>(null);
@@ -451,6 +452,7 @@ export default function Imovel() {
       setPanelLink({
         cleaner_id: cleanerId,
         access_url: res.access_url,
+        access_code: res.access_code,
         whatsapp_link: res.whatsapp_link,
         replaced_previous: res.replaced_previous,
       });
@@ -1082,7 +1084,8 @@ export default function Imovel() {
                           É por ele que {cleanerName(form.cleaner_id)} entra na agenda, vê as saídas
                           do dia e marca a limpeza como feita. Ela digita só o telefone — senha não
                           existe. O link é permanente: vale para salvar na tela inicial do celular
-                          dela.
+                          dela. Junto vai um código de 6 dígitos: se ela perder o link, entra em
+                          hospedepay.org em "Sou diarista" com o WhatsApp e o código.
                         </p>
 
                         {panelLink?.cleaner_id === form.cleaner_id ? (
@@ -1091,10 +1094,15 @@ export default function Imovel() {
                               {panelLink.access_url}
                             </p>
 
+                            <p className="flex items-center justify-between rounded-lg bg-muted px-2.5 py-2 text-xs">
+                              <span className="text-muted-foreground">Código para entrar pelo site</span>
+                              <span className="font-mono text-base tracking-[0.2em]">{panelLink.access_code}</span>
+                            </p>
+
                             {panelLink.replaced_previous && (
                               <p className="text-xs leading-relaxed text-warning">
-                                O link anterior deixou de valer. Se ela já tinha um salvo, mande
-                                este.
+                                O link e o código anteriores deixaram de valer. Se ela já tinha um
+                                salvo, mande estes.
                               </p>
                             )}
 
