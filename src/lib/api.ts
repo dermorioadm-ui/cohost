@@ -424,6 +424,8 @@ export const api = {
         invite_id: string;
         cleaner_name: string;
         access_url: string;
+        /** Código de 6 dígitos para ela entrar pelo site. Troca junto com o link. */
+        access_code: string;
         whatsapp_link: string | null;
         whatsapp_message: string;
         replaced_previous: boolean;
@@ -442,8 +444,17 @@ export const api = {
       request<{
         owner_name: string;
         cleaner_name: string;
+        /** Vem só na primeira entrada: o código dela para entrar pelo site. */
+        access_code: string | null;
         session: { access_token: string; refresh_token: string };
       }>("cleaner-accept", { body: { token, action: "accept", phone }, auth: false }),
+
+    // Entrada pelo site, sem link: WhatsApp + código de 6 dígitos.
+    entrar: (phone: string, code: string) =>
+      request<{
+        cleaner_name: string;
+        session: { access_token: string; refresh_token: string };
+      }>("cleaner-entrar", { body: { phone, code }, auth: false }),
   },
 
   billing: {

@@ -172,6 +172,19 @@ export default handler(async (req) => {
     throw errors.forbidden(key ? map[key] : "Não foi possível aceitar o convite.");
   }
 
+  // Na primeira entrada ela ganha um código de 6 dígitos, mostrado uma vez:
+  // é a porta de hospedepay.org ("Sou diarista") para quando perder o link.
+  // Se o dono já gerou um, fica o dele — e a resposta não traz nada.
+  let accessCode: string | null = String(
+    crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000,
+  ).padStart(6, "0");
+  const { data: codeSet } = await db.rpc("cleaner_set_code", {
+    _cleaner_id: cleanerId,
+    _code: accessCode,
+    _only_if_missing: true,
+  });
+  if (codeSet !== true) accessCode = null;
+
   // Sessão sem senha: link mágico trocado por tokens de acesso.
   const { data: link, error: linkError } = await db.auth.admin.generateLink({
     type: "magiclink",
@@ -197,6 +210,7 @@ export default handler(async (req) => {
     ok: true,
     owner_name: ownerName,
     cleaner_name: invite.cleaner_name,
+    access_code: accessCode,
     session: {
       access_token: verified.session.access_token,
       refresh_token: verified.session.refresh_token,

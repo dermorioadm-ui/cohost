@@ -92,6 +92,10 @@ verify_jwt = false
 [functions.cleaner-accept]
 verify_jwt = false
 
+# Entrada da diarista pelo site (WhatsApp + código). Sem sessão ainda.
+[functions.cleaner-entrar]
+verify_jwt = false
+
 # Calendário de saída (.ics). Quem chama é o robô do Airbnb/Booking: não tem
 # login, não manda header. Autoriza pelo token na URL, e responde text/calendar
 # — nunca JSON, que o canal leria como feed inválido.

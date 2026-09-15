@@ -21,7 +21,9 @@ export default function CleanerAccept() {
   const { token = "" } = useParams();
   const navigate = useNavigate();
 
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "codigo" | "error">("loading");
+  // Código de 6 dígitos que ela recebe na primeira entrada, mostrado uma vez.
+  const [codigo, setCodigo] = useState<string | null>(null);
   const [preview, setPreview] = useState<{
     cleaner_name: string;
     owner_name: string;
@@ -61,6 +63,13 @@ export default function CleanerAccept() {
         access_token: res.session.access_token,
         refresh_token: res.session.refresh_token,
       });
+      // A primeira entrada para numa tela com o código dela: é a porta do
+      // site para quando o link sumir, e só aparece agora.
+      if (res.access_code) {
+        setCodigo(res.access_code);
+        setState("codigo");
+        return;
+      }
       navigate("/agenda");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Não consegui liberar seu acesso";
@@ -94,6 +103,37 @@ export default function CleanerAccept() {
           <p className="font-semibold">{error}</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Peça um link novo para quem te convidou.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "codigo" && codigo) {
+    return (
+      <div className="mesh-gradient flex min-h-screen items-center justify-center px-6 py-10">
+        <div className="mesh-blob-3 animate-blob" aria-hidden />
+        <div className="w-full max-w-xs text-center">
+          <Marca size={40} className="mx-auto" semNome />
+          <h1 className="mt-5 text-[28px] font-normal leading-[1.05] tracking-titulo">
+            Guarde este código
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Se um dia perder o link, entre em hospedepay.org em{" "}
+            <span className="font-medium text-foreground">Sou diarista</span> com o seu
+            WhatsApp e este código.
+          </p>
+          <p
+            aria-label={`Código ${codigo.split("").join(" ")}`}
+            className="paper-frame mt-6 !rounded-panel py-5 font-mono text-[34px] tracking-[0.3em]"
+          >
+            {codigo}
+          </p>
+          <Button onClick={() => navigate("/agenda")} size="lg" className="mt-5 w-full">
+            Abrir minha agenda
+          </Button>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Anote no celular. Quem te convidou também consegue gerar outro.
           </p>
         </div>
       </div>

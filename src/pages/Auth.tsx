@@ -18,10 +18,13 @@ import { Link } from "react-router-dom";
 export default function Auth() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">(
-    params.get("modo") === "cadastro" ? "signup" : "signin",
+  const [mode, setMode] = useState<"signin" | "signup" | "reset" | "cleaner">(
+    params.get("modo") === "cadastro" ? "signup" : params.get("modo") === "diarista" ? "cleaner" : "signin",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
+  // A diarista não tem e-mail nem senha: entra com o WhatsApp e um código de
+  // 6 dígitos que o anfitrião passou (ou que ela viu na primeira entrada).
+  const [diarista, setDiarista] = useState({ phone: "", code: "" });
 
   // O plano escolhido na página de vendas atravessa o cadastro e o e-mail de
   // confirmação pelo localStorage; a query só existe nesta primeira tela.
@@ -36,6 +39,18 @@ export default function Auth() {
     setBusy(true);
 
     try {
+      if (mode === "cleaner") {
+        if (diarista.phone.replace(/\D/g, "").length < 10) throw new Error("Digite seu WhatsApp com DDD");
+        if (diarista.code.replace(/\D/g, "").length !== 6) throw new Error("O código tem 6 números");
+        const res = await api.cleaner.entrar(diarista.phone, diarista.code);
+        await supabase.auth.setSession({
+          access_token: res.session.access_token,
+          refresh_token: res.session.refresh_token,
+        });
+        navigate("/agenda");
+        return;
+      }
+
       if (mode === "reset") {
         // A resposta do servidor é a mesma exista a conta ou não, e a tela
         // repete essa neutralidade: dizer "não achei esse e-mail" transformaria
@@ -87,13 +102,18 @@ export default function Auth() {
   };
 
   const titulo =
-    mode === "signup" ? "Criar sua conta" : mode === "reset" ? "Recuperar senha" : "Entrar";
+    mode === "signup" ? "Criar sua conta"
+    : mode === "reset" ? "Recuperar senha"
+    : mode === "cleaner" ? "Sou diarista"
+    : "Entrar";
   const apoio =
     mode === "signup"
       ? "Em poucos minutos seu check-in roda blindado."
       : mode === "reset"
         ? "Enviamos um link para você criar uma senha nova."
-        : "Bem-vindo de volta.";
+        : mode === "cleaner"
+          ? "Seu WhatsApp e o código que o anfitrião te passou. Senha não tem."
+          : "Bem-vindo de volta.";
 
   // A mesma pílula branca da página de vendas no alto, sobre o mesmo preto do
   // herói, e o cartão de vidro embaixo: quem veio do "Assinar" reconhece o
@@ -117,11 +137,11 @@ export default function Auth() {
       <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center px-4 pb-12 pt-24">
         <div className="animate-rise-in">
           <p className="rotulo text-primary">
-            {mode === "signup" ? "Cadastro" : mode === "reset" ? "Senha" : "Acesso"}
+            {mode === "signup" ? "Cadastro" : mode === "reset" ? "Senha" : mode === "cleaner" ? "Agenda de limpeza" : "Acesso"}
           </p>
           <h1 className="mt-2 text-[34px] font-normal leading-[1.02] tracking-titulo">{titulo}</h1>
           <p className="mt-2 text-[15px] leading-snug text-muted-foreground">{apoio}</p>
-          {plano && mode !== "reset" && (
+          {plano && mode !== "reset" && mode !== "cleaner" && (
             <p className="mt-4 flex items-center gap-2.5 rounded-2xl border border-border px-3.5 py-2.5 text-[13px] leading-snug tracking-corpo">
               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
               <span>
@@ -186,6 +206,39 @@ export default function Auth() {
             </>
           )}
 
+          {mode === "cleaner" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="dia-phone">Seu WhatsApp (com DDD)</Label>
+                <Input
+                  id="dia-phone"
+                  value={diarista.phone}
+                  onChange={(e) => setDiarista({ ...diarista, phone: e.target.value })}
+                  placeholder="(21) 99999-8888"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className="h-12"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dia-code">Código de 6 números</Label>
+                <Input
+                  id="dia-code"
+                  value={diarista.code}
+                  onChange={(e) => setDiarista({ ...diarista, code: e.target.value.replace(/\D/g, "").slice(0, 6) })}
+                  placeholder="000000"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="h-12 font-mono text-lg tracking-[0.3em]"
+                  required
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Não tem o código? Peça para quem te convidou: ele aparece junto com o link da sua agenda.
+                </p>
+              </div>
+            </>
+          ) : (
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
             <Input
@@ -197,8 +250,9 @@ export default function Auth() {
               required
             />
           </div>
+          )}
 
-          {mode !== "reset" && (
+          {mode !== "reset" && mode !== "cleaner" && (
             <div className="space-y-1.5">
               <Label htmlFor="password">Senha</Label>
               <Input
@@ -227,7 +281,9 @@ export default function Auth() {
               ? "Criar conta"
               : mode === "reset"
                 ? "Enviar link de recuperação"
-                : "Entrar"}
+                : mode === "cleaner"
+                  ? "Abrir minha agenda"
+                  : "Entrar"}
           </Button>
         </form>
         )}
@@ -236,7 +292,7 @@ export default function Auth() {
           type="button"
           onClick={() => {
             setResetSent(false);
-            setMode(mode === "signup" ? "signin" : mode === "reset" ? "signin" : "signup");
+            setMode(mode === "signin" ? "signup" : "signin");
           }}
           className="mt-6 w-full text-center text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] transition-colors hover:text-foreground"
         >
@@ -244,8 +300,22 @@ export default function Auth() {
             ? "Já tenho conta — entrar"
             : mode === "reset"
               ? "Lembrei a senha — voltar ao login"
-              : "Não tenho conta — criar agora"}
+              : mode === "cleaner"
+                ? "Sou anfitrião — entrar com e-mail e senha"
+                : "Não tenho conta — criar agora"}
         </button>
+
+        {/* A diarista chega aqui pela barra do navegador, sem o link. Sem esta
+            porta ela só via e-mail e senha — e se cadastrava como dona. */}
+        {mode === "signin" && (
+          <button
+            type="button"
+            onClick={() => setMode("cleaner")}
+            className="mt-3 w-full text-center text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] transition-colors hover:text-foreground"
+          >
+            Sou diarista — entrar com WhatsApp e código
+          </button>
+        )}
 
         <p className="mt-10 text-center text-xs leading-relaxed text-muted-foreground">
           Reserva confirmada, documento com foto, selfie e assinatura digital.
