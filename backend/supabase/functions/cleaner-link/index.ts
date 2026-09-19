@@ -1,5 +1,5 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
-import { admin, requireRole } from "../_shared/lib/db.ts";
+import { admin, requireSoftwareOwner } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -28,7 +28,7 @@ interface Body {
 export default handler(async (req) => {
   if (req.method !== "POST") throw errors.invalid("Use POST");
 
-  const user = await requireRole(req, "owner");
+  const user = await requireSoftwareOwner(req);
   const { cleaner_id } = await readJson<Body>(req);
   if (!cleaner_id) throw errors.invalid("Informe a diarista");
 

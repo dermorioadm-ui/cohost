@@ -9,6 +9,7 @@ import { api, supabase } from "@/lib/api";
 import { Marca } from "@/components/Marca";
 import { guardarPlano, NOME_TIER, planoDaQuery, planoGuardado } from "@/lib/planoEscolhido";
 import { Link } from "react-router-dom";
+import { authReturn, rememberAuthReturn, takeAuthReturn } from "@/lib/authReturn";
 
 /**
  * Entrada do dono. Cadastro, login e recuperação na mesma tela — o modo
@@ -19,7 +20,7 @@ export default function Auth() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup" | "reset" | "cleaner">(
-    params.get("modo") === "cadastro" ? "signup" : params.get("modo") === "diarista" ? "cleaner" : "signin",
+    params.get("modo") === "cadastro" ? "signup" : params.get("modo") === "diarista" ? "cleaner" : params.get("modo") === "recuperar" ? "reset" : "signin",
   );
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   // A diarista não tem e-mail nem senha: entra com o WhatsApp e um código de
@@ -52,6 +53,7 @@ export default function Auth() {
       }
 
       if (mode === "reset") {
+        rememberAuthReturn(params.get("retorno"));
         // A resposta do servidor é a mesma exista a conta ou não, e a tela
         // repete essa neutralidade: dizer "não achei esse e-mail" transformaria
         // o formulário em ferramenta de descoberta de quem é cliente.
@@ -92,7 +94,8 @@ export default function Auth() {
           password: form.password,
         });
         if (error) throw new Error("E-mail ou senha incorretos");
-        navigate(planoGuardado() ? "/assinatura" : "/painel");
+        const savedReturn = takeAuthReturn();
+        navigate(authReturn(params.get("retorno")) ?? savedReturn ?? (planoGuardado() ? "/assinatura" : "/painel"));
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não consegui continuar");

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck, CalendarDays, CalendarCheck, CreditCard, DoorOpen, FileText, Home, LayoutDashboard,
-  LogOut, MessageSquare, MoreHorizontal, Sparkles, Target, Users, Wallet, X,
+  LogOut, MessageSquare, MoreHorizontal, Scale, Sparkles, Target, Users, Wallet, X,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/hooks/useAuth";
 import { Marca } from "@/components/Marca";
@@ -40,6 +40,7 @@ const NAV: Record<AppRole, NavItem[]> = {
     { label: "Financeiro", short: "Caixa", icon: Wallet, path: "/admin/financeiro" },
     { label: "Assinantes", short: "Clientes", icon: Users, path: "/admin/assinantes" },
     { label: "Diaristas", short: "Limpeza", icon: Sparkles, path: "/admin/diaristas" },
+    { label: "Jurídico", short: "Jurídico", icon: Scale, path: "/admin/juridico" },
   ],
   owner: [
     // `short` encolhe no celular: o dock é um grid de colunas iguais, e com
@@ -52,6 +53,7 @@ const NAV: Record<AppRole, NavItem[]> = {
     { label: "Conversas", short: "Chat", icon: MessageSquare, path: "/conversas" },
     { label: "Financeiro", short: "Contas", icon: Wallet, path: "/financeiro" },
     { label: "Faturas da limpeza", short: "Faturas", icon: FileText, path: "/faturas" },
+    { label: "Assistência jurídica", short: "Jurídico", icon: Scale, path: "/juridico" },
     // Fica por último de propósito: assinatura se olha uma vez por mês, e o
     // caminho até ela era só um link no fim da tela de Financeiro.
     { label: "Meu plano", short: "Plano", icon: CreditCard, path: "/plano" },

@@ -32,12 +32,43 @@ variáveis do `.env.example` precisam estar configuradas no painel da Vercel.
 
 ### Checklist para o hospedepay.org vender de verdade
 
-O código já faz o caminho inteiro, e o mais curto possível: botão do plano
+O fluxo implementado nesta branch é: botão do plano
 na página → checkout da Stripe (nome, e-mail e telefone pedidos lá) →
-conta criada com o pagamento confirmado → senha (opcional) → onboarding.
-Nenhuma tela nossa antes do cartão.
+pagamento confirmado no servidor → login ou confirmação pelo link enviado
+ao e-mail para definir senha → configuração do imóvel. O identificador do
+checkout nunca concede uma sessão de autenticação.
 
-Confirmado em produção em 14/09/2026:
+### Assistência jurídica (versão para revisão)
+
+A página apresenta o jurídico opcional após a garantia da ferramenta. O
+upsell aparece após confirmação real do software e pode ser dispensado sem
+interromper a configuração. `/juridico` reúne contratação, vigência e pedidos;
+`/admin/juridico` reúne atendimento e revisão de exceções financeiras.
+
+A oferta nasce desabilitada, sem preço fictício. Condições comerciais,
+produto Stripe e operação precisam ser configurados antes da ativação.
+Migrações, publicação, eventos Stripe, reversão e limites estão no
+[runbook jurídico](backend/docs/assistencia-juridica.md). A preparação desta
+branch não constitui validação de pagamento/email em ambiente integrado.
+
+Verificação local:
+
+```bash
+npm ci
+npm test
+npm ci --prefix backend
+npm run test:database --prefix backend
+npm run build
+npx playwright install chromium
+npm run test:ui
+```
+
+Os testes de interface interceptam as APIs com dados de teste e nunca cobram
+cartões nem escrevem em produção. `PLAYWRIGHT_EXECUTABLE_PATH` permite usar
+um Chromium local já instalado. Os testes PostgreSQL usam PGlite e fixtures
+de autenticação, não o banco de produção.
+
+Registro anterior de produção, de 14/09/2026 (não revalidado por esta branch):
 
 - `STRIPE_SECRET_KEY` é a chave live e os seis preços de `plans` existem na
   Stripe (o `billing-checkout-public` devolveu uma sessão `cs_live_`).

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { LegalUpsell } from "@/components/LegalUpsell";
 import { Marca } from "@/components/Marca";
 import { api, ApiError, supabase } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,10 +18,9 @@ import { cn } from "@/lib/utils";
  * O caminho principal começa NA PÁGINA DE VENDAS: o botão do plano abre a
  * Stripe direto, sem conta. A Stripe pede nome, e-mail e telefone; ao voltar,
  * a pessoa cai aqui em `/assinatura?status=ok&session=cs_...` sem estar
- * logada. A tela troca o id da sessão de checkout por conta + sessão no
- * backend (`billing-checkout-complete`), pede uma senha para as próximas
- * entradas e manda para o onboarding. Duas telas depois do cartão, nenhuma
- * antes.
+ * logada. O servidor confirma o pagamento e solicita autenticação por e-mail.
+ * Nenhum id de checkout concede uma sessão. O acesso depende de confirmação
+ * do servidor; demora ou erro de rede nunca é tratado como pagamento ativo.
  *
  * Os outros momentos que passam por aqui:
  *
@@ -50,12 +48,11 @@ type Estado =
   | "escolher"
   | "abrindo"
   | "esperando"
-  | "senha"
+  | "pendente"
+  | "inativo"
   | "ativo"
   | "cancelado"
   | "entrar";
-
-const MIN_SENHA = 8;
 
 export default function Assinatura() {
   const { user, loading } = useAuth();
@@ -74,108 +71,56 @@ export default function Assinatura() {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [erro, setErro] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
-  const [senha, setSenha] = useState("");
-  const [salvandoSenha, setSalvandoSenha] = useState(false);
-  // A troca do checkout por sessão acontece uma vez, mesmo que o React rode
-  // o efeito duas vezes ou a sessão chegue no meio.
-  const trocando = useRef(false);
+  const [attempt, setAttempt] = useState(0);
 
-  // ---- 1. Volta do checkout da página: sem sessão, com o id da Stripe -----
   useEffect(() => {
-    if (loading || user || status !== "ok" || !sessaoCheckout || trocando.current) return;
-    trocando.current = true;
+    if (loading) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let tries = 0;
+    setErro(null);
+    setEstado("carregando");
 
-    (async () => {
+    async function check() {
       try {
-        const r = await api.billingPublico.complete(sessaoCheckout);
-        if (!r.ok) {
-          // Pagamento ainda processando (boleto, 3DS pendente): dá o benefício
-          // da dúvida por alguns segundos e tenta de novo.
-          setEstado("esperando");
-          setTimeout(() => {
-            trocando.current = false;
-          }, 4000);
-          return;
+        if (status === "ok" && sessaoCheckout) {
+          const result = await api.billingPublico.complete(sessaoCheckout);
+          if (stopped) return;
+          if (!result.ok || result.estado === "pendente") { wait(); return; }
+          if (result.requires_login || !user) {
+            setEmail(result.email ?? "");
+            setEstado("entrar");
+            return;
+          }
+          if (result.estado === "inativo") { setEstado("inativo"); return; }
         }
-        if (r.email) setEmail(r.email);
-        if (r.session) {
-          await supabase.auth.setSession(r.session);
-          // A URL com o id de checkout não deve ficar no histórico: ele já
-          // foi usado, e um refresh acusaria "já entrou".
-          window.history.replaceState(null, "", "/assinatura?status=ok");
-          esquecerPlano();
-          setEstado(r.conta_nova ? "senha" : "ativo");
-          return;
+        if (!user) { navigate("/entrar", { replace: true }); return; }
+        const profile = await supabase.from("profiles").select("subscription_status").eq("user_id", user.id).maybeSingle();
+        if (stopped) return;
+        if (profile.error) throw profile.error;
+        if (profile.data?.subscription_status === "active") {
+          esquecerPlano(); setEstado("ativo"); return;
         }
-        // Já entrou antes por este link: a sessão não é reemitida.
-        setEstado("entrar");
-      } catch (e) {
-        setErro(e instanceof ApiError ? e.message : "Não consegui confirmar o pagamento. Entre com seu e-mail.");
-        setEstado("entrar");
+        if (status === "ok") { wait(); return; }
+        const response = await supabase.from("plans").select("tier, name, monthly_cents, annual_cents, max_properties").eq("active", true).order("sort_order");
+        if (stopped) return;
+        if (response.error) throw response.error;
+        setPlans((response.data ?? []) as Plan[]);
+        setEstado(status === "cancelado" ? "cancelado" : "escolher");
+      } catch (err) {
+        if (stopped) return;
+        setErro(err instanceof ApiError ? err.message : "Não consegui consultar o pagamento agora. Tente novamente.");
+        setEstado("pendente");
       }
-    })();
-  }, [loading, user, status, sessaoCheckout, estado]);
-
-  // ---- 2. Logado: planos e estado da assinatura ---------------------------
-  useEffect(() => {
-    if (loading || !user) return;
-    // A sessão acabou de ser criada pela troca acima: o estado já está certo.
-    if (estado === "senha" || estado === "ativo" || estado === "entrar") return;
-
-    (async () => {
-      const [pl, pr] = await Promise.all([
-        supabase
-          .from("plans")
-          .select("tier, name, monthly_cents, annual_cents, max_properties")
-          .eq("active", true)
-          .order("sort_order"),
-        supabase.from("profiles").select("subscription_status").eq("user_id", user.id).maybeSingle(),
-      ]);
-      setPlans((pl.data ?? []) as Plan[]);
-      const ativo = pr.data?.subscription_status === "active";
-      if (ativo) {
-        esquecerPlano();
-        setEstado("ativo");
-        return;
-      }
-      if (status === "ok") setEstado("esperando");
-      else if (status === "cancelado") setEstado("cancelado");
-      else setEstado("escolher");
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user, status]);
-
-  // ---- 3. Sem sessão e sem checkout: não há o que fazer aqui ---------------
-  useEffect(() => {
-    if (loading || user) return;
-    if (status === "ok" && sessaoCheckout) return;
-    navigate("/entrar", { replace: true });
-  }, [loading, user, status, sessaoCheckout, navigate]);
-
-  // ---- 4. Logado, voltou do checkout: espera o webhook ---------------------
-  useEffect(() => {
-    if (estado !== "esperando" || !user) return;
-    let vivo = true;
-    let tentativas = 0;
-    const id = setInterval(async () => {
-      tentativas++;
-      const { data } = await supabase
-        .from("profiles")
-        .select("subscription_status")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!vivo) return;
-      if (data?.subscription_status === "active" || tentativas >= 20) {
-        clearInterval(id);
-        esquecerPlano();
-        setEstado("ativo");
-      }
-    }, 2000);
-    return () => {
-      vivo = false;
-      clearInterval(id);
-    };
-  }, [estado, user]);
+    }
+    function wait() {
+      if (++tries >= 20) { setEstado("pendente"); return; }
+      setEstado("esperando");
+      timer = setTimeout(check, 3000);
+    }
+    void check();
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [loading, user?.id, status, sessaoCheckout, navigate, attempt]);
 
   const pagar = async () => {
     setErro(null);
@@ -188,23 +133,6 @@ export default function Assinatura() {
       setErro(e instanceof ApiError ? e.message : "Não consegui abrir o pagamento. Tente de novo.");
       setEstado("escolher");
     }
-  };
-
-  const salvarSenha = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (senha.length < MIN_SENHA) {
-      setErro(`A senha precisa de ao menos ${MIN_SENHA} caracteres.`);
-      return;
-    }
-    setErro(null);
-    setSalvandoSenha(true);
-    const { error } = await supabase.auth.updateUser({ password: senha });
-    setSalvandoSenha(false);
-    if (error) {
-      setErro("Não consegui salvar a senha. Você pode definir depois em \"esqueci minha senha\".");
-      return;
-    }
-    navigate("/comecar", { replace: true });
   };
 
   const seguirSemAssinar = () => {
@@ -249,82 +177,44 @@ export default function Assinatura() {
             </h1>
             <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
               {estado === "ativo"
-                ? "Agora é ligar o seu calendário. Leva menos de cinco minutos."
-                : "A Stripe avisa a gente em alguns segundos. Não feche esta tela."}
+                ? "Agora você pode ligar seu calendário e configurar seu imóvel."
+                : "Seu acesso será liberado após a confirmação do pagamento. Aguarde um instante."}
             </p>
             {estado === "ativo" && (
               <Button size="lg" className="mt-7 w-full" onClick={() => navigate("/comecar", { replace: true })}>
                 Configurar meu imóvel
               </Button>
             )}
+            {estado === "ativo" && status === "ok" && <LegalUpsell />}
           </div>
         )}
 
-        {/* ---------------------------------- conta nova: só falta a senha */}
-        {estado === "senha" && (
-          <form onSubmit={salvarSenha} className="animate-rise-in">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
-              <CheckCircle2 className="h-7 w-7 text-success" aria-hidden />
-            </span>
-            <p className="rotulo mt-5 text-primary">Pagamento confirmado</p>
-            <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
-              Sua conta está criada.
-            </h1>
-            <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
-              Você já está dentro. Escolha uma senha para entrar das próximas vezes
-              {email ? <> com <span className="text-foreground">{email}</span></> : null}.
-            </p>
-
-            <div className="paper-frame mt-7 space-y-4 !rounded-panel p-6">
-              <div className="space-y-1.5">
-                <Label htmlFor="senha">Senha</Label>
-                <Input
-                  id="senha"
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  autoComplete="new-password"
-                  autoFocus
-                  minLength={MIN_SENHA}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">Ao menos {MIN_SENHA} caracteres.</p>
-              </div>
-              {erro && (
-                <p role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                  {erro}
-                </p>
-              )}
-              <Button type="submit" size="lg" className="w-full" disabled={salvandoSenha}>
-                {salvandoSenha && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar e configurar meu imóvel
-              </Button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/comecar", { replace: true })}
-              className="mt-6 w-full text-center text-sm text-muted-foreground underline decoration-1 underline-offset-[3px] hover:text-foreground"
-            >
-              Definir a senha depois
-            </button>
-          </form>
+        {estado === "pendente" && (
+          <div aria-live="polite">
+            <p className="rotulo text-primary">Confirmação pendente</p>
+            <h1 className="mt-3 text-3xl tracking-titulo">Ainda não foi possível confirmar.</h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{erro || "O pagamento pode continuar em processamento. Seu acesso será liberado após a confirmação. Não é necessário pagar novamente enquanto aguarda."}</p>
+            <Button size="lg" className="mt-6 w-full" onClick={() => setAttempt((n) => n + 1)}>Verificar novamente</Button>
+            {user && <Button asChild variant="outline" className="mt-3 w-full"><Link to="/plano">Consultar meu plano</Link></Button>}
+          </div>
         )}
+        {estado === "inativo" && <div><h1 className="text-3xl tracking-titulo">Esta assinatura não está ativa.</h1><p className="mt-3 text-muted-foreground">Este retorno corresponde a uma compra anterior. Consulte a situação atual do seu plano.</p><Button asChild className="mt-6"><Link to="/plano">Consultar meu plano</Link></Button></div>}
 
         {/* ------------------------------- link já usado: entra pelo e-mail */}
         {estado === "entrar" && (
           <div className="animate-rise-in">
             <p className="rotulo text-primary">Pagamento confirmado</p>
             <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
-              Sua conta já existe.
+              Confirme seu acesso.
             </h1>
             <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
               {erro ??
-                `Entre com ${email || "o e-mail do pagamento"}. Se ainda não tem senha, use "esqueci minha senha" na tela de entrada.`}
+                `Entre com ${email || "o e-mail do pagamento"}. Para criar sua senha, solicite o link enviado ao seu e-mail.`}
             </p>
             <Button asChild size="lg" className="mt-7 w-full">
-              <Link to="/entrar">Entrar</Link>
+              <Link to={`/entrar?retorno=${encodeURIComponent("/assinatura?status=ok")}`}>Entrar na minha conta</Link>
             </Button>
+            <Button asChild variant="outline" size="lg" className="mt-3 w-full"><Link to="/entrar?modo=recuperar&retorno=%2Fassinatura%3Fstatus%3Dok">Criar ou recuperar minha senha</Link></Button>
           </div>
         )}
 
@@ -373,7 +263,7 @@ export default function Assinatura() {
                       cycle === c ? "bg-ink text-ink-foreground" : "text-muted-foreground",
                     )}
                   >
-                    {c === "annual" ? "Anual · 2 meses grátis" : "Mensal"}
+                    {c === "annual" ? "Anual" : "Mensal"}
                   </button>
                 ))}
               </div>
@@ -426,8 +316,7 @@ export default function Assinatura() {
                 {plano ? `Pagar ${brl(preco)}${cycle === "annual" ? " por ano" : " por mês"}` : "Carregando planos…"}
               </Button>
               <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                Cartão de crédito, pela Stripe. Garantia incondicional de 30 dias.
-                {cycle === "annual" && " No anual, em até 10x sem juros no cartão."}
+                Pagamento pela Stripe. Confira as condições no checkout. A garantia da ferramenta não se aplica à assistência jurídica, contratada separadamente.
               </p>
             </div>
 

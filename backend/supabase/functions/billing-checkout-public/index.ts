@@ -66,7 +66,7 @@ export default handler(async (req) => {
     // É a resposta à única dúvida que sobra na hora do cartão.
     custom_text: {
       submit: {
-        message: "Depois do pagamento você entra direto, sem senha e sem cadastro. Eu te ligo em até 15 minutos para ligar o seu calendário.",
+        message: "Depois do pagamento, entre com o e-mail usado na compra. Se ainda não tiver senha, solicite o link para criá-la. Em seguida, configure seu imóvel.",
       },
     },
   });

@@ -1,0 +1,7 @@
+{
+  "name": "hospedepay-backend-checks",
+  "private": true,
+  "type": "module",
+  "scripts": { "test:database": "node --test tests/legal-database.check.mjs" },
+  "devDependencies": { "@electric-sql/pglite": "^0.3.14" }
+}

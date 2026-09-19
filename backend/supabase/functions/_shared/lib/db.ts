@@ -140,3 +140,21 @@ export function addDays(isoDate: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** A ferramenta exige assinatura própria; jurídico e gestão da conta não usam este gate. */
+export async function assertSoftwareAccess(user: AuthedUser): Promise<void> {
+  if (user.role === "admin") return;
+  const { data, error } = await admin().rpc("subscription_is_active", {
+    _user_id: user.id,
+  });
+  if (error) throw errors.upstream("Não foi possível conferir sua assinatura.");
+  if (!data)
+    throw errors.forbidden(
+      "A assinatura da ferramenta precisa estar ativa para esta operação.",
+    );
+}
+export async function requireSoftwareOwner(req: Request): Promise<AuthedUser> {
+  const user = await requireRole(req, "owner");
+  await assertSoftwareAccess(user);
+  return user;
+}
