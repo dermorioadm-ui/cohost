@@ -221,3 +221,11 @@ isso. O caminho:
 
 Histórico de chat de hóspede eu não migraria — é justamente o dado que estava
 exposto.
+
+## Assistência jurídica independente
+
+Preparação da oferta, contratos, atendimento, testes locais e procedimento de
+ativação/reversão: [assistencia-juridica.md](docs/assistencia-juridica.md).
+As migrations 0062–0064 mantêm venda jurídica desabilitada até configuração
+comercial e operacional real. O retorno público do checkout agora exige login
+ou prova de controle do email pelo fluxo de recuperação; a URL não autentica.

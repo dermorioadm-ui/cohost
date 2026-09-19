@@ -1,5 +1,5 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
-import { admin, requireRole } from "../_shared/lib/db.ts";
+import { admin, requireSoftwareOwner } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -63,7 +63,7 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 export default handler(async (req) => {
   if (req.method !== "POST") throw errors.invalid("Use POST");
 
-  const user = await requireRole(req, "owner");
+  const user = await requireSoftwareOwner(req);
   const body = await readJson<Body>(req);
   const db = admin();
 

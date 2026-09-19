@@ -149,3 +149,10 @@ verify_jwt = false
 
 [functions.ops-stripe-marca]
 verify_jwt = false
+
+# Jurídico independente do SaaS: autenticação validada novamente no servidor.
+[functions.legal-checkout]
+verify_jwt = true
+
+[functions.legal-checkout-status]
+verify_jwt = true

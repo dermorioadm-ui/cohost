@@ -1,0 +1,105 @@
+.legal-offer {
+  display: grid;
+  gap: 28px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 40px;
+  padding: 30px 22px 0;
+  border-top: 4px solid #ff385c;
+  border-radius: 28px;
+  background: #080808;
+  color: #fff;
+  scroll-margin-top: 88px;
+}
+
+.legal-offer__intro { min-width: 0; }
+.legal-offer__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 24px;
+  color: #ff91a5;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.legal-offer__eyebrow > span { width: 18px; height: 3px; flex-shrink: 0; background: #ff385c; }
+.legal-offer__eyebrow > a { margin-left: -5px; font-size: 15px; }
+.legal-offer__eyebrow > a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.legal-offer__title {
+  max-width: 17ch;
+  color: #fff;
+  font-size: clamp(34px, 4.6vw, 54px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+.legal-offer__title em,
+.legal-offer__teaser-title em { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; }
+.legal-offer__title em { color: #ff91a5; }
+.legal-offer__benefits { display: grid; gap: 19px; max-width: 46ch; margin-top: 30px; }
+.legal-offer__benefits p { display: flex; align-items: baseline; gap: 14px; color: #d7d7d7; font-size: 16px; line-height: 1.5; }
+.legal-offer__benefits p > span { flex: 0 0 auto; color: #ff91a5; font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.legal-offer__decision {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  align-self: start;
+  padding: 27px 22px;
+  border-radius: 22px;
+  background: #ff385c;
+  color: #080808;
+}
+.legal-offer__product { font-size: 15px; line-height: 1.4; color: #080808; }
+.legal-offer__price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; margin-top: 24px; }
+.legal-offer__price > span:first-child { font-size: clamp(40px, 4.8vw, 60px); line-height: 1; letter-spacing: -.045em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.legal-offer__period { font-size: 15px; }
+.legal-offer__equivalent { margin-top: 13px; font-size: 14px; line-height: 1.5; }
+.legal-offer__teaser-title { max-width: 12ch; font-size: clamp(34px, 4vw, 46px); line-height: 1.04; letter-spacing: -.03em; text-wrap: balance; }
+.legal-offer__action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 28px;
+  padding: 15px 19px;
+  border-radius: 999px;
+  background: #080808;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: left;
+  transition: background-color .2s ease;
+}
+.legal-offer__action svg { flex-shrink: 0; }
+.legal-offer__action:hover { background: #282828; }
+.legal-offer__action:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+.legal-offer__note { margin-top: 18px; color: #171717; font-size: 12px; line-height: 1.5; scroll-margin-top: 88px; }
+.legal-offer__status { margin-top: 16px; padding-top: 14px; border-top: 1px solid #08080840; color: #171717; font-size: 12px; line-height: 1.5; }
+.legal-offer__conditions { min-width: 0; border-top: 1px solid #353535; scroll-margin-top: 88px; }
+.legal-offer__conditions summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 22px; color: #ddd; font-size: 14px; line-height: 1.4; cursor: pointer; list-style: none; }
+.legal-offer__conditions summary::-webkit-details-marker { display: none; }
+.legal-offer__conditions summary svg { flex-shrink: 0; }
+.legal-offer__conditions summary:focus-visible { outline: 2px solid #ff91a5; outline-offset: 3px; }
+.legal-offer__conditions[open] summary svg { transform: rotate(45deg); }
+.legal-offer__conditions-content { display: grid; gap: 18px; padding-bottom: 28px; color: #c9c9c9; font-size: 14px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.legal-offer__facts { display: grid; gap: 18px; }
+.legal-offer__facts dt { margin-bottom: 5px; color: #aaa; font-size: 12px; line-height: 1.4; }
+.legal-offer__facts dd { color: #fff; font-size: 14px; line-height: 1.5; }
+.legal-offer__consult { display: inline-flex; align-items: center; gap: 8px; justify-self: start; color: #ff91a5; text-align: left; text-decoration: underline; text-underline-offset: 4px; }
+.legal-offer__consult svg { flex-shrink: 0; }
+.legal-offer__consult:focus-visible { outline: 2px solid #ff91a5; outline-offset: 4px; }
+
+@media (min-width: 768px) {
+  .legal-offer { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: center; gap: 30px 36px; margin-top: 48px; padding: 40px 32px 0; }
+  .legal-offer__decision { padding: 30px 26px; }
+  .legal-offer__conditions { grid-column: 1 / -1; }
+  .legal-offer__facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .legal-offer__action { transition: none; }
+}

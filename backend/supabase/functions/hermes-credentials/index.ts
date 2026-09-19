@@ -1,5 +1,5 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
-import { admin, requireRole } from "../_shared/lib/db.ts";
+import { admin, requireRole, assertSoftwareAccess } from "../_shared/lib/db.ts";
 
 /**
  * O dono liga (ou desliga) o Atendimento Automático 24h de um imóvel.
@@ -44,6 +44,7 @@ export default handler(async (req) => {
   const user = await requireRole(req, "owner");
   const body = await readJson<Body>(req);
   const action = body.action ?? "status";
+  if (!["status", "revoke", "key-revoke"].includes(action)) await assertSoftwareAccess(user);
   const db = admin();
 
   // ---- estado ---------------------------------------------------------------

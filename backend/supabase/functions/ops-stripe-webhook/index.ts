@@ -33,6 +33,12 @@ const EMAIL_SONDA = "sonda-webhook@hospedepay.org";
 
 const EVENTOS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] = [
   "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
+  "checkout.session.expired",
+  "charge.refunded",
+  "charge.dispute.created",
+  "charge.dispute.closed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",

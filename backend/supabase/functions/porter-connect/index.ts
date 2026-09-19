@@ -1,5 +1,5 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
-import { admin, appToday, requireRole } from "../_shared/lib/db.ts";
+import { admin, appToday, requireSoftwareOwner } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -231,7 +231,7 @@ async function backfillQueue(
 export default handler(async (req) => {
   if (req.method !== "POST") throw errors.invalid("Use POST");
 
-  const user = await requireRole(req, "owner");
+  const user = await requireSoftwareOwner(req);
   const body = await readJson<Body>(req);
   const action = body.action ?? "status";
 
@@ -239,7 +239,7 @@ export default handler(async (req) => {
 
   const db = admin();
 
-  // O imóvel tem de ser do requisitante. Admin passa pelo requireRole, então a
+  // O imóvel tem de ser do requisitante. Admin passa pelo requireSoftwareOwner, então a
   // checagem de dono só se aplica a quem é dono — caso contrário um admin não
   // conseguiria configurar a portaria de um cliente no suporte.
   const propertyQuery = db

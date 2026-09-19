@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/api";
+import { takeAuthReturn } from "@/lib/authReturn";
 
 /**
  * Onde o link de recuperação cai.
@@ -96,7 +97,7 @@ export default function NovaSenha() {
     }
 
     toast.success("Senha alterada. Você já está dentro.");
-    navigate("/painel", { replace: true });
+    navigate(takeAuthReturn() ?? "/painel", { replace: true });
   };
 
   if (state === "checking") {
@@ -131,7 +132,7 @@ export default function NovaSenha() {
           <Marca size={40} className="mx-auto" semNome />
           <h1 className="mt-5 text-[30px] font-normal leading-[1.05] tracking-titulo">Criar uma senha nova</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Ao salvar, você já entra direto no painel.
+            Ao salvar, você continua na sua conta.
           </p>
         </div>
 

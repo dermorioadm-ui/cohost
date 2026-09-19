@@ -3,6 +3,12 @@ import { corsHeaders, json } from "../_shared/lib/http.ts";
 import { admin, adminNotifyEmails } from "../_shared/lib/db.ts";
 import { env, optional } from "../_shared/lib/env.ts";
 import { contaDoCheckout } from "../_shared/lib/checkout-publico.ts";
+import { recordBillingEvent } from "../_shared/lib/billing-event.ts";
+import {
+  LEGAL_PRODUCT,
+  LEGAL_CHECKOUT_EVENTS,
+} from "../_shared/lib/legal-rules.ts";
+import { reconcileLegalCheckout } from "../_shared/lib/legal-payments.ts";
 
 /**
  * Webhook do Stripe — reconciliação de assinaturas.
@@ -19,7 +25,9 @@ import { contaDoCheckout } from "../_shared/lib/checkout-publico.ts";
  * a verificação.
  */
 
-const stripe = new Stripe(env.stripeSecret(), { apiVersion: "2025-08-27.basil" });
+const stripe = new Stripe(env.stripeSecret(), {
+  apiVersion: "2025-08-27.basil",
+});
 
 /**
  * Assinaturas com que validar o evento, em ordem: a variável de ambiente
@@ -28,13 +36,22 @@ const stripe = new Stripe(env.stripeSecret(), { apiVersion: "2025-08-27.basil" }
  * porque um endpoint recriado invalida o segredo antigo sem avisar ninguém —
  * e o painel não tem como saber qual dos dois está vivo.
  */
-async function segredosDoWebhook(db: ReturnType<typeof admin>): Promise<string[]> {
+async function segredosDoWebhook(
+  db: ReturnType<typeof admin>,
+): Promise<string[]> {
   const lista: string[] = [];
   const doAmbiente = optional("STRIPE_WEBHOOK_SECRET");
   if (doAmbiente) lista.push(doAmbiente);
-  const { data, error } = await db.rpc("private_secret", { _name: "stripe_webhook_secret" });
-  if (error) console.error("Falha ao ler a assinatura do webhook no banco:", error.message);
-  else if (typeof data === "string" && data.length > 0 && !lista.includes(data)) lista.push(data);
+  const { data, error } = await db.rpc("private_secret", {
+    _name: "stripe_webhook_secret",
+  });
+  if (error)
+    console.error(
+      "Falha ao ler a assinatura do webhook no banco:",
+      error.message,
+    );
+  else if (typeof data === "string" && data.length > 0 && !lista.includes(data))
+    lista.push(data);
   return lista;
 }
 
@@ -50,13 +67,19 @@ const RELEVANT = new Set([
 /** Stripe status -> nosso enum subscription_status. */
 function mapStatus(s: string): string {
   switch (s) {
-    case "trialing": return "trialing";
-    case "active": return "active";
+    case "trialing":
+      return "trialing";
+    case "active":
+      return "active";
     case "past_due":
-    case "unpaid": return "past_due";
-    case "canceled": return "canceled";
-    case "incomplete_expired": return "expired";
-    default: return "expired";
+    case "unpaid":
+      return "past_due";
+    case "canceled":
+      return "canceled";
+    case "incomplete_expired":
+      return "expired";
+    default:
+      return "expired";
   }
 }
 
@@ -96,7 +119,12 @@ async function resolveUserId(
 async function notifyNewSubscriber(
   db: ReturnType<typeof admin>,
   userId: string,
-  info: { status: string; plan: string | null; cycle: string | null; subscriptionId: string },
+  info: {
+    status: string;
+    plan: string | null;
+    cycle: string | null;
+    subscriptionId: string;
+  },
 ): Promise<void> {
   const { data: profile } = await db
     .from("profiles")
@@ -172,7 +200,8 @@ async function notifyNewSubscriber(
  * assinatura e foi para cada item; contas antigas ainda mandam no topo.
  */
 function fimDoPeriodo(sub: Stripe.Subscription): string | null {
-  const legado = (sub as unknown as { current_period_end?: number }).current_period_end;
+  const legado = (sub as unknown as { current_period_end?: number })
+    .current_period_end;
   const fim = sub.items?.data?.[0]?.current_period_end ?? legado ?? null;
   return fim ? new Date(fim * 1000).toISOString() : null;
 }
@@ -208,7 +237,9 @@ Deno.serve(async (req) => {
 
   const segredos = await segredosDoWebhook(db);
   if (segredos.length === 0) {
-    console.error("Webhook da Stripe sem assinatura configurada (STRIPE_WEBHOOK_SECRET ou private.secrets)");
+    console.error(
+      "Webhook da Stripe sem assinatura configurada (STRIPE_WEBHOOK_SECRET ou private.secrets)",
+    );
     return json({ error: "webhook não configurado" }, 500);
   }
 
@@ -216,27 +247,91 @@ Deno.serve(async (req) => {
   let falha: unknown = null;
   for (const segredo of segredos) {
     try {
-      event = await stripe.webhooks.constructEventAsync(raw, signature, segredo);
+      event = await stripe.webhooks.constructEventAsync(
+        raw,
+        signature,
+        segredo,
+      );
       break;
     } catch (e) {
       falha = e;
     }
   }
   if (!event) {
-    console.error("Assinatura do webhook inválida:", falha instanceof Error ? falha.message : falha);
+    console.error(
+      "Assinatura do webhook inválida:",
+      falha instanceof Error ? falha.message : falha,
+    );
     return json({ error: "assinatura inválida" }, 400);
   }
 
-  // Idempotência: o Stripe reenvia. A UNIQUE em stripe_event_id barra o replay.
-  const { error: dupError } = await db.from("billing_events").insert({
-    stripe_event_id: event.id,
-    type: event.type,
-    occurred_at: new Date(event.created * 1000).toISOString(),
-    raw: event.data.object as unknown as Record<string, unknown>,
-  });
+  // Jurídico tem transação/idempotência próprias. Executar ANTES do marcador
+  // legado permite retries se o banco/API falhar sem modificar acesso SaaS.
+  try {
+    const object = event.data.object as unknown as {
+      id: string;
+      metadata?: Record<string, string>;
+      payment_intent?: string | { id: string } | null;
+      charge?: string | { id: string };
+    };
+    if (
+      LEGAL_CHECKOUT_EVENTS.has(event.type) &&
+      object.metadata?.product === LEGAL_PRODUCT
+    ) {
+      await reconcileLegalCheckout(db, stripe, object.id, undefined, event.id);
+      return json({ ok: true, product: LEGAL_PRODUCT });
+    }
+    if (
+      event.type === "charge.refunded" ||
+      event.type === "charge.dispute.created" ||
+      event.type === "charge.dispute.closed"
+    ) {
+      let paymentIntent = object.payment_intent;
+      if (!paymentIntent && object.charge) {
+        const charge = await stripe.charges.retrieve(
+          typeof object.charge === "string" ? object.charge : object.charge.id,
+        );
+        paymentIntent = charge.payment_intent;
+      }
+      if (paymentIntent) {
+        const intent = await stripe.paymentIntents.retrieve(
+          typeof paymentIntent === "string" ? paymentIntent : paymentIntent.id,
+        );
+        if (intent.metadata.product === LEGAL_PRODUCT) {
+          const { data: order, error } = await db
+            .from("legal_orders")
+            .select("stripe_session_id")
+            .eq("id", intent.metadata.legal_order_id)
+            .maybeSingle();
+          if (error || !order?.stripe_session_id)
+            throw (
+              error ?? new Error("Legal order awaiting checkout association")
+            );
+          await reconcileLegalCheckout(
+            db,
+            stripe,
+            order.stripe_session_id,
+            undefined,
+            event.id,
+          );
+          return json({ ok: true, product: LEGAL_PRODUCT });
+        }
+      }
+    }
+  } catch (error) {
+    console.error(
+      "Falha ao reconciliar pagamento jurídico",
+      event.id,
+      error instanceof Error ? error.message : "database error",
+    );
+    return json({ error: "erro ao processar evento" }, 500);
+  }
 
-  if (dupError?.code === "23505") {
-    return json({ ok: true, duplicate: true });
+  // Falha após receber um evento não pode transformar sua repetição em sucesso.
+  try {
+    if (await recordBillingEvent(db,event)==="duplicate") return json({ok:true,duplicate:true});
+  } catch {
+    return json({error:"erro ao registrar evento"},500);
   }
 
   if (!RELEVANT.has(event.type)) {
@@ -291,17 +386,42 @@ Deno.serve(async (req) => {
           break;
         }
 
-        const customerId = typeof s.customer === "string" ? s.customer : s.customer?.id ?? null;
+        // Sessão avulsa desconhecida não pertence ao SaaS. Pagamento ainda
+        // pendente não cria conta nem concede assinatura.
+        if (
+          s.mode !== "subscription" ||
+          (s.payment_status !== "paid" &&
+            s.payment_status !== "no_payment_required")
+        )
+          break;
+        const subId =
+          typeof s.subscription === "string"
+            ? s.subscription
+            : s.subscription?.id;
+        if (!subId) break;
+        const currentSub = await stripe.subscriptions.retrieve(subId);
+        if (
+          !(await resolvePlan(db, currentSub.items.data[0]?.price?.id ?? null))
+        )
+          break;
+        const customerId =
+          typeof s.customer === "string"
+            ? s.customer
+            : (s.customer?.id ?? null);
         let userId =
           (s.client_reference_id as string | null) ??
-          (await resolveUserId(db, customerId, s.customer_details?.email ?? null));
+          (await resolveUserId(
+            db,
+            customerId,
+            s.customer_details?.email ?? null,
+          ));
 
         // Checkout vindo direto da página: a conta ainda não existe. É aqui
         // que ela nasce quando a pessoa fechou a aba antes de voltar ao site
         // (a volta normal passa por billing-checkout-complete, que chama a
         // mesma função — os dois lados são idempotentes entre si).
-        if (!userId && s.mode === "subscription") {
-          const conta = await contaDoCheckout(db, s);
+        if (s.mode === "subscription") {
+          const conta = await contaDoCheckout(db, s, currentSub);
           userId = conta?.userId ?? null;
         }
 
@@ -313,7 +433,8 @@ Deno.serve(async (req) => {
               stripe_subscription_id:
                 typeof s.subscription === "string" ? s.subscription : null,
             })
-            .eq("user_id", userId);
+            .eq("user_id", userId)
+            .throwOnError();
         }
         break;
       }
@@ -321,17 +442,34 @@ Deno.serve(async (req) => {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+        // Reconcilia estado atual em vez do snapshot possivelmente atrasado.
+        const sub = await stripe.subscriptions.retrieve(
+          (event.data.object as Stripe.Subscription).id,
+        );
+        const customerId =
+          typeof sub.customer === "string" ? sub.customer : sub.customer.id;
         const userId = await resolveUserId(db, customerId, null);
 
         if (!userId) {
-          console.warn(`Assinatura ${sub.id} sem usuário correspondente (cliente ${customerId})`);
+          console.warn(
+            `Assinatura ${sub.id} sem usuário correspondente (cliente ${customerId})`,
+          );
           break;
         }
 
         const priceId = sub.items.data[0]?.price?.id ?? null;
         const plan = await resolvePlan(db, priceId);
+        if (!plan) break; // preço de outro produto/negócio da mesma conta Stripe
+        const { data: linked } = await db
+          .from("profiles")
+          .select("stripe_subscription_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (
+          linked?.stripe_subscription_id &&
+          linked.stripe_subscription_id !== sub.id
+        )
+          break;
 
         const status =
           event.type === "customer.subscription.deleted"
@@ -353,14 +491,28 @@ Deno.serve(async (req) => {
           patch.trial_ends_at = new Date(sub.trial_end * 1000).toISOString();
         }
 
-        await db.from("profiles").update(patch).eq("user_id", userId);
-        await db.from("billing_events")
-          .update({ user_id: userId, stripe_customer_id: customerId, stripe_subscription_id: sub.id, status })
-          .eq("stripe_event_id", event.id);
+        await db
+          .from("profiles")
+          .update(patch)
+          .eq("user_id", userId)
+          .throwOnError();
+        await db
+          .from("billing_events")
+          .update({
+            user_id: userId,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: sub.id,
+            status,
+          })
+          .eq("stripe_event_id", event.id)
+          .throwOnError();
 
         if (status === "expired" || status === "canceled") {
           const { data: profile } = await db
-            .from("profiles").select("email, locale").eq("user_id", userId).maybeSingle();
+            .from("profiles")
+            .select("email, locale")
+            .eq("user_id", userId)
+            .maybeSingle();
           if (profile?.email) {
             await db.rpc("enqueue_notification", {
               _channel: "email",
@@ -397,11 +549,19 @@ Deno.serve(async (req) => {
       case "invoice.paid":
       case "invoice.payment_failed": {
         const inv = event.data.object as Stripe.Invoice;
-        const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id ?? null;
-        const userId = await resolveUserId(db, customerId, inv.customer_email ?? null);
+        const customerId =
+          typeof inv.customer === "string"
+            ? inv.customer
+            : (inv.customer?.id ?? null);
+        const userId = await resolveUserId(
+          db,
+          customerId,
+          inv.customer_email ?? null,
+        );
 
         if (userId) {
-          await db.from("billing_events")
+          await db
+            .from("billing_events")
             .update({
               user_id: userId,
               amount_cents: inv.amount_paid ?? inv.amount_due ?? null,
@@ -409,18 +569,41 @@ Deno.serve(async (req) => {
               status: event.type === "invoice.paid" ? "paid" : "failed",
               stripe_customer_id: customerId,
             })
-            .eq("stripe_event_id", event.id);
+            .eq("stripe_event_id", event.id)
+            .throwOnError();
 
-          if (event.type === "invoice.payment_failed") {
-            await db.from("profiles")
+          const subscription = inv.parent?.subscription_details?.subscription;
+          const subscriptionId =
+            typeof subscription === "string" ? subscription : subscription?.id;
+          if (event.type === "invoice.payment_failed" && subscriptionId) {
+            const currentSub =
+              await stripe.subscriptions.retrieve(subscriptionId);
+            const knownPlan = await resolvePlan(
+              db,
+              currentSub.items.data[0]?.price?.id ?? null,
+            );
+            if (
+              !knownPlan ||
+              !["past_due", "unpaid"].includes(currentSub.status)
+            )
+              break;
+            await db
+              .from("profiles")
               .update({ subscription_status: "past_due" })
-              .eq("user_id", userId);
+              .eq("user_id", userId)
+              .eq("stripe_subscription_id", subscriptionId)
+              .throwOnError();
           }
         }
         break;
       }
     }
 
+    await db
+      .from("billing_events")
+      .update({ processed_at: new Date().toISOString() })
+      .eq("stripe_event_id", event.id)
+      .throwOnError();
     return json({ ok: true, type: event.type });
   } catch (e) {
     console.error(`Falha ao processar ${event.type} (${event.id}):`, e);

@@ -6,3 +6,5 @@ dist
 
 # Cache incremental do tsc — artefato de build, não versionado.
 *.tsbuildinfo
+test-results/
+playwright-report/

@@ -1,5 +1,5 @@
 import { errors, handler, json, readJson } from "../_shared/lib/http.ts";
-import { asUser } from "../_shared/lib/db.ts";
+import { asUser, requireSoftwareOwner } from "../_shared/lib/db.ts";
 import { env } from "../_shared/lib/env.ts";
 
 /**
@@ -28,6 +28,7 @@ interface Body {
 export default handler(async (req) => {
   if (req.method !== "POST") throw errors.invalid("Use POST");
 
+  await requireSoftwareOwner(req);
   const auth = req.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) throw errors.unauthorized();
 

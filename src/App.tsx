@@ -29,6 +29,8 @@ const Financeiro = lazy(() => import("@/pages/Financeiro"));
 const Hospedes = lazy(() => import("@/pages/Hospedes"));
 const Plano = lazy(() => import("@/pages/Plano"));
 const Assinatura = lazy(() => import("@/pages/Assinatura"));
+const Juridico = lazy(() => import("@/pages/Juridico"));
+const AdminJuridico = lazy(() => import("@/pages/AdminJuridico"));
 const AdminVisaoGeral = lazy(() => import("@/pages/AdminVisaoGeral"));
 const AdminFinanceiro = lazy(() => import("@/pages/AdminFinanceiro"));
 const AdminDiaristas = lazy(() => import("@/pages/AdminDiaristas"));
@@ -142,6 +144,9 @@ export default function App() {
 
 
                       <Route path="/assinatura" element={<Assinatura />} />
+                      {/* Vigência própria: não depende de assinatura da ferramenta. */}
+                      <Route path="/juridico" element={<Juridico />} />
+                      <Route path="/admin/juridico" element={<Protected allow={["admin"]}><AdminJuridico /></Protected>} />
 
 
                       <Route

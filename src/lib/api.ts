@@ -49,7 +49,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   options: { body?: unknown; headers?: Record<string, string>; auth?: boolean } = {},
 ): Promise<T> {
@@ -465,8 +465,8 @@ export const api = {
 
   /**
    * Checkout sem conta, direto da página de vendas. A conta nasce depois do
-   * pagamento, com o e-mail dado na Stripe; `complete` troca o id da sessão
-   * de checkout por uma sessão do Supabase, uma única vez.
+   * pagamento. O retorno confirma o pagamento, mas nunca substitui a
+   * autenticação: o cliente precisa comprovar acesso ao próprio e-mail.
    */
   billingPublico: {
     checkout: (body: { tier: string; cycle: string }) =>
@@ -474,12 +474,13 @@ export const api = {
     complete: (session_id: string) =>
       request<{
         ok: boolean;
-        estado: "ativo" | "pendente";
+        estado: "ativo" | "pendente" | "inativo";
         email?: string;
         conta_nova?: boolean;
         ja_entrou?: boolean;
+        requires_login?: boolean;
         session?: { access_token: string; refresh_token: string };
-      }>("billing-checkout-complete", { body: { session_id }, auth: false }),
+      }>("billing-checkout-complete", { body: { session_id } }),
   },
 
   // Recuperação de senha. A resposta é a mesma exista a conta ou não — a tela
