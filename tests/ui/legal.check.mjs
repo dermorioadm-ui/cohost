@@ -71,25 +71,42 @@ test("página: oferta indisponível sem preço ou cobrança; legível no celular
   await setup(page, { available: false });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/pagina");
+  const scene = page.locator("#beneficio-juridico");
+  await scene.scrollIntoViewIfNeeded();
+  await expect(scene.getByRole("img")).toBeVisible();
+  expect(await scene.getByRole("img").evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await scene.screenshot({ path: testInfo.outputPath("quarta-cena-mobile.png") });
+  await scene.getByRole("link", { name: "Conhecer a assistência jurídica" }).click();
   const section = page.locator("#assistencia-juridica");
   await section.scrollIntoViewIfNeeded();
   await expect(section).toContainText("Contratação ainda não disponível.");
   await expect(section).not.toContainText("R$");
-  await expect(section.getByRole("link")).toHaveCount(0);
+  await expect(section).not.toContainText("Estamos preparando");
+  await expect(section.locator('a[href="/juridico"]')).toHaveCount(0);
+  await expect(page.locator("#planos #assistencia-juridica")).toBeVisible();
+  await expect(section.locator("#legal-offer-note")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await section.screenshot({ path: testInfo.outputPath("juridico-mobile.png") });
+  await section.getByRole("link", { name: "Conhecer a assistência jurídica" }).click();
+  await expect(section.getByText("A busca por reparação não garante ressarcimento.", { exact: false })).toBeVisible();
   expect(await page.locator("video").evaluateAll((videos) => videos.every((v) => v.paused))).toBe(true);
 });
 
-test("página: anual real após garantia e antes do contato", async ({ page }, testInfo) => {
+test("página: anual real dentro dos planos, após quarta cena e antes da garantia", async ({ page }, testInfo) => {
   await setup(page); await page.goto("/pagina");
+  const scene = page.locator("#beneficio-juridico");
+  await scene.scrollIntoViewIfNeeded();
+  await scene.screenshot({ path: testInfo.outputPath("quarta-cena-desktop.png") });
   const section = page.locator("#assistencia-juridica");
   await section.scrollIntoViewIfNeeded();
   await expect(section).toContainText("1.164");
   await expect(section).toContainText("A contratação é anual.");
-  expect(await page.evaluate(() => !!(document.querySelector("#garantia").compareDocumentPosition(document.querySelector("#assistencia-juridica")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(page.locator("#planos #assistencia-juridica")).toBeVisible();
+  expect(await page.evaluate(() => !!(document.querySelector("#assistencia-juridica").compareDocumentPosition(document.querySelector("#garantia")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  expect(await page.evaluate(() => !!(document.querySelector("#beneficio-juridico").compareDocumentPosition(document.querySelector("#planos")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await section.screenshot({ path: testInfo.outputPath("juridico-desktop.png") });
-  await section.getByRole("link", { name: "Ver condições e contratar" }).click();
+  await page.locator("#planos").screenshot({ path: testInfo.outputPath("planos-desktop.png") });
+  await section.getByRole("link", { name: "Ver condições da assistência" }).click();
   await expect(page.getByRole("link", { name: "Entrar para contratar" })).toBeVisible();
 });
 

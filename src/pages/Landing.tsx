@@ -20,7 +20,7 @@ import { api, ApiError, supabase } from "@/lib/api";
  *
  * A página é montada como uma sessão de cinema, não como um anúncio: o
  * herói é a capa, e daí para baixo cada seção é uma CENA que puxa a próxima.
- * As três travas são três telas cheias que se empilham (a de cima encolhe e
+ * Os quatro benefícios são telas cheias que se empilham (a de cima encolhe e
  * escurece enquanto a próxima desliza por cima); o "e ainda" corre na
  * horizontal enquanto a página desce; a comparação escura cresce até tomar a
  * largura toda; a garantia cresce até a borda. Todo movimento é ligado à
@@ -437,6 +437,15 @@ const TRAVAS = [
     alt: "Porteiro entregando a chave para a hóspede",
     texto: "O porteiro já sabe quem chega, com nome, documento e horário.",
     posicao: "50% 40%",
+  },
+  {
+    rotulo: "Assistência jurídica",
+    titulo: "Seu prejuízo merece mais que um *‘não’*.",
+    foto: "/lp/assistencia-juridica.png",
+    alt: "Cena ilustrativa de um advogado revisando contrato e registros de um imóvel danificado",
+    texto: "Assistência Jurídica HospedePay para agir e buscar reparação quando o hóspede ou a plataforma não assumirem o dano.*",
+    posicao: "65% 45%",
+    juridico: true,
   },
 ];
 
@@ -900,18 +909,18 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* --------------------------------------------------- três travas */}
+      {/* --------------------------------------------- quatro benefícios */}
       <section id="como-funciona" className="scroll-mt-20 pt-24 md:pt-36">
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
           <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
           <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
         </div>
 
-        {/* Três telas cheias que se empilham: a de cima encolhe e escurece
+        {/* Quatro telas cheias que se empilham: a de cima encolhe e escurece
             enquanto a próxima desliza por cima. */}
         <div data-cena="pin" className="cena-pilha" style={cssVar({ "--n": TRAVAS.length })}>
           {TRAVAS.map((t, i) => (
-            <article key={t.rotulo} className="cena-painel bg-black text-white" style={cssVar({ "--i": i })}>
+            <article key={t.rotulo} id={t.juridico ? "beneficio-juridico" : undefined} className="cena-painel bg-black text-white" style={cssVar({ "--i": i })}>
               <img
                 src={t.foto}
                 alt={t.alt}
@@ -950,6 +959,16 @@ export default function Landing() {
                   <p data-reveal="up" style={delay(350)} className="mt-5 max-w-[42ch] text-[17px] leading-[1.4] tracking-corpo text-white/80 md:text-lg">
                     {t.texto}
                   </p>
+                  {t.juridico && (
+                    <div data-reveal="up" style={delay(450)} className="mt-6 flex max-w-[46ch] flex-col items-start gap-3">
+                      <a href="#assistencia-juridica" className="inline-flex min-h-12 items-center gap-5 rounded-pill bg-white px-5 py-3 text-sm leading-snug tracking-corpo text-black transition-colors hover:bg-[#ededed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                        Conhecer a assistência jurídica <span aria-hidden>↗</span>
+                      </a>
+                      <p className="text-xs leading-[1.5] text-white/80">
+                        * Contratação opcional e separada. Consulte a disponibilidade nos planos.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </article>
@@ -1344,6 +1363,9 @@ export default function Landing() {
                 >
                   {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
                 </button>
+                <a href="#assistencia-juridica" aria-describedby="legal-offer-note" className="mt-2 text-center text-sm leading-relaxed text-black underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                  Conheça a Assistência Jurídica Hospedepay*
+                </a>
               </div>
             </article>
           ))}
@@ -1353,6 +1375,12 @@ export default function Landing() {
             Mais de 5 imóveis? Toca no botão que a conversa é outra.
           </button>
         </p>
+        <LegalOfferSection
+          onConsult={WHATSAPP ? () => {
+            const message = "Olá. Quero conhecer a Assistência Jurídica HospedePay e as condições para o meu imóvel.";
+            window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+          } : undefined}
+        />
       </section>
 
       {/* ------------------------------------------------------ garantia */}
@@ -1380,13 +1408,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
-      <LegalOfferSection
-        onConsult={WHATSAPP ? () => {
-          const message = "Olá. Quero conhecer a assistência jurídica opcional do HospedePay e suas condições de contratação anual.";
-          window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
-        } : undefined}
-      />
 
       {/* ------------------------------------------------- quem responde */}
       <section id="quem-responde" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
@@ -1615,7 +1636,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 /* --- vidro -------------------------------------------------------------- */
 .vidro { background: rgba(200,200,200,0.14); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: rgba(0,0,0,0.25) 0 10px 30px, inset 0 1px 0 rgba(255,255,255,0.12); }
 
-/* --- as três telas que se empilham ---------------------------------- */
+/* --- as quatro telas que se empilham -------------------------------- */
 .cena-pilha { position: relative; height: calc(var(--n) * 100svh); background: #000; }
 .cena-painel {
   position: sticky; top: 0; height: 100svh; overflow: hidden;

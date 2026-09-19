@@ -2,7 +2,36 @@
 
 Registro de 19/09/2026. Versão para revisão, sem publicação ou ativação comercial.
 
-## Apresentação e jornada
+## Correção solicitada por Paulo — apresentação vigente
+
+Paulo rejeitou a apresentação inicial: benefício escondido depois da garantia, texto de preparação como argumento principal e ausência de imagem do advogado. A posição e a direção da correção são dele: **quarta cena fotográfica → destaque da assistência dentro dos planos → garantia específica da ferramenta**. A versão anterior abaixo permanece como histórico, não como recomendação vigente.
+
+### Assinaturas e responsabilidade
+
+| Trabalho | Responsável | Entrega nesta correção |
+| --- | --- | --- |
+| Direção comercial e escolha da posição | Paulo | Quarta imagem, benefício preventivo e reação ao dano, card junto da oferta e asterisco |
+| Copy | Botini | Novo hook, benefício, chamadas e nota de contratação |
+| Direção visual e código da Landing | Gabriel | Quarta cena, card dentro dos planos e apresentação responsiva |
+| Geração da imagem, integração, testes e revisão | Aline | Fotografia ilustrativa, alinhamento do upsell, verificação e prévia |
+
+Na entrega rejeitada, Botini escreveu a copy, Thiago propôs a sequência depois da garantia, Gabriel implementou o visual e Aline integrou e aprovou a entrega. Aline assume a responsabilidade pela revisão. Sophia implementou a infraestrutura anterior; ela não escreveu a copy criticada nem executou esta correção visual.
+
+Toda entrega e correção deve identificar quem escreveu, quem executou e quem revisou, com a contribuição real. Esses créditos pertencem ao registro do trabalho e à comunicação com Paulo, não à interface comercial do cliente. Não atribuir execução ou aprovação a quem não participou.
+
+### Benefício, oferta e imagem
+
+A quarta cena usa “Seu prejuízo merece mais que um ‘não’.” e apresenta apoio para agir e buscar reparação quando o hóspede ou a plataforma não assumem o dano. O card dentro dos planos usa “Da proteção do imóvel à busca por reparação.” O upsell mantém o mesmo benefício após confirmação real da compra.
+
+`public/lp/assistencia-juridica.png` é uma imagem gerada com IA nesta correção: cena ilustrativa de um advogado revisando documentos e a fotografia de um imóvel danificado. Não representa um profissional identificado, depoimento ou caso comprovado. Foi criada para esta página, não reutilizada como prova de uma parceria já operacional.
+
+A apresentação mantém seu benefício mesmo sem oferta ativa, com status curto de prévia junto da ação. Preço e checkout continuam dependentes da configuração real. A nota próxima ao CTA informa contratação anual separada; o comprador consulta escopo e condições antes do pagamento. Não há promessa de vitória ou indenização garantida.
+
+Aline acrescentou a chamada com asterisco junto aos botões de cada plano, usando o texto de Botini e levando ao card jurídico. Build e os 10 testes de interface passaram nesta correção; capturas da quarta cena e do card foram inspecionadas em celular e desktop.
+
+**Fundamento efetivamente usado:** correção direta de Paulo, análise da página e revisão de Botini/Gabriel. Princípio: mostrar primeiro o problema e o benefício, conectar a prevenção ao apoio após o dano e apresentar a assistência na decisão de compra. É uma hipótese comercial coerente com a direção do fundador, sem resultado de conversão medido.
+
+## Apresentação inicial — substituída pela correção acima
 
 A estratégia recebida define dois percursos comerciais: conversa no WhatsApp e compra direta pela página. A proposta de mostrar o jurídico na página e fazer uma oferta opcional imediatamente após a compra veio do fundador. A equipe não atribui a si a autoria dessa ideia.
 
