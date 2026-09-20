@@ -1039,35 +1039,30 @@ export default function Landing() {
           </div>
         </div>
         <div className="mx-auto mt-10 max-w-[1120px] px-5">
-          <figure data-cena="entrar" className="cena-cresce relative aspect-[4/5] overflow-hidden bg-[#1a1a1a] md:aspect-auto md:h-[82svh]">
-            <div data-cena="atravessar" className="absolute inset-0 overflow-hidden">
+          <figure className="md:grid md:grid-cols-12 md:items-center md:gap-10 lg:gap-16">
+            <div className="relative aspect-[3/2] overflow-hidden rounded-3xl bg-[#f0f0f0] md:col-span-7">
               <img
                 src="/lp/prova-varanda.webp"
                 alt="Varanda do apartamento em Niterói com vista para a baía e o Cristo Redentor"
                 loading="lazy"
-                className="cena-parallax block h-full w-full object-cover [object-position:50%_0%]"
+                width={1024}
+                height={1024}
+                className="block h-full w-full object-cover [object-position:50%_75%]"
               />
             </div>
-            <div
-              aria-hidden
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.72) 72%, rgba(0,0,0,0.9) 100%)" }}
-            />
-            <span className="vidro absolute left-5 top-5 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
-              Últimos 30 dias
-            </span>
-            <figcaption className="absolute inset-x-0 bottom-0 mx-auto max-w-[1120px] p-6 md:p-10">
-              <div className="grid grid-cols-2 md:grid-cols-4">
+            <figcaption className="mt-7 md:col-span-5 md:mt-0">
+              <Rotulo className="mb-5 block text-primary">Últimos 30 dias</Rotulo>
+              <div className="grid grid-cols-2">
                 {[
-                  [PROVA.reservas, "reservas", "border-b border-r pb-4 pr-3.5 md:border-b-0 md:pb-0"],
-                  [PROVA.hospedes, "hóspedes", "border-b pb-4 pl-4 md:border-b-0 md:border-r md:pb-0 md:pr-3.5"],
-                  [PROVA.termos, "contratos assinados", "border-r pr-3.5 pt-4 md:pl-4 md:pt-0"],
-                  [PROVA.cadastros, "cadastros na portaria", "pl-4 pt-4 md:pt-0"],
+                  [PROVA.reservas, "reservas", "border-b border-r pb-5 pr-5"],
+                  [PROVA.hospedes, "hóspedes", "border-b pb-5 pl-5"],
+                  [PROVA.termos, "contratos assinados", "border-r pr-5 pt-5"],
+                  [PROVA.cadastros, "cadastros na portaria", "pl-5 pt-5"],
                 ].map(([n, r, cls], i) => (
-                  <div key={r} data-reveal="up" style={delay(i * 80)} className={cn("flex min-w-0 flex-col gap-1.5 border-white/[0.28]", cls as string)}>
+                  <div key={r} data-reveal="up" style={delay(i * 80)} className={cn("flex min-w-0 flex-col gap-1.5 border-black/10", cls as string)}>
                     <span aria-hidden className="mb-0.5 block h-0.5 w-[22px] rounded-[1px] bg-primary" />
-                    <div data-count={n} className="numero-grande text-[clamp(38px,6vw,72px)] text-white">{n}</div>
-                    <div className="text-sm leading-[1.35] tracking-[-0.02em] text-white/85">{r}</div>
+                    <div data-count={n} className="numero-grande text-[clamp(38px,4.5vw,56px)] text-black">{n}</div>
+                    <div className="text-sm leading-[1.35] tracking-[-0.02em] text-[#666666]">{r}</div>
                   </div>
                 ))}
               </div>
