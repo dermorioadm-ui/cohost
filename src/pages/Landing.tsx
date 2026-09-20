@@ -668,6 +668,17 @@ export default function Landing() {
   // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
   // acima segura a página; se a tabela mudar, a página acompanha sem deploy.
   const [PLANOS, setPlanos] = useState<Plano[]>(PLANOS_RESERVA);
+  const [planoEscolhido, setPlanoEscolhido] = useState(PLANOS_RESERVA[0].tier);
+  const planoAtivo = PLANOS.find((p) => p.tier === planoEscolhido) ?? PLANOS[0];
+  useEffect(() => {
+    const escolherPeloLink = () => {
+      const tier = window.location.hash.slice(1);
+      if (PLANOS.some((p) => p.tier === tier)) setPlanoEscolhido(tier);
+    };
+    escolherPeloLink();
+    window.addEventListener("hashchange", escolherPeloLink);
+    return () => window.removeEventListener("hashchange", escolherPeloLink);
+  }, [PLANOS]);
   useEffect(() => {
     supabase
       .from("plans")
@@ -1232,198 +1243,194 @@ export default function Landing() {
 
       {/* ---------------------------------------------- gestora × hospedepay */}
       <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="overflow-hidden rounded-[28px] bg-black text-white md:rounded-[40px]">
-          <div className="mx-auto max-w-[1120px] px-5 py-9 md:p-10">
-            <div className="md:grid md:grid-cols-12 md:gap-8">
-              <div className="md:col-span-7">
-                <Rotulo className="mb-5 block text-white/60">Gestora × HospedePay</Rotulo>
-                <Titulo
-                  texto="Seu aluguel não precisa sustentar a *gestora*."
-                  className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-white"
-                />
-                <Traco className="mt-6" />
-                <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-white/70">
-                  Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
-                </p>
-              </div>
-              <div className="mt-10 grid grid-cols-2 gap-3 md:col-span-5 md:mt-0 md:self-end">
-                <div data-reveal="up" className="flex flex-col gap-2 rounded-[22px] border border-white/[0.12] bg-[#141416] px-5 py-6">
-                  <Rotulo className="text-white/[0.6]">Gestora (exemplo)</Rotulo>
-                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">20%</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-white/[0.6]">do faturamento. Quanto mais entra, maior a taxa.</span>
-                </div>
-                <div data-reveal="up" style={delay(80)} className="flex flex-col gap-2 rounded-[22px] bg-primary px-5 py-6">
-                  <Rotulo className="text-white">HospedePay</Rotulo>
-                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">R$97</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-white">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
-                </div>
-              </div>
+        <div className="md:grid md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-7">
+            <Rotulo className="mb-5 block text-[#666666]">Gestora × HospedePay</Rotulo>
+            <Titulo
+              texto="Seu aluguel não precisa sustentar a *gestora*."
+              className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
+            />
+            <Traco className="mt-6" />
+            <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
+              Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
+            </p>
+          </div>
+          <div className="mt-7 grid grid-cols-2 gap-5 md:col-span-5 md:mt-0 md:self-end">
+            <div data-reveal="up" className="flex min-w-0 flex-col gap-2 py-4">
+              <Rotulo className="text-[#666666]">Gestora (exemplo)</Rotulo>
+              <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">20%</span>
+              <span className="text-sm leading-[1.45] tracking-corpo text-[#666666]">do faturamento. Quanto mais entra, maior a taxa.</span>
             </div>
+            <div data-reveal="up" style={delay(80)} className="flex min-w-0 flex-col gap-2 border-l border-[#e6e6e6] py-4 pl-5">
+              <Rotulo className="text-black">HospedePay</Rotulo>
+              <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">R$97</span>
+              <span className="text-sm leading-[1.45] tracking-corpo text-black">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
+            </div>
+          </div>
+        </div>
 
-            <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
-              <div data-reveal="up" className="overflow-hidden rounded-3xl bg-white text-black md:col-span-7">
-                <div className="grid grid-cols-[minmax(0,1fr)_52px_72px] items-end gap-2 border-b border-[#f0f0f0] px-4 pb-3.5 pt-[18px] md:px-5">
-                  <Rotulo className="text-[#666666]">O que faz</Rotulo>
-                  <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
-                  <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
+        <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
+          <div data-reveal="up" className="min-w-0 text-black md:col-span-7">
+            <div className="grid grid-cols-[minmax(0,1fr)_52px_72px] items-end gap-2 border-b border-[#e6e6e6] pb-3.5 pt-[18px]">
+              <Rotulo className="text-[#666666]">O que faz</Rotulo>
+              <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
+              <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
+            </div>
+            {COMPARACAO.map((g) => (
+              <div key={g.grupo}>
+                <div className="border-b border-t border-[#e6e6e6] pb-2 pt-3">
+                  <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
                 </div>
-                {COMPARACAO.map((g) => (
-                  <div key={g.grupo}>
-                    <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-5 pb-1.5 pt-2.5">
-                      <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
-                    </div>
-                    {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
-                      <div
-                        key={nome}
-                        className={cn(
-                          "grid grid-cols-[minmax(0,1fr)_52px_72px] items-center gap-2 px-4 py-3.5 md:px-5",
-                          i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
-                        )}
-                      >
-                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
-                          <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
-                          {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
+                {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
+                  <div
+                    key={nome}
+                    className={cn(
+                      "grid grid-cols-[minmax(0,1fr)_52px_72px] items-center gap-2 py-3.5",
+                      i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
+                    )}
+                  >
+                    <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
+                      <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
+                      {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
+                    </span>
+                    {[gestora, nos].map((sim, k) => (
+                      <span key={k} className="flex justify-center">
+                        <span
+                          aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
+                          aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
+                          className={cn(
+                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
+                            sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
+                          )}
+                        >
+                          {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
                         </span>
-                        {[gestora, nos].map((sim, k) => (
-                          <span key={k} className="flex justify-center">
-                            <span
-                              aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
-                              aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
-                              className={cn(
-                                "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
-                                sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
-                              )}
-                            >
-                              {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
+                      </span>
                     ))}
                   </div>
                 ))}
-                <div className="border-t border-[#e6e6e6] px-4 py-4 text-xs leading-relaxed text-[#666666] md:px-5">
-                  <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
-                  <p id="comparacao-juridico-note" className="mt-2">
-                    <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                      * Suporte jurídico: consulte disponibilidade e condições.
-                    </a>
-                  </p>
-                </div>
               </div>
+            ))}
+            <div className="border-t border-[#e6e6e6] py-4 text-xs leading-relaxed text-[#666666]">
+              <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
+              <p id="comparacao-juridico-note" className="mt-2">
+                <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  * Suporte jurídico: consulte disponibilidade e condições.
+                </a>
+              </p>
+            </div>
+          </div>
 
-              <div data-reveal="up" style={delay(120)} className="mt-6 flex flex-col gap-[18px] rounded-[28px] border border-white/[0.12] bg-[#141416] px-6 py-7 md:col-span-5 md:mt-0 md:self-start">
-                <p className="text-[24px] leading-[1.15] tracking-titulo text-white">Faça essa conta antes da próxima reserva.</p>
-                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-white/[0.7] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
-                <div className="flex flex-col">
-                  {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
-                    <div key={q} className="flex items-baseline justify-between gap-4 border-t border-white/[0.14] py-3">
-                      <span className="text-base tracking-[-0.014em] text-white">{q}</span>
-                      <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-white tabular-nums">
-                        {v}<span className="text-sm text-white/[0.6]"> / ano</span>
-                      </span>
-                    </div>
-                  ))}
+          <div data-reveal="up" style={delay(120)} className="mt-8 flex min-w-0 flex-col gap-[18px] border-t border-[#e6e6e6] pt-6 md:col-span-5 md:mt-0 md:self-start md:border-l md:border-t-0 md:pl-8 md:pt-0">
+            <p className="text-[24px] leading-[1.15] tracking-titulo text-black">Faça essa conta antes da próxima reserva.</p>
+            <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
+            <div className="flex flex-col">
+              {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
+                <div key={q} className="flex items-baseline justify-between gap-4 border-t border-[#e6e6e6] py-3">
+                  <span className="text-base tracking-[-0.014em] text-black">{q}</span>
+                  <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-black tabular-nums">
+                    {v}<span className="text-sm text-[#666666]"> / ano</span>
+                  </span>
                 </div>
-                <div className="flex flex-col gap-1 border-t border-white/[0.3] pt-[18px]">
-                  <Rotulo className="text-white/[0.6]">O que pode continuar com você</Rotulo>
-                  <div className="flex flex-wrap items-baseline gap-2.5">
-                    <span className="numero-grande text-[clamp(48px,6vw,72px)] text-[#FF8095]">R$8.630</span>
-                    <span className="text-base tracking-[-0.014em] text-white/[0.7]">a mais por ano, neste exemplo.</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-[1.4] text-white/60">Seu patrimônio trabalha para você. A operação também deveria.</p>
-                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1 border-t border-[#e6e6e6] pt-[18px]">
+              <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
+              <div className="flex flex-wrap items-baseline gap-2.5">
+                <span className="numero-grande text-[clamp(36px,4vw,48px)] text-primary">R$8.630</span>
+                <span className="text-base tracking-[-0.014em] text-[#666666]">a mais por ano, neste exemplo.</span>
               </div>
+              <p className="mt-3 text-sm leading-[1.4] text-[#666666]">Seu patrimônio trabalha para você. A operação também deveria.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* -------------------------------------------------------- planos */}
-      {/* Sem caixas: três colunas separadas por um fio, o preço grande e um
-          botão por plano. No celular, três blocos separados por fio. */}
+      {/* Os valores ficam juntos; os benefícios e a contratação são compartilhados. */}
       <section id="planos" data-oculta-fab className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
-          <div className="md:col-span-7">
-            <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
-            <Titulo texto="Escolha o plano para o seu *imóvel*." className={h2} />
-            <Traco className="mt-6" />
-          </div>
-          <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:col-span-4 md:col-start-9 md:mt-0">
-            Na compra direta, você configura a ferramenta. Na contratação pelo WhatsApp,
-            a implementação faz parte da condição combinada.
-          </p>
-        </div>
-        {checkoutCancelado && (
-          <p className="mt-6 rounded-2xl bg-[#f0f0f0] px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-            Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
-          </p>
-        )}
-        {erroPlano && (
-          <p role="alert" className="mt-6 rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-[15px] leading-snug tracking-corpo text-black">
-            {erroPlano}
-          </p>
-        )}
-        <div className="mt-12 border-t border-[#e6e6e6] md:grid md:grid-cols-3">
-          {PLANOS.map((p, i) => (
-            <article
-              key={p.tier}
-              id={p.tier}
-              data-reveal="up"
-              style={{ ...delay(i * 80), scrollMarginTop: 24 }}
-              className={cn(
-                "flex flex-col gap-6 border-b border-[#e6e6e6] py-8 md:border-b-0 md:py-10",
-                i > 0 && "md:border-l md:pl-8",
-                i < PLANOS.length - 1 && "md:pr-8",
-              )}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-[clamp(20px,2.4vw,26px)] font-normal leading-[1.2] tracking-[-0.02em] text-black">{p.nome}</h3>
-                <span className="inline-flex h-[30px] items-center whitespace-nowrap rounded-pill bg-black px-3.5 text-[13px] leading-none tracking-[-0.02em] text-white">
-                  {p.imoveis}
-                </span>
+        <div className="oferta-principal">
+          <Rotulo className="mb-4 block text-[#ff91a5]">Seu próximo check-in começa aqui</Rotulo>
+          <Titulo texto="Escolha o plano para o seu *imóvel*." className="oferta-titulo" />
+          <p className="oferta-intro">Os mesmos recursos. Escolha quantos imóveis vão rodar.</p>
+
+          <fieldset className="oferta-escolha" disabled={abrindo !== null}>
+            <legend>Quantos imóveis você tem?</legend>
+            <div className="oferta-opcoes">
+              {PLANOS.map((p) => (
+                <label key={p.tier} id={p.tier} className="oferta-opcao">
+                  <input
+                    type="radio"
+                    name="plano-hospedepay"
+                    value={p.tier}
+                    checked={planoAtivo.tier === p.tier}
+                    onChange={() => { setPlanoEscolhido(p.tier); setErroPlano(null); }}
+                    aria-label={`${p.imoveis}, plano ${p.nome}, ${brl(p.anual)} por ano ou ${brl(p.mensal)} por mês`}
+                    className="sr-only"
+                  />
+                  <span className="oferta-opcao__conteudo">
+                    <span className="oferta-opcao__imoveis">{p.imoveis}</span>
+                    <span className="oferta-opcao__valor"><span>R$</span>{p.anual.toLocaleString("pt-BR")}</span>
+                    <span className="oferta-opcao__periodo">por ano</span>
+                    <span className="oferta-opcao__mensal">ou {brl(p.mensal)}/mês</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {checkoutCancelado && (
+            <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-[15px] leading-snug text-white">
+              Você saiu antes de pagar. Sem problema: o plano está aqui quando quiser.
+            </p>
+          )}
+          {erroPlano && (
+            <p role="alert" className="mt-5 rounded-2xl border border-[#ff91a5] bg-[#fff1f4] px-4 py-3 text-[15px] leading-snug text-[#8a1533]">
+              {erroPlano}
+            </p>
+          )}
+
+          <div className="oferta-resumo">
+            <div>
+              <div aria-live="polite" aria-atomic="true" id="plano-selecionado">
+                <h3 className="oferta-plano-nome">{planoAtivo.nome} <span>· {planoAtivo.imoveis}</span></h3>
+                <p className="oferta-preco"><span>{brl(planoAtivo.anual)}</span> <span>por ano</span></p>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="numero-grande text-[clamp(44px,4.6vw,60px)] text-black">{brl(p.anual)}</span>
-                  <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
-                </div>
-                <div className="text-base tracking-corpo text-black tabular-nums">
-                  Confira as condições de pagamento no checkout.
-                </div>
-              </div>
-              <ul className="flex flex-col gap-2.5">
-                {["Configuração por sua conta na compra direta", "Suporte incluído", "Garantia de 30 dias da ferramenta"].map((l) => (
-                  <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
-                    <Check />
-                    <span>{l}</span>
-                  </li>
+              <ul className="oferta-beneficios">
+                {["Todos os recursos da ferramenta", "Suporte incluído", "Garantia de 30 dias da ferramenta"].map((l) => (
+                  <li key={l}><Check /><span>{l}</span></li>
                 ))}
               </ul>
-              <div className="mt-auto flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => assinar(p.tier, "annual")}
-                  disabled={abrindo !== null}
-                  className="flex h-14 items-center justify-center gap-2 rounded-pill bg-primary px-6 text-base tracking-[-0.01em] text-white transition-[background-color,transform] duration-200 hover:bg-primary-hover active:scale-[0.985] disabled:opacity-60"
-                >
-                  {abrindo === `${p.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                  Assinar o {p.nome} anual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => assinar(p.tier, "monthly")}
-                  disabled={abrindo !== null}
-                  className="text-center text-sm leading-normal tracking-[-0.02em] text-[#666666] underline decoration-1 underline-offset-[3px] hover:text-black disabled:opacity-60"
-                >
-                  {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
-                </button>
-                <a href="#assistencia-juridica" aria-describedby="legal-offer-note" className="mt-2 text-center text-sm leading-relaxed text-black underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
-                  Conheça a Assistência Jurídica Hospedepay*
-                </a>
-              </div>
-            </article>
-          ))}
+            </div>
+            <div className="oferta-contratacao">
+              <button
+                type="button"
+                onClick={() => assinar(planoAtivo.tier, "annual")}
+                disabled={abrindo !== null}
+                className="oferta-assinar"
+              >
+                {abrindo === `${planoAtivo.tier}:annual` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                Assinar o {planoAtivo.nome} anual
+                <span aria-hidden>↗</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => assinar(planoAtivo.tier, "monthly")}
+                disabled={abrindo !== null}
+                className="oferta-mensal"
+              >
+                {abrindo === `${planoAtivo.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(planoAtivo.mensal)}/mês`}
+              </button>
+              <p className="oferta-condicoes">Confira as condições de pagamento no checkout.</p>
+              <p className="oferta-implementacao">
+                Na compra direta, você configura a ferramenta. Na contratação pelo WhatsApp,
+                a implementação faz parte da condição combinada.
+              </p>
+            </div>
+          </div>
+          <a href="#assistencia-juridica" aria-describedby="legal-offer-note" className="oferta-juridico">
+            <span>Conheça a Assistência Jurídica Hospedepay*</span><span aria-hidden>↗</span>
+          </a>
         </div>
         <p data-reveal="up" className="mt-8 text-center md:text-left">
           <button type="button" onClick={abrir} className="text-base leading-[1.49] tracking-[-0.014em] text-primary underline decoration-1 underline-offset-4 hover:text-primary-hover">
@@ -1651,6 +1658,71 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .lp-js .is-in .mask .w { transform: none; }
 .lp-js .lp-fill-y { transform: scaleY(0); transition: transform 1.6s cubic-bezier(.22,.61,.36,1); }
 .lp-js .lp-fill-y.is-in { transform: scaleY(1); }
+
+
+/* --- escolha compacta da oferta --------------------------------------- */
+.oferta-principal { padding: 28px 20px 0; border-radius: 28px; background: #080808; color: #fff; }
+.oferta-titulo { max-width: 22ch; font-size: clamp(32px, 5vw, 56px); font-weight: 400; line-height: 1.04; letter-spacing: -.035em; }
+.oferta-intro { margin-top: 14px; max-width: 44ch; color: #c9c9c9; font-size: 16px; line-height: 1.45; }
+.oferta-escolha { min-width: 0; margin-top: 26px; }
+.oferta-escolha legend { margin-bottom: 12px; color: #f2f2f2; font-size: 15px; }
+.oferta-opcoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.oferta-opcao { min-width: 0; cursor: pointer; scroll-margin-top: 104px; }
+.oferta-opcao__conteudo { display: flex; flex-direction: column; align-items: center; height: 100%; padding: 15px 8px 12px; border: 1px solid #444; border-radius: 16px; background: #181818; color: #fff; text-align: center; transition: background-color .16s ease, border-color .16s ease; }
+.oferta-opcao__imoveis { display: flex; align-items: center; justify-content: center; min-height: 36px; font-size: 14px; font-weight: 500; line-height: 1.25; }
+.oferta-opcao__valor { display: flex; align-items: baseline; justify-content: center; gap: 2px; margin-top: 10px; font-size: clamp(20px, 5vw, 32px); line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.oferta-opcao__valor > span { font-size: 11px; letter-spacing: -.015em; }
+.oferta-opcao__periodo { margin-top: 4px; color: #ccc; font-size: 12px; line-height: 1.3; }
+.oferta-opcao__mensal { margin-top: 10px; padding-top: 9px; border-top: 1px solid #444; color: #ccc; font-size: 12px; line-height: 1.35; }
+.oferta-opcao:hover .oferta-opcao__conteudo { border-color: #ff91a5; }
+.oferta-opcao input:checked + .oferta-opcao__conteudo { border-color: #ff385c; background: #ff385c; color: #080808; }
+.oferta-opcao input:checked + .oferta-opcao__conteudo .oferta-opcao__periodo,
+.oferta-opcao input:checked + .oferta-opcao__conteudo .oferta-opcao__mensal { color: #171717; border-color: #08080840; }
+.oferta-opcao input:focus-visible + .oferta-opcao__conteudo { outline: 3px solid #fff; outline-offset: 3px; }
+.oferta-opcao input:disabled + .oferta-opcao__conteudo { cursor: wait; opacity: .6; }
+.oferta-resumo { display: grid; gap: 24px; margin-top: 24px; padding-top: 22px; border-top: 1px solid #353535; }
+.oferta-plano-nome { font-size: 17px; font-weight: 500; line-height: 1.4; }
+.oferta-plano-nome > span { color: #aaa; font-size: 14px; font-weight: 400; }
+.oferta-preco { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; margin-top: 8px; }
+.oferta-preco > span:first-child { font-size: clamp(44px, 6vw, 64px); line-height: 1; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.oferta-preco > span:last-child { color: #bbb; font-size: 15px; }
+.oferta-beneficios { display: grid; gap: 8px; margin-top: 20px; }
+.oferta-beneficios li { display: flex; align-items: center; gap: 9px; color: #dedede; font-size: 14px; line-height: 1.4; }
+.oferta-beneficios svg { flex: 0 0 auto; }
+.oferta-contratacao { display: flex; flex-direction: column; align-self: center; gap: 14px; min-width: 0; }
+.oferta-assinar { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 14px 18px; border-radius: 999px; background: #ff385c; color: #080808; font-size: 16px; font-weight: 500; line-height: 1.35; transition: background-color .16s ease; }
+.oferta-assinar:hover { background: #ff708b; }
+.oferta-assinar > svg, .oferta-assinar > span { flex: 0 0 auto; }
+.oferta-mensal { align-self: center; color: #e6e6e6; font-size: 14px; line-height: 1.5; text-decoration: underline; text-underline-offset: 4px; }
+.oferta-assinar:focus-visible, .oferta-mensal:focus-visible, .oferta-juridico:focus-visible { outline: 3px solid #ff91a5; outline-offset: 4px; }
+.oferta-assinar:disabled, .oferta-mensal:disabled { cursor: wait; opacity: .6; }
+.oferta-condicoes { color: #aaa; font-size: 12px; line-height: 1.5; text-align: center; }
+.oferta-implementacao { color: #bbb; font-size: 13px; line-height: 1.5; }
+.oferta-juridico { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; padding-block: 20px; border-top: 1px solid #353535; color: #ff91a5; font-size: 14px; line-height: 1.4; }
+.oferta-juridico > span:last-child { flex-shrink: 0; font-size: 20px; }
+@media (min-width: 768px) {
+  .oferta-principal { padding: 40px 36px 0; border-radius: 36px; }
+  .oferta-opcoes { gap: 14px; }
+  .oferta-opcao__conteudo { padding: 20px 16px 17px; }
+  .oferta-opcao__imoveis { min-height: auto; font-size: 18px; }
+  .oferta-opcao__valor { margin-top: 16px; font-size: 36px; }
+  .oferta-opcao__valor > span { font-size: 16px; }
+  .oferta-opcao__periodo, .oferta-opcao__mensal { font-size: 14px; }
+  .oferta-resumo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; margin-top: 28px; padding-top: 28px; }
+  .oferta-beneficios { gap: 10px; }
+  .oferta-beneficios li { font-size: 15px; }
+  .oferta-juridico { margin-top: 28px; padding-block: 24px; font-size: 15px; }
+}
+@media (max-width: 359px) {
+  .oferta-principal { padding-inline: 16px; }
+  .oferta-opcoes { gap: 6px; }
+  .oferta-opcao__conteudo { padding-inline: 6px; }
+  .oferta-opcao__imoveis { font-size: 13px; }
+  .oferta-opcao__mensal { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oferta-opcao__conteudo, .oferta-assinar { transition: none; }
+}
 
 /* --- faixa que corre ---------------------------------------------------- */
 .faixa-trilho { animation: faixa 42s linear infinite; }
