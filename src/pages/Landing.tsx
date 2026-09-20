@@ -22,8 +22,8 @@ import { api, ApiError, supabase } from "@/lib/api";
  * herói é a capa, e daí para baixo cada seção é uma CENA que puxa a próxima.
  * Os quatro benefícios são telas cheias que se empilham (a de cima encolhe e
  * escurece enquanto a próxima desliza por cima); o "e ainda" corre na
- * horizontal enquanto a página desce; a comparação escura cresce até tomar a
- * largura toda; a garantia cresce até a borda. Todo movimento é ligado à
+ * horizontal enquanto a página desce. As outras fotos ficam em molduras
+ * compactas, com cantos assimétricos. Todo movimento é ligado à
  * rolagem — nada acontece sozinho — e é interpolado com inércia, para a
  * página deslizar em vez de pular. Com `prefers-reduced-motion` tudo vira
  * estático e a leitura é a mesma.
@@ -170,7 +170,10 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
       for (const it of itens) {
         const r = it.el.getBoundingClientRect();
         let p = 0;
-        if (it.modo === "pin") p = r.height > vh ? -r.top / (r.height - vh) : 0;
+        if (it.modo === "pin") {
+          const alturaFixa = it.trilho ? it.el.querySelector<HTMLElement>(".cena-fixo")?.offsetHeight ?? vh : vh;
+          p = r.height > alturaFixa ? -r.top / (r.height - alturaFixa) : 0;
+        }
         else if (it.modo === "atravessar") p = (vh - r.top) / (vh + r.height);
         else p = (vh * 0.92 - r.top) / (vh * 0.62);
         it.alvo = clamp01(p);
@@ -198,18 +201,36 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
     };
 
     const rolar = () => { medir(); if (!raf) raf = requestAnimationFrame(loop); };
-    const redimensionar = () => { coletar(); rolar(); };
+    const redimensionar = () => {
+      coletar();
+      for (const it of itens) {
+        if (!it.trilho) continue;
+        const fixo = it.el.querySelector<HTMLElement>(".cena-fixo");
+        if (!fixo) continue;
+        delete it.el.dataset.driftLivre;
+        const distancia = Math.max(0, it.trilho.scrollWidth - it.el.clientWidth);
+        // O percurso acompanha a largura real dos cards, não várias telas vazias.
+        it.el.style.setProperty("--percurso", `${Math.max(280, Math.round(distancia * 0.85))}px`);
+        // Em telas baixas ou com texto ampliado, o gesto lateral fica livre.
+        if (fixo.scrollHeight > fixo.clientHeight + 1 || distancia === 0) {
+          it.el.dataset.driftLivre = "true";
+        }
+      }
+      rolar();
+    };
 
-    coletar();
-    rolar();
+    redimensionar();
     window.addEventListener("scroll", rolar, { passive: true });
     window.addEventListener("resize", redimensionar);
     // Fontes e imagens mudam alturas depois do primeiro frame.
     const t = window.setTimeout(redimensionar, 600);
+    const observer = new ResizeObserver(redimensionar);
+    raiz.querySelectorAll(".drift-conteudo").forEach((el) => observer.observe(el));
     return () => {
       window.removeEventListener("scroll", rolar);
       window.removeEventListener("resize", redimensionar);
       window.clearTimeout(t);
+      observer.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
   }, [root, reduz]);
@@ -504,7 +525,7 @@ const E_AINDA = [
   {
     rotulo: "Três canais, um calendário",
     titulo: "Airbnb, Booking e VRBO no mesmo calendário.",
-    texto: "Sincronizado a cada 30 minutos. Data ocupada em um canal fecha nos outros três, sem você tocar.",
+    texto: "Sincronizado a cada 30 minutos. Data ocupada em um canal fecha nos outros, sem você tocar.",
     foto: "/lp/ainda-calendario.webp",
     alt: "Calendário com reservas do Airbnb, Booking e VRBO",
     canais: true,
@@ -587,7 +608,7 @@ function VideoProva({ reduz }: { reduz: boolean }) {
 function Celular({ reduz }: { reduz: boolean }) {
   return (
     <div
-      className="relative h-[320px] w-[148px] rounded-[34px] bg-[#0b0b0d] p-2 lg:h-[620px] lg:w-[286px] lg:rounded-[48px] lg:p-2.5"
+      className="relative h-[320px] w-[148px] rounded-[34px] bg-[#0b0b0d] p-2 lg:h-[500px] lg:w-[232px] lg:rounded-[40px] lg:p-2.5"
       style={{ boxShadow: "0 30px 90px rgba(0,0,0,0.28), inset 0 0 0 1.5px rgba(255,255,255,0.10)" }}
     >
       <div aria-hidden className="absolute -left-0.5 top-[19%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
@@ -816,6 +837,26 @@ export default function Landing() {
 
   const h2 = "text-[clamp(34px,5.2vw,58px)] font-normal leading-[1.02] tracking-titulo text-black";
 
+  const mostrarRecurso = (indice: number) => {
+    const secao = raiz.current?.querySelector<HTMLElement>("#e-ainda");
+    const trilho = secao?.querySelector<HTMLElement>("[data-trilho]");
+    const cards = trilho?.querySelectorAll<HTMLElement>("article");
+    const fixo = secao?.querySelector<HTMLElement>(".cena-fixo");
+    if (!secao || !trilho || !cards?.[indice] || !fixo) return;
+    const deslocamento = cards[indice].offsetLeft - cards[0].offsetLeft;
+    const behavior = reduz ? "auto" : "smooth";
+    if (secao.dataset.driftLivre === "true") {
+      trilho.scrollTo({ left: deslocamento, behavior });
+      return;
+    }
+    const total = Math.max(1, trilho.scrollWidth - secao.clientWidth);
+    const progresso = Math.min(1, deslocamento / total);
+    window.scrollTo({
+      top: window.scrollY + secao.getBoundingClientRect().top + progresso * (secao.offsetHeight - fixo.offsetHeight),
+      behavior,
+    });
+  };
+
   return (
     <div ref={raiz} className="tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
       <style>{LP_CSS}</style>
@@ -991,7 +1032,7 @@ export default function Landing() {
 
       {/* ------------------------------------------ o que o hóspede vê */}
       {/* No celular os passos ficam ao lado de um celular menor; no desktop o celular fica fixo à direita. */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-36">
+      <section id="check-in" className="lp-secao mx-auto max-w-[1120px] scroll-mt-20 px-5">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 lg:grid-cols-12 lg:items-start lg:gap-x-10">
           <div className="col-span-2 lg:col-span-6">
             <Titulo texto="É isso que o seu hóspede *vê*." className={h2} />
@@ -1024,7 +1065,7 @@ export default function Landing() {
       </section>
 
       {/* --------------------------------------------------------- prova */}
-      <section id="prova" className="scroll-mt-20 pt-24 md:pt-36">
+      <section id="prova" className="lp-secao scroll-mt-20">
         <div className="mx-auto max-w-[1120px] px-5">
           <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
             <div className="md:col-span-7">
@@ -1040,7 +1081,7 @@ export default function Landing() {
         </div>
         <div className="mx-auto mt-10 max-w-[1120px] px-5">
           <figure className="md:grid md:grid-cols-12 md:items-center md:gap-10 lg:gap-16">
-            <div className="relative aspect-[3/2] overflow-hidden rounded-3xl bg-[#f0f0f0] md:col-span-7">
+            <div className="foto-recorte relative aspect-[3/2] overflow-hidden bg-[#f0f0f0] md:col-span-7">
               <img
                 src="/lp/prova-varanda.webp"
                 alt="Varanda do apartamento em Niterói com vista para a baía e o Cristo Redentor"
@@ -1071,137 +1112,118 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ------------------------------------------------------- emprego */}
-      {/* Recorte editorial: o texto na coluna de leitura e a foto sangrando
-          até a borda direita da tela, sem moldura. No celular o título vem
-          antes da foto, que vai de borda a borda. */}
-      <section className="pt-24 md:pt-40">
-        <div className="md:grid md:grid-cols-2 md:items-center">
-          <div className="mx-auto w-full max-w-[1120px] px-5 md:mx-0 md:max-w-none md:pl-[max(20px,calc((100vw-1120px)/2+20px))] md:pr-16">
-            <Rotulo className="mb-5 block text-primary">A rotina</Rotulo>
-            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[14ch]")} />
-            <p data-reveal="up" style={delay(200)} className="mt-6 hidden max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:block md:text-xl">
+      {/* ------------------------------- a rotina e o tempo livre, juntos */}
+      <section id="rotina" className="lp-secao mx-auto max-w-[1120px] scroll-mt-20 px-5">
+        <div className="grid gap-7 md:grid-cols-12 md:items-center md:gap-10">
+          <div className="md:col-span-5">
+            <Rotulo className="mb-4 block text-primary">Seu tempo de volta</Rotulo>
+            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[19ch] md:text-[48px]")} />
+            <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
               Com o HospedePay, além de reunir os registros da hospedagem, você ganha
               automatização completa — e esquece por dias que tem um Airbnb.
             </p>
           </div>
-          <figure data-cena="atravessar" className="relative ml-5 mr-auto mt-8 aspect-[4/5] w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#1a1a1a] md:ml-0 md:mt-0 md:aspect-auto md:h-[78svh] md:w-auto md:max-w-none md:rounded-l-[36px] md:rounded-r-none">
-            <img
-              src="/lp/emprego.webp"
-              alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão"
-              loading="lazy"
-              className="cena-parallax block h-full w-full object-cover"
-            />
-          </figure>
-          <p data-reveal="up" style={delay(200)} className="mx-auto mt-6 w-full max-w-[1120px] px-5 text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:hidden">
-            Com o HospedePay, além de reunir os registros da hospedagem, você ganha
-            automatização completa — e esquece por dias que tem um Airbnb.
-          </p>
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------- a orla */}
-      {/* A cena entre o emprego e o resto: o anfitrião longe do celular.
-          Mesmo padrão de revista das outras duas, com a foto do outro lado. */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div className="md:grid md:grid-cols-12 md:items-center md:gap-8">
-          <figure data-cena="atravessar" className="relative ml-auto aspect-[3/4] w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#1a1a1a] md:col-span-5 md:ml-0 md:w-full md:max-w-none md:aspect-[4/5]">
-            <img
-              src="/lp/orla.webp"
-              alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso e o Pão de Açúcar ao fundo"
-              loading="lazy"
-              className="cena-parallax block h-full w-full object-cover [object-position:50%_30%]"
-            />
-            <span className="vidro absolute left-3 top-3 inline-flex h-7 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
-              Sexta, 18h40
-            </span>
-          </figure>
-          <div className="mt-8 md:col-span-6 md:col-start-7 md:mt-0">
-            <Rotulo className="mb-5 block text-primary">Enquanto isso</Rotulo>
-            <Titulo texto="Hóspede chega amanhã. Você nem sabe. E não *precisa*." className={cn(h2, "max-w-[14ch]")} />
-            <p data-reveal="up" style={delay(300)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
-              O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.
-            </p>
+          <div className="md:col-span-7">
+            <div className="grid grid-cols-[0.9fr_1.1fr] items-start gap-3 md:gap-5">
+              <figure>
+                <div className="foto-recorte foto-recorte--baixo aspect-[4/5] overflow-hidden bg-[#1a1a1a]">
+                  <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" className="h-full w-full object-cover [object-position:48%_65%]" />
+                </div>
+                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Preso à operação.</figcaption>
+              </figure>
+              <figure className="mt-8 md:mt-10">
+                <div className="foto-recorte foto-recorte--inverso aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
+                  <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" className="h-full w-full object-cover [object-position:54%_45%]" />
+                </div>
+                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Sexta, 18h40. Tempo livre.</figcaption>
+              </figure>
+            </div>
+            <div className="mt-6 border-t border-[#e6e6e6] pt-5">
+              <h3 className="max-w-[34ch] text-[22px] leading-[1.2] tracking-titulo">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
+              <p className="mt-2 max-w-[52ch] text-base leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ------------------------------------------------------- e ainda */}
-      {/* O título fica parado no alto da tela fixa e o trilho corre por
-          baixo dele: nada é cortado, e o título é lido o tempo todo. */}
-      <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-24 md:mt-40">
+      {/* A rolagem vertical percorre os cards. Se a altura não comportar
+          a leitura completa, o trilho usa o gesto lateral nativo. */}
+      <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-16 md:mt-24">
         <div className="cena-fixo">
-          <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-5 md:flex-row md:items-end md:justify-between md:gap-10">
-            <div>
-              <Rotulo className="mb-4 block text-primary">E ainda</Rotulo>
-              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={cn(h2, "max-w-[14ch]")} />
-              <Traco className="mt-5" />
+          <div className="drift-conteudo">
+            <div className="mx-auto w-full max-w-[1120px] px-5">
+              <Rotulo className="mb-3 block text-primary">E ainda</Rotulo>
+              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={cn(h2, "max-w-[23ch] text-[32px] md:max-w-[27ch] md:text-[46px]")} />
             </div>
-            <p data-reveal="up" style={delay(200)} className="max-w-[32ch] text-base leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:pb-1 md:text-lg">
-              Quatro coisas que passam a acontecer sozinhas depois que o calendário liga.
-            </p>
-          </div>
-          <div data-trilho className="trilho" tabIndex={0} role="region" aria-label="Outros recursos da ferramenta">
-            {E_AINDA.map((a, i) => (
-              <article key={a.rotulo} className="flex w-[min(74vw,360px)] shrink-0 flex-col gap-4">
-                <div className={cn("relative overflow-hidden rounded-[22px]", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 3" }}>
-                  <img src={a.foto} alt={a.alt} loading="lazy" className="block h-full w-full object-cover" />
-                  {a.canais && (
-                    <>
-                      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.42) 100%)" }} />
-                      <div className="absolute inset-x-0 bottom-3 flex items-center justify-center">
-                        <Logos tamanho={40} sombra />
-                      </div>
-                    </>
-                  )}
-                  <span className="vidro absolute left-3 top-3 inline-flex h-8 items-center rounded-pill px-3 text-[11px] uppercase tracking-[0.1em] text-white">
-                    0{i + 1}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Rotulo className="text-primary">{a.rotulo}</Rotulo>
-                  <h3 className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.15] tracking-[-0.02em] text-black [text-wrap:balance]">{a.titulo}</h3>
-                  <p className="text-[15px] leading-[1.45] tracking-[-0.012em] text-[#666666] [text-wrap:pretty]">{a.texto}</p>
-                </div>
-              </article>
-            ))}
-            <div className="w-5 shrink-0" aria-hidden />
+            <div id="recursos-trilho" data-trilho className="trilho" tabIndex={0} role="region" aria-label="Outros recursos da ferramenta">
+              {E_AINDA.map((a, i) => (
+                <article key={a.rotulo} className="flex w-[min(78vw,360px)] shrink-0 flex-col gap-3">
+                  <div className={cn("foto-recorte foto-recurso relative overflow-hidden", i % 2 === 1 && "foto-recorte--inverso", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")}>
+                    <img src={a.foto} alt={a.alt} loading="lazy" className="block h-full w-full object-cover" />
+                    {a.canais && (
+                      <>
+                        <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.42) 100%)" }} />
+                        <div className="absolute inset-x-0 bottom-3 flex items-center justify-center">
+                          <Logos tamanho={40} sombra />
+                        </div>
+                      </>
+                    )}
+                    <span className="absolute bottom-3 right-3 inline-flex h-8 items-center rounded-pill bg-black/40 px-3 text-[11px] uppercase tracking-[0.1em] text-white backdrop-blur-md">
+                      0{i + 1}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Rotulo className="text-primary">{a.rotulo}</Rotulo>
+                    <h3 className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.15] tracking-[-0.02em] text-black [text-wrap:balance]">{a.titulo}</h3>
+                    <p className="text-[15px] leading-[1.45] tracking-[-0.012em] text-[#666666] [text-wrap:pretty]">{a.texto}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="drift-navegacao mx-auto flex w-full max-w-[1120px] items-center gap-4 px-5">
+              <span className="drift-dica text-sm text-[#666666]">Role para explorar</span>
+              <span className="drift-dica-livre text-sm text-[#666666]">Arraste para explorar</span>
+              <div aria-hidden className="drift-progresso h-[2px] flex-1 overflow-hidden rounded-full bg-[#e6e6e6]"><span className="block h-full origin-left bg-primary" /></div>
+              <div className="ml-auto flex gap-1.5">
+                {E_AINDA.map((a, i) => (
+                  <button key={a.rotulo} type="button" onClick={() => mostrarRecurso(i)} aria-label={`Ver recurso ${i + 1}: ${a.rotulo}`} aria-controls="recursos-trilho" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#e6e6e6] text-sm tabular-nums transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ------------------------------------------------------ esquecer */}
-      {/* Depois de duas cenas de foto cheia, uma página de revista: o
-          título grande no branco e a foto pequena, quadrada, deslocada. */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div className="md:grid md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-7">
-            <Rotulo className="mb-5 block text-primary">A meta</Rotulo>
+      <section id="tranquilidade" className="lp-secao mx-auto max-w-[1120px] px-5">
+        <div className="grid grid-cols-[minmax(0,1fr)_104px] items-center gap-5 border-y border-[#e6e6e6] py-7 md:grid-cols-12 md:gap-8 md:py-10">
+          <div className="md:col-span-8">
             <Titulo
               texto="Nossa meta é você *esquecer* que o HospedePay existe."
-              className="max-w-[12ch] text-[clamp(38px,6.4vw,84px)] font-normal leading-[0.98] tracking-display text-black"
+              className="max-w-[25ch] text-[clamp(26px,3.5vw,42px)] font-normal leading-[1.08] tracking-titulo text-black"
             />
-            <p data-reveal="up" style={delay(300)} className="mt-7 max-w-[36ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-xl">
+            <p data-reveal="up" style={delay(200)} className="mt-4 max-w-[42ch] text-base leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:text-lg">
               Tudo rodando sozinho, com segurança. Você só lembra quando o dinheiro cai.
             </p>
           </div>
-          <figure data-cena="atravessar" className="relative mr-auto mt-10 aspect-square w-[78%] max-w-[420px] overflow-hidden rounded-3xl bg-[#e9e9e9] md:col-span-4 md:col-start-9 md:mt-24 md:w-full md:max-w-none">
+          <figure className="foto-recorte foto-recorte--inverso aspect-[3/4] overflow-hidden bg-[#e9e9e9] md:col-span-3 md:col-start-10 md:aspect-[5/4]">
             <img
               src="/lp/esquecer.webp"
               alt="Mulher sorrindo, relaxada no sofá da própria casa, com o celular apagado sobre a mesa"
               loading="lazy"
-              className="cena-parallax block h-full w-full object-cover [object-position:50%_20%]"
+              className="block h-full w-full object-cover [object-position:50%_42%]"
             />
           </figure>
         </div>
       </section>
 
       {/* ---------------------------------------------- gestora × hospedepay */}
-      {/* A cena escura cresce até tomar a largura da tela: um intervalo
-          entre a promessa e o preço. */}
-      <section id="comparacao" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
-        <div data-cena="entrar" className="cena-cresce bg-black text-white">
-          <div className="mx-auto max-w-[1120px] px-6 py-14 md:px-10 md:py-24">
+      <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+        <div className="overflow-hidden rounded-[28px] bg-black text-white md:rounded-[40px]">
+          <div className="mx-auto max-w-[1120px] px-5 py-9 md:p-10">
             <div className="md:grid md:grid-cols-12 md:gap-8">
               <div className="md:col-span-7">
                 <Rotulo className="mb-5 block text-white/60">Gestora × HospedePay</Rotulo>
@@ -1225,7 +1247,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="mt-12 md:grid md:grid-cols-12 md:gap-8">
+            <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
               <div data-reveal="up" className="overflow-hidden rounded-3xl bg-white text-black md:col-span-7">
                 <div className="grid grid-cols-[1fr_64px_84px] items-end gap-2 border-b border-[#f0f0f0] px-5 pb-3.5 pt-[18px]">
                   <Rotulo className="text-[#666666]">O que faz</Rotulo>
@@ -1295,7 +1317,7 @@ export default function Landing() {
       {/* -------------------------------------------------------- planos */}
       {/* Sem caixas: três colunas separadas por um fio, o preço grande e um
           botão por plano. No celular, três blocos separados por fio. */}
-      <section id="planos" ref={planosRef} className="scroll-mt-6 mx-auto max-w-[1120px] px-5 pt-24 md:pt-40">
+      <section id="planos" ref={planosRef} className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
           <div className="md:col-span-7">
             <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
@@ -1392,9 +1414,9 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------ garantia */}
-      <section id="garantia" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
-        <div data-cena="entrar" className="cena-cresce relative overflow-hidden bg-[#f0f0f0] md:grid md:grid-cols-12">
-          <div className="relative md:col-span-6" style={{ aspectRatio: "4 / 3" }}>
+      <section id="garantia" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+        <div className="foto-recorte relative overflow-hidden bg-[#f0f0f0] md:grid md:grid-cols-12">
+          <div className="relative aspect-[16/9] md:col-span-5 md:aspect-auto">
             <img
               src="/lp/garantia.webp"
               alt="Aperto de mãos com a entrega das chaves na porta do apartamento"
@@ -1402,7 +1424,7 @@ export default function Landing() {
               className="absolute inset-0 block h-full w-full object-cover"
             />
           </div>
-          <div className="flex flex-col justify-center gap-7 bg-primary px-6 py-8 text-white md:col-span-6 md:px-12 md:py-16">
+          <div className="flex flex-col justify-center gap-5 bg-primary px-6 py-7 text-white md:col-span-7 md:px-10 md:py-10">
             <div className="flex flex-col gap-2">
               <Rotulo className="text-white">Garantia da ferramenta</Rotulo>
               <Titulo as="p" texto="30 dias para usar a ferramenta." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" />
@@ -1418,10 +1440,10 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------- quem responde */}
-      <section id="quem-responde" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pt-20 md:pt-32">
-        <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
-          <figure data-cena="atravessar" className="relative overflow-hidden rounded-[28px] bg-[#f0f0f0] md:col-span-6" style={{ aspectRatio: "4 / 5" }}>
-            <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="cena-parallax block h-full w-full object-cover [object-position:50%_30%]" />
+      <section id="quem-responde" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-10">
+          <figure className="foto-recorte foto-recorte--inverso relative aspect-[5/6] w-[70%] max-w-[280px] overflow-hidden bg-[#f0f0f0] md:col-span-5 md:aspect-square md:w-full md:max-w-none">
+            <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="block h-full w-full object-cover [object-position:50%_30%]" />
             <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
             <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
@@ -1430,7 +1452,7 @@ export default function Landing() {
               </span>
             </figcaption>
           </figure>
-          <div className="mt-8 flex flex-col gap-5 md:col-span-6 md:mt-0 md:pb-4">
+          <div className="mt-7 flex flex-col gap-5 md:col-span-7 md:mt-0">
             <Titulo
               as="p"
               texto="Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu *próprio* apartamento."
@@ -1449,7 +1471,7 @@ export default function Landing() {
       </section>
 
       {/* ----------------------------------------------------- perguntas */}
-      <section id="perguntas" className="scroll-mt-20 mx-auto max-w-[1120px] px-5 pb-24 pt-24 md:pb-36 md:pt-40">
+      <section id="perguntas" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5 pb-16 md:pb-24">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-5">
             <Titulo texto="Perguntas que *todo mundo* faz" className={h2} />
@@ -1458,7 +1480,7 @@ export default function Landing() {
           <div className="mt-8 flex flex-col border-t border-[#e6e6e6] lg:col-span-7 lg:mt-0">
             {PERGUNTAS.map(([q, a], i) => (
               <details key={q} data-reveal="up" style={delay(i * 50)} className="pergunta group border-b border-[#e6e6e6]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 [&::-webkit-details-marker]:hidden">
                   <span className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.25] tracking-[-0.02em] text-black">{q}</span>
                   <span aria-hidden className="pergunta-mais relative h-8 w-8 shrink-0 rounded-full border border-[#d9d9d9]">
                     <span className="absolute left-1/2 top-1/2 h-[1.5px] w-3.5 -translate-x-1/2 -translate-y-1/2 bg-black" />
@@ -1476,7 +1498,7 @@ export default function Landing() {
       <section className="relative overflow-hidden bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%] opacity-80" />
         <Faixa itens={FAIXA} escuro />
-        <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-10 px-5 pb-[150px] pt-[100px] md:pt-[140px]">
+        <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-8 px-5 pb-[130px] pt-16 md:pt-24">
           <Titulo
             texto="Ninguém dorme no seu apartamento sem ter *assinado*."
             className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-primary"
@@ -1659,20 +1681,39 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .cena-painel .cena-sombra { opacity: calc(0.7 * var(--c)); pointer-events: none; }
 .cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
 
-/* --- o trilho que corre na horizontal ---------------------------------- */
-.cena-drift { position: relative; height: 320svh; }
-@media (min-width: 768px) { .cena-drift { height: 260svh; } }
-.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; flex-direction: column; justify-content: center; gap: 28px; overflow: hidden; padding-top: 72px; }
-@media (min-width: 768px) { .cena-fixo { gap: 40px; padding-top: 48px; } }
-.trilho { display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
-@media (min-width: 768px) { .trilho { gap: 28px; padding-left: max(20px, calc((100vw - 1120px) / 2 + 20px)); } }
-.trilho:focus-visible { outline: 2px solid #000; outline-offset: -2px; }
-@media (max-width: 767px) {
-  .cena-drift { height: auto; }
-  .cena-fixo { position: static; height: auto; overflow: visible; padding-top: 0; }
-  .trilho { width: 100%; overflow-x: auto; padding: 0 20px 18px; transform: none; will-change: auto; scroll-snap-type: x proximity; scroll-padding-inline: 20px; }
-  .trilho > article { scroll-snap-align: start; }
+/* --- ritmo e molduras das seções de apoio ------------------------------ */
+.lp-secao { padding-top: 64px; }
+.foto-recorte { border-radius: 24px 72px 24px 24px; }
+.foto-recorte--inverso { border-radius: 72px 24px 24px 24px; }
+.foto-recorte--baixo { border-radius: 24px 24px 72px 24px; }
+@media (min-width: 768px) {
+  .lp-secao { padding-top: 96px; }
+  .foto-recorte { border-radius: 28px 100px 28px 28px; }
+  .foto-recorte--inverso { border-radius: 100px 28px 28px 28px; }
+  .foto-recorte--baixo { border-radius: 28px 28px 100px 28px; }
 }
+
+/* --- o trilho que corre na horizontal ---------------------------------- */
+.cena-drift { position: relative; height: calc(100svh + var(--percurso, 800px)); }
+.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 84px 0 calc(92px + env(safe-area-inset-bottom, 0px)); }
+.drift-conteudo { display: flex; flex-direction: column; gap: 20px; width: 100%; flex-shrink: 0; }
+.trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
+.foto-recurso { aspect-ratio: 5 / 3; }
+.drift-progresso > span { transform: scaleX(var(--p, 0)); }
+.drift-dica-livre { display: none; }
+@media (min-width: 768px) {
+  .cena-fixo { padding-bottom: 100px; }
+  .drift-conteudo { gap: 28px; }
+  .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
+  .foto-recurso { aspect-ratio: 3 / 2; }
+}
+.trilho:focus-visible { outline: 2px solid #000; outline-offset: -2px; }
+.cena-drift[data-drift-livre] { height: auto; }
+.cena-drift[data-drift-livre] .cena-fixo { position: static; height: auto; overflow: visible; padding: 0; }
+.cena-drift[data-drift-livre] .trilho { width: 100%; overflow-x: auto; padding-bottom: 12px; transform: none; will-change: auto; scroll-snap-type: x proximity; scroll-padding-inline: 20px; }
+.cena-drift[data-drift-livre] .trilho > article { scroll-snap-align: start; }
+.cena-drift[data-drift-livre] .drift-dica, .cena-drift[data-drift-livre] .drift-progresso { display: none; }
+.cena-drift[data-drift-livre] .drift-dica-livre { display: inline; }
 
 /* --- crescer até a borda da tela --------------------------------------- */
 .cena-cresce { --g: var(--p, 0); border-radius: calc(32px * (1 - var(--g))); margin-inline: calc((100% - 100vw) / 2 * var(--g)); }
@@ -1711,10 +1752,11 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .cena-painel .cena-sombra { opacity: 0; }
   .cena-cresce { margin-inline: 0; border-radius: 32px; }
   .cena-drift { height: auto; }
-  .cena-fixo { position: static; height: auto; overflow: visible; padding-top: 0; }
+  .cena-fixo { position: static; height: auto; overflow: visible; padding: 0; }
   .trilho { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); width: 100%; max-width: 1120px; margin-inline: auto; padding: 0 20px; transform: none; will-change: auto; overflow: visible; }
   .trilho > article { width: auto; min-width: 0; }
   .trilho > [aria-hidden] { display: none; }
+  .drift-navegacao { display: none; }
   .passos-trilho::after, .passo-icone { transform: none; }
   .passo { opacity: 1; }
   .fab, .pergunta .pergunta-v, .pergunta .pergunta-mais { transition: none; }
