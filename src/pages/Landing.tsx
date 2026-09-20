@@ -1242,7 +1242,7 @@ export default function Landing() {
         <div className="comparacao-card">
           <div className="comparacao-abertura">
             <div>
-              <Rotulo className="mb-5 block text-[#611026]">Gestora × HospedePay</Rotulo>
+              <Rotulo className="mb-5 block text-[#34131b]">Gestora × HospedePay</Rotulo>
               <Titulo
                 texto="Seu aluguel não precisa sustentar a *gestora*."
                 className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
