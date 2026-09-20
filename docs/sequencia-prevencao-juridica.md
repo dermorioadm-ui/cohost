@@ -21,6 +21,12 @@ Paulo pediu retirar o Pão de Açúcar. A edição final das duas fotos removeu 
 
 As duas imagens somam aproximadamente 288 KiB, com carregamento sob demanda nos cards. As fotos do roubo e do sofá permanecem iguais.
 
+### Correção posterior da foto do sofá
+
+Paulo apontou que o dano do vinho era pouco visível. Aline substituiu a segunda foto por `public/lp/trava-sofa-vinho.webp` (aproximadamente 188 KiB), com enquadramento mais próximo, mancha de vinho grande e contrastante no sofá branco, taça caída e anfitriã tentando limpar com um pano. A composição mantém a paleta existente e não contém pontos turísticos. O recorte prioriza a mancha também no celular; a copy e a posição do card permanecem iguais.
+
+Fonte → princípio → aplicação: observação de Paulo sobre a falta de visibilidade do estrago → mostrar a dor com clareza mesmo em tela pequena → aproximar a cena, aumentar o contraste da mancha e ajustar o ponto de recorte. Imagem ilustrativa produzida/editada com a ferramenta integrada de imagens. Direção: Paulo. Execução e revisão: Aline, aplicando a skill de Gabriel, sem agente independente nesta correção.
+
 ## Autoria e revisão
 
 | Responsável | Trabalho desta alteração |
