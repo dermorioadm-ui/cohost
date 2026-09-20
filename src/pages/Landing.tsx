@@ -1127,23 +1127,23 @@ export default function Landing() {
             </p>
           </div>
           <div className="md:col-span-7">
-            <div className="grid grid-cols-[0.9fr_1.1fr] items-start gap-3 md:gap-5">
+            <div className="grid grid-cols-[0.8fr_1.2fr] items-start gap-3 md:gap-5">
               <figure>
                 <div className="foto-recorte foto-recorte--baixo aspect-[4/5] overflow-hidden bg-[#1a1a1a]">
                   <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" className="h-full w-full object-cover [object-position:48%_65%]" />
                 </div>
                 <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Preso à operação.</figcaption>
               </figure>
-              <figure className="mt-8 md:mt-10">
-                <div className="foto-recorte foto-recorte--inverso aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
+              <figure id="tempo-livre" className="foto-recorte foto-recorte--inverso mt-8 overflow-hidden bg-[#f5f5f5] md:mt-10">
+                <div className="aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
                   <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" className="h-full w-full object-cover [object-position:54%_45%]" />
                 </div>
-                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Sexta, 18h40. Tempo livre.</figcaption>
+                <figcaption className="px-4 pb-5 pt-4 md:px-5 md:pb-6 md:pt-5">
+                  <p className="mb-3 text-xs leading-[1.4] tracking-corpo text-primary">Sexta, 18h40. Tempo livre.</p>
+                  <h3 className="text-[20px] leading-[1.2] tracking-titulo md:text-[24px]">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
+                  <p className="mt-3 text-[15px] leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
+                </figcaption>
               </figure>
-            </div>
-            <div className="mt-6 border-t border-[#e6e6e6] pt-5">
-              <h3 className="max-w-[34ch] text-[22px] leading-[1.2] tracking-titulo">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
-              <p className="mt-2 max-w-[52ch] text-base leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
             </div>
           </div>
         </div>
