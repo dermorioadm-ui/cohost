@@ -19,29 +19,38 @@ export function LegalOfferSection({ onConsult }: { onConsult?: () => void }) {
         <h2 id="legal-offer-title" className="legal-offer__title">
           Da proteção do imóvel à busca por <em>reparação.</em>
         </h2>
+      </div>
+
+      <figure className="legal-offer__photo">
+        <img
+          src="/lp/assistencia-juridica-solucao.webp"
+          alt="Cena ilustrativa de uma conversa sobre assistência jurídica"
+          loading="lazy"
+        />
+      </figure>
+
+      <div className="legal-offer__body" data-reveal="up">
         <div className="legal-offer__benefits">
           <p><span aria-hidden>01</span>Documento, identificação facial e contrato assinado ajudam a proteger antes da estadia.</p>
           <p><span aria-hidden>02</span>A assistência jurídica acrescenta apoio para buscar reparação quando o dano já aconteceu.*</p>
         </div>
-      </div>
-
-      <div className="legal-offer__decision" data-reveal="up">
-        <p className="legal-offer__teaser-title">Apoio para buscar <em>reparação.</em></p>
-        {onConsult ? (
-          <button type="button" className="legal-offer__action" onClick={onConsult} aria-describedby="legal-offer-note legal-offer-status">
-            Conhecer a assistência jurídica <ArrowUpRight aria-hidden size={18} />
-          </button>
-        ) : (
-          <a href="#condicoes-assistencia-juridica" className="legal-offer__action" onClick={showConditions} aria-describedby="legal-offer-note legal-offer-status">
-            Conhecer a assistência jurídica <ArrowUpRight aria-hidden size={18} />
-          </a>
-        )}
-        <p id="legal-offer-note" className="legal-offer__note">
-          * Assistência jurídica opcional, com contratação anual separada do plano. Consulte disponibilidade, escopo e condições antes de contratar.
-        </p>
-        <p id="legal-offer-status" className="legal-offer__status">
-          Prévia da oferta. Contratação ainda não disponível.
-        </p>
+        <div className="legal-offer__decision">
+          {onConsult ? (
+            <button type="button" className="legal-offer__action" onClick={onConsult} aria-describedby="legal-offer-note legal-offer-status">
+              Conhecer a assistência jurídica <ArrowUpRight aria-hidden size={18} />
+            </button>
+          ) : (
+            <a href="#condicoes-assistencia-juridica" className="legal-offer__action" onClick={showConditions} aria-describedby="legal-offer-note legal-offer-status">
+              Conhecer a assistência jurídica <ArrowUpRight aria-hidden size={18} />
+            </a>
+          )}
+          <p id="legal-offer-note" className="legal-offer__note">
+            * Assistência jurídica opcional, com contratação anual separada do plano. Consulte disponibilidade, escopo e condições antes de contratar.
+          </p>
+          <p id="legal-offer-status" className="legal-offer__status">
+            Prévia da oferta. Contratação ainda não disponível.
+          </p>
+        </div>
       </div>
 
       <details id="condicoes-assistencia-juridica" ref={conditionsRef} className="legal-offer__conditions">
