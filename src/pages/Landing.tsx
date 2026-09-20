@@ -1195,26 +1195,22 @@ export default function Landing() {
               automatização completa — e esquece por dias que tem um Airbnb.
             </p>
           </div>
-          <div className="md:col-span-7">
-            <div className="grid grid-cols-[0.8fr_1.2fr] items-start gap-3 md:gap-5">
-              <figure>
-                <div className="foto-recorte foto-recorte--baixo aspect-[4/5] overflow-hidden bg-[#1a1a1a]">
-                  <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" className="h-full w-full object-cover [object-position:48%_65%]" />
-                </div>
-                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Preso à operação.</figcaption>
-              </figure>
-              <figure id="tempo-livre" className="foto-recorte foto-recorte--inverso mt-8 overflow-hidden bg-[#f5f5f5] md:mt-10">
-                <div className="aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
-                  <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" className="h-full w-full object-cover [object-position:54%_45%]" />
-                </div>
-                <figcaption className="px-4 pb-5 pt-4 md:px-5 md:pb-6 md:pt-5">
-                  <p className="mb-3 text-xs leading-[1.4] tracking-corpo text-primary">Sexta, 18h40. Tempo livre.</p>
-                  <h3 className="text-[20px] leading-[1.2] tracking-titulo md:text-[24px]">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
-                  <p className="mt-3 text-[15px] leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
-                </figcaption>
-              </figure>
+          <figure id="tempo-livre" className="rotina-ensaio md:col-span-7">
+            <div className="rotina-fotos">
+              <div className="rotina-foto rotina-foto--antes">
+                <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" />
+                <p>Preso à operação.</p>
+              </div>
+              <div className="rotina-foto rotina-foto--depois">
+                <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" />
+                <p>Sexta, 18h40.<br />Tempo livre.</p>
+              </div>
             </div>
-          </div>
+            <figcaption className="rotina-mensagem">
+              <h3>Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
+              <p>O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
@@ -1243,110 +1239,88 @@ export default function Landing() {
 
       {/* ---------------------------------------------- gestora × hospedepay */}
       <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="comparacao-card overflow-hidden rounded-[28px] bg-[#f6f6f7] text-black md:rounded-[40px]">
-          <div className="mx-auto max-w-[1120px] px-4 py-7 sm:px-5 md:p-10">
-            <div className="md:grid md:grid-cols-12 md:gap-8">
-              <div className="md:col-span-7">
-                <Rotulo className="mb-5 block text-[#666666]">Gestora × HospedePay</Rotulo>
-                <Titulo
-                  texto="Seu aluguel não precisa sustentar a *gestora*."
-                  className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
-                />
-                <Traco className="mt-6" />
-                <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-                  Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
-                </p>
-              </div>
-              <div className="mt-10 grid grid-cols-2 gap-3 md:col-span-5 md:mt-0 md:self-end">
-                <div data-reveal="up" className="flex min-w-0 flex-col gap-2 rounded-[22px] border border-[#e9e9eb] bg-white px-3 py-5 sm:px-4">
-                  <Rotulo className="text-[#666666]">Gestora (exemplo)</Rotulo>
-                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">20%</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-[#666666]">do faturamento. Quanto mais entra, maior a taxa.</span>
-                </div>
-                <div data-reveal="up" style={delay(80)} className="flex min-w-0 flex-col gap-2 rounded-[22px] border border-[#f5dce2] bg-[#fff0f3] px-3 py-5 sm:px-4">
-                  <Rotulo className="text-black">HospedePay</Rotulo>
-                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">R$97</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-black">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
-                </div>
-              </div>
+        <div className="comparacao-abertura">
+          <div>
+            <Rotulo className="mb-5 block text-primary">Gestora × HospedePay</Rotulo>
+            <Titulo
+              texto="Seu aluguel não precisa sustentar a *gestora*."
+              className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
+            />
+            <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
+              Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
+            </p>
+          </div>
+          <div className="comparacao-precos">
+            <div>
+              <span className="comparacao-precos__nome">Gestora (exemplo)</span>
+              <strong>20%</strong>
+              <p>do faturamento. Quanto mais entra, maior a taxa.</p>
             </div>
-
-            <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
-              <div data-reveal="up" className="overflow-hidden rounded-3xl border border-[#e9e9eb] bg-white text-black md:col-span-7">
-                <div className="grid grid-cols-[minmax(0,1fr)_48px_72px] items-end gap-1 border-b border-[#f0f0f0] px-3 pb-3.5 pt-[18px] md:px-5">
-                  <Rotulo className="text-[#666666]">O que faz</Rotulo>
-                  <span className="text-center text-xs tracking-corpo text-black">Gestora</span>
-                  <span className="text-center text-xs tracking-corpo text-primary">HospedePay</span>
-                </div>
-                {COMPARACAO.map((g) => (
-                  <div key={g.grupo}>
-                    <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-3 pb-1.5 md:px-5 pt-2.5">
-                      <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
-                    </div>
-                    {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
-                      <div
-                        key={nome}
-                        className={cn(
-                          "grid grid-cols-[minmax(0,1fr)_48px_72px] items-center gap-1 px-3 py-3.5 md:px-5",
-                          i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
-                        )}
-                      >
-                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
-                          <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
-                          {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
-                        </span>
-                        {[gestora, nos].map((sim, k) => (
-                          <span key={k} className="flex justify-center">
-                            <span
-                              aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
-                              aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
-                              className={cn(
-                                "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
-                                sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
-                              )}
-                            >
-                              {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                <div className="border-t border-[#e6e6e6] px-3 py-4 text-xs leading-relaxed text-[#666666] md:px-5">
-                  <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
-                  <p id="comparacao-juridico-note" className="mt-2">
-                    <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                      * Suporte jurídico: consulte disponibilidade e condições.
-                    </a>
-                  </p>
-                </div>
-              </div>
-
-              <div data-reveal="up" style={delay(120)} className="mt-6 flex flex-col gap-[18px] rounded-[24px] border border-[#e9e9eb] bg-white px-5 py-6 md:col-span-5 md:mt-0 md:self-start">
-                <p className="text-[24px] leading-[1.15] tracking-titulo text-black">Faça essa conta antes da próxima reserva.</p>
-                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
-                <div className="flex flex-col">
-                  {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
-                    <div key={q} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-[#e6e6e6] py-3">
-                      <span className="text-base tracking-[-0.014em] text-black">{q}</span>
-                      <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-black tabular-nums">
-                        {v}<span className="text-sm text-[#666666]"> / ano</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1 border-t border-[#e6e6e6] pt-[18px]">
-                  <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
-                  <div className="flex flex-wrap items-baseline gap-2.5">
-                    <span className="numero-grande text-[clamp(36px,4vw,48px)] text-primary">R$8.630</span>
-                    <span className="text-base tracking-[-0.014em] text-[#666666]">a mais por ano, neste exemplo.</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-[1.4] text-[#666666]">Seu patrimônio trabalha para você. A operação também deveria.</p>
-                </div>
-              </div>
+            <div>
+              <span className="comparacao-precos__nome">HospedePay</span>
+              <strong>R$97</strong>
+              <p>por mês, para 1 imóvel. Sem uma fatia de cada reserva.</p>
             </div>
           </div>
+        </div>
+
+        <div className="comparacao-corpo">
+          <div className="comparacao-tabela-wrap">
+            <table className="comparacao-tabela">
+              <caption className="sr-only">Recursos de uma gestora e do HospedePay. Os itens da gestora dependem do contrato.</caption>
+              <colgroup><col /><col className="comparacao-col-gestora" /><col className="comparacao-col-hospedepay" /></colgroup>
+              <thead>
+                <tr><th scope="col">O que faz</th><th scope="col">Gestora</th><th scope="col">HospedePay</th></tr>
+              </thead>
+              {COMPARACAO.map((g) => (
+                <tbody key={g.grupo}>
+                  <tr className="comparacao-grupo"><th colSpan={3} scope="rowgroup">{g.grupo}</th></tr>
+                  {g.linhas.map(([nome, gestora, nos, detalhe, juridico]) => (
+                    <tr key={nome}>
+                      <th scope="row">
+                        <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
+                        {detalhe && <span className="comparacao-detalhe">{detalhe}</span>}
+                      </th>
+                      {[gestora, nos].map((sim, k) => (
+                        <td key={k}>
+                          <span
+                            aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
+                            aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
+                            className={cn("comparacao-marca", sim && k === 1 && "comparacao-marca--sim")}
+                          >
+                            {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+            </table>
+            <div className="comparacao-notas">
+              <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
+              <p id="comparacao-juridico-note">
+                <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                  * Suporte jurídico: consulte disponibilidade e condições.
+                </a>
+              </p>
+            </div>
+          </div>
+
+          <aside className="comparacao-conta" aria-label="Exemplo de custo anual">
+            <h3>Faça essa conta antes da próxima reserva.</h3>
+            <p>Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
+            <dl className="comparacao-conta__valores">
+              {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
+                <div key={q}><dt>{q}</dt><dd>{v}<span> / ano</span></dd></div>
+              ))}
+            </dl>
+            <div className="comparacao-economia">
+              <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
+              <p><strong>R$8.630</strong><span>a mais por ano, neste exemplo.</span></p>
+              <p>Seu patrimônio trabalha para você. A operação também deveria.</p>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -1662,6 +1636,77 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .lp-js .lp-fill-y { transform: scaleY(0); transition: transform 1.6s cubic-bezier(.22,.61,.36,1); }
 .lp-js .lp-fill-y.is-in { transform: scaleY(1); }
 
+
+/* --- fotos e mensagem em uma composição única -------------------------- */
+.rotina-ensaio { min-width: 0; }
+.rotina-fotos { display: grid; grid-template-columns: .9fr 1.1fr; gap: 10px; height: clamp(240px, 72vw, 320px); }
+.rotina-foto { position: relative; min-width: 0; overflow: hidden; border-radius: 24px; background: #f2f2f2; }
+.rotina-foto--antes { border-top-left-radius: 48px; }
+.rotina-foto--depois { border-top-right-radius: 64px; }
+.rotina-foto img { width: 100%; height: 100%; object-fit: cover; }
+.rotina-foto--antes img { object-position: 47% 56%; }
+.rotina-foto--depois img { object-position: 55% 44%; }
+.rotina-foto::after { content: ""; position: absolute; inset: 45% 0 0; background: linear-gradient(transparent, rgba(0,0,0,.66)); }
+.rotina-foto p { position: absolute; z-index: 1; bottom: 17px; left: 14px; right: 10px; color: #fff; font-size: 13px; line-height: 1.4; }
+.rotina-mensagem { margin-top: 18px; padding: 2px 0 2px 18px; border-left: 2px solid #ff385c; }
+.rotina-mensagem h3 { max-width: 31ch; font-size: clamp(23px, 2.7vw, 30px); line-height: 1.16; letter-spacing: -.025em; }
+.rotina-mensagem > p { margin-top: 12px; max-width: 48ch; color: #666; font-size: 16px; line-height: 1.45; letter-spacing: -.012em; }
+
+/* --- comparação: tabela marcada, sem caixas sobrepostas ----------------- */
+.comparacao-abertura { display: grid; gap: 28px; }
+.comparacao-precos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: end; }
+.comparacao-precos > div { min-width: 0; padding: 5px 16px 5px 0; }
+.comparacao-precos > div + div { padding: 5px 0 5px 20px; border-left: 2px solid #ff385c; }
+.comparacao-precos__nome { display: block; font-size: 11px; line-height: 1.4; letter-spacing: .035em; text-transform: uppercase; }
+.comparacao-precos strong { display: block; margin-top: 8px; font-size: clamp(36px, 6vw, 52px); font-weight: 400; line-height: 1.1; letter-spacing: -.045em; }
+.comparacao-precos > div + div strong { color: #e5234a; }
+.comparacao-precos p { margin-top: 9px; max-width: 21ch; color: #666; font-size: 14px; line-height: 1.4; }
+.comparacao-corpo { display: grid; gap: 32px; margin-top: 28px; }
+.comparacao-tabela-wrap { min-width: 0; overflow: hidden; border: 1px solid #f3bac6; border-radius: 22px; background: #fff; }
+.comparacao-tabela { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+.comparacao-col-gestora { width: 54px; }
+.comparacao-col-hospedepay { width: 80px; }
+.comparacao-tabela thead { background: #ff385c; color: #080808; }
+.comparacao-tabela thead th { padding: 19px 4px; font-size: 12px; font-weight: 500; line-height: 1.3; text-align: center; }
+.comparacao-tabela thead th:first-child { padding-left: 14px; text-align: left; }
+.comparacao-tabela tbody th, .comparacao-tabela tbody td { border-top: 1px solid #f1e5e8; }
+.comparacao-tabela tbody th { padding: 15px 12px 15px 14px; font-size: 15px; font-weight: 400; line-height: 1.4; }
+.comparacao-tabela td { text-align: center; }
+.comparacao-tabela td:last-child { background: #fff0f4; }
+.comparacao-tabela .comparacao-grupo th { padding: 11px 14px; background: #fff8fa; color: #765b63; font-size: 10px; font-weight: 500; letter-spacing: .055em; line-height: 1.5; text-transform: uppercase; }
+.comparacao-detalhe { display: block; margin-top: 4px; color: #666; font-size: 14px; font-weight: 400; line-height: 1.4; }
+.comparacao-marca { display: inline-flex; align-items: center; justify-content: center; width: 25px; height: 25px; border-radius: 50%; background: #f1f1f1; color: #666; font-size: 14px; }
+.comparacao-marca--sim { background: #ff385c; color: #fff; }
+.comparacao-notas { padding: 15px 14px; border-top: 1px solid #f1e5e8; color: #666; font-size: 12px; line-height: 1.5; }
+.comparacao-notas p + p { margin-top: 8px; }
+.comparacao-conta { align-self: start; min-width: 0; padding-top: 22px; border-top: 2px solid #ff385c; }
+.comparacao-conta h3 { max-width: 24ch; font-size: 25px; font-weight: 400; line-height: 1.16; letter-spacing: -.025em; }
+.comparacao-conta > p { margin-top: 14px; color: #666; font-size: 16px; line-height: 1.45; }
+.comparacao-conta__valores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
+.comparacao-conta__valores dt { color: #666; font-size: 13px; line-height: 1.4; }
+.comparacao-conta__valores dd { margin-top: 5px; font-size: clamp(22px, 4.8vw, 30px); line-height: 1.3; letter-spacing: -.03em; }
+.comparacao-conta__valores dd span { white-space: nowrap; color: #666; font-size: 12px; letter-spacing: 0; }
+.comparacao-economia { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e6e6e6; }
+.comparacao-economia > p:first-of-type { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-top: 8px; }
+.comparacao-economia strong { color: #e5234a; font-size: clamp(42px, 5vw, 56px); font-weight: 400; letter-spacing: -.045em; line-height: 1.1; }
+.comparacao-economia > p:first-of-type span { max-width: 21ch; color: #666; font-size: 14px; line-height: 1.4; }
+.comparacao-economia > p:last-child { margin-top: 14px; color: #666; font-size: 14px; line-height: 1.45; }
+@media (min-width: 768px) {
+  .rotina-fotos { gap: 14px; height: 350px; }
+  .rotina-foto--antes { border-top-left-radius: 64px; }
+  .rotina-foto--depois { border-top-right-radius: 90px; }
+  .rotina-foto p { left: 18px; bottom: 20px; font-size: 14px; }
+  .rotina-mensagem { margin-top: 22px; padding-left: 22px; }
+  .comparacao-abertura { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; }
+  .comparacao-corpo { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; margin-top: 36px; }
+  .comparacao-col-gestora { width: 76px; }
+  .comparacao-col-hospedepay { width: 100px; }
+  .comparacao-tabela thead th { font-size: 13px; }
+  .comparacao-tabela thead th:first-child, .comparacao-tabela tbody th { padding-left: 20px; }
+  .comparacao-tabela .comparacao-grupo th, .comparacao-notas { padding-left: 20px; padding-right: 20px; }
+  .comparacao-conta { padding-top: 24px; }
+}
+@media (min-width: 1100px) { .rotina-fotos { height: 390px; } }
 
 /* --- escolha compacta da oferta --------------------------------------- */
 .oferta-principal { padding: 28px 20px 0; border-radius: 28px; background: #080808; color: #fff; }
