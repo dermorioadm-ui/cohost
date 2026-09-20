@@ -171,8 +171,10 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
         const r = it.el.getBoundingClientRect();
         let p = 0;
         if (it.modo === "pin") {
-          const alturaFixa = it.trilho ? it.el.querySelector<HTMLElement>(".cena-fixo")?.offsetHeight ?? vh : vh;
-          p = r.height > alturaFixa ? -r.top / (r.height - alturaFixa) : 0;
+          const fixo = it.trilho ? it.el.querySelector<HTMLElement>(".cena-fixo") : null;
+          const alturaFixa = fixo?.offsetHeight ?? vh;
+          const topoFixo = fixo ? parseFloat(getComputedStyle(fixo).top) || 0 : 0;
+          p = r.height > alturaFixa ? (topoFixo - r.top) / (r.height - alturaFixa) : 0;
         }
         else if (it.modo === "atravessar") p = (vh - r.top) / (vh + r.height);
         else p = (vh * 0.92 - r.top) / (vh * 0.62);
@@ -189,7 +191,8 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
       let vivo = false;
       for (const it of itens) {
         const d = it.alvo - it.cur;
-        if (it.cur < 0 || reduz || Math.abs(d) < 0.0006) {
+        // O trilho acompanha o gesto sem atraso, inclusive no ponto de saída.
+        if (it.trilho || it.cur < 0 || reduz || Math.abs(d) < 0.0006) {
           if (it.cur !== it.alvo) { it.cur = it.alvo; it.el.style.setProperty("--p", it.cur.toFixed(4)); }
           continue;
         }
@@ -206,15 +209,25 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
       for (const it of itens) {
         if (!it.trilho) continue;
         const fixo = it.el.querySelector<HTMLElement>(".cena-fixo");
-        if (!fixo) continue;
-        delete it.el.dataset.driftLivre;
+        const conteudo = it.el.querySelector<HTMLElement>(".drift-conteudo");
+        if (!fixo || !conteudo) continue;
+        const estilo = getComputedStyle(fixo);
+        const alturaTela = parseFloat(estilo.minHeight) || window.innerHeight;
+        const espacoExterno = parseFloat(estilo.paddingTop) + parseFloat(estilo.paddingBottom);
+        const cabecalhoENavegacao = conteudo.offsetHeight - it.trilho.offsetHeight;
+        const alturaLegendas = Math.max(0, ...Array.from(it.trilho.querySelectorAll<HTMLElement>("article")).map((card) =>
+          card.offsetHeight - (card.querySelector<HTMLElement>(".foto-recurso")?.offsetHeight ?? 0),
+        ));
+        // As fotos se adaptam à área útil; o texto mantém seu tamanho de leitura.
+        const alturaFoto = Math.max(100, Math.floor(alturaTela - espacoExterno - cabecalhoENavegacao - alturaLegendas));
+        it.el.style.setProperty("--foto-recurso-max", `${alturaFoto}px`);
+        const alturaFixa = fixo.offsetHeight;
+        it.el.style.setProperty("--altura-fixa", `${alturaFixa}px`);
+        // Com texto ampliado, deixa o bloco entrar inteiro antes de fixar sua base.
+        it.el.style.setProperty("--topo-fixo", `${Math.min(0, alturaTela - alturaFixa)}px`);
         const distancia = Math.max(0, it.trilho.scrollWidth - it.el.clientWidth);
         // O percurso acompanha a largura real dos cards, não várias telas vazias.
-        it.el.style.setProperty("--percurso", `${Math.max(280, Math.round(distancia * 0.85))}px`);
-        // Em telas baixas ou com texto ampliado, o gesto lateral fica livre.
-        if (fixo.scrollHeight > fixo.clientHeight + 1 || distancia === 0) {
-          it.el.dataset.driftLivre = "true";
-        }
+        it.el.style.setProperty("--percurso", `${distancia > 0 ? Math.max(280, Math.round(distancia * 0.85)) : 0}px`);
       }
       rolar();
     };
@@ -848,14 +861,11 @@ export default function Landing() {
     if (!secao || !trilho || !cards?.[indice] || !fixo) return;
     const deslocamento = cards[indice].offsetLeft - cards[0].offsetLeft;
     const behavior = reduz ? "auto" : "smooth";
-    if (secao.dataset.driftLivre === "true") {
-      trilho.scrollTo({ left: deslocamento, behavior });
-      return;
-    }
     const total = Math.max(1, trilho.scrollWidth - secao.clientWidth);
     const progresso = Math.min(1, deslocamento / total);
+    const topoFixo = parseFloat(getComputedStyle(fixo).top) || 0;
     window.scrollTo({
-      top: window.scrollY + secao.getBoundingClientRect().top + progresso * (secao.offsetHeight - fixo.offsetHeight),
+      top: window.scrollY + secao.getBoundingClientRect().top - topoFixo + progresso * (secao.offsetHeight - fixo.offsetHeight),
       behavior,
     });
   };
@@ -1150,14 +1160,13 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------- e ainda */}
-      {/* A rolagem vertical percorre os cards. Se a altura não comportar
-          a leitura completa, o trilho usa o gesto lateral nativo. */}
+      {/* A cena fica fixa até a rolagem percorrer os quatro cards. */}
       <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-16 md:mt-24">
         <div className="cena-fixo">
           <div className="drift-conteudo">
             <div className="mx-auto w-full max-w-[1120px] px-5">
               <Rotulo className="mb-3 block text-primary">E ainda</Rotulo>
-              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={cn(h2, "max-w-[23ch] text-[32px] md:max-w-[27ch] md:text-[46px]")} />
+              <Titulo texto="Você entra pelo check‑in. Fica pelo *resto*." className={cn(h2, "max-w-[23ch] text-[28px] md:max-w-[27ch] md:text-[46px]")} />
             </div>
             <div id="recursos-trilho" data-trilho className="trilho" tabIndex={0} role="region" aria-label="Outros recursos da ferramenta">
               {E_AINDA.map((a, i) => (
@@ -1186,7 +1195,6 @@ export default function Landing() {
             </div>
             <div className="drift-navegacao mx-auto flex w-full max-w-[1120px] items-center gap-4 px-5">
               <span className="drift-dica text-sm text-[#666666]">Role para explorar</span>
-              <span className="drift-dica-livre text-sm text-[#666666]">Arraste para explorar</span>
               <div aria-hidden className="drift-progresso h-[2px] flex-1 overflow-hidden rounded-full bg-[#e6e6e6]"><span className="block h-full origin-left bg-primary" /></div>
               <div className="ml-auto flex gap-1.5">
                 {E_AINDA.map((a, i) => (
@@ -1712,13 +1720,12 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
-.cena-drift { position: relative; height: calc(100svh + var(--percurso, 800px)); }
-.cena-fixo { position: sticky; top: 0; height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 84px 0 calc(92px + env(safe-area-inset-bottom, 0px)); }
-.drift-conteudo { display: flex; flex-direction: column; gap: 20px; width: 100%; flex-shrink: 0; }
+.cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 800px)); }
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 84px 0 calc(92px + env(safe-area-inset-bottom, 0px)); }
+.drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
-.foto-recurso { aspect-ratio: 5 / 3; }
+.foto-recurso { aspect-ratio: 5 / 3; max-height: var(--foto-recurso-max, none); flex-shrink: 0; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
-.drift-dica-livre { display: none; }
 @media (min-width: 768px) {
   .cena-fixo { padding-bottom: 100px; }
   .drift-conteudo { gap: 28px; }
@@ -1726,12 +1733,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .foto-recurso { aspect-ratio: 3 / 2; }
 }
 .trilho:focus-visible { outline: 2px solid #000; outline-offset: -2px; }
-.cena-drift[data-drift-livre] { height: auto; }
-.cena-drift[data-drift-livre] .cena-fixo { position: static; height: auto; overflow: visible; padding: 0; }
-.cena-drift[data-drift-livre] .trilho { width: 100%; overflow-x: auto; padding-bottom: 12px; transform: none; will-change: auto; scroll-snap-type: x proximity; scroll-padding-inline: 20px; }
-.cena-drift[data-drift-livre] .trilho > article { scroll-snap-align: start; }
-.cena-drift[data-drift-livre] .drift-dica, .cena-drift[data-drift-livre] .drift-progresso { display: none; }
-.cena-drift[data-drift-livre] .drift-dica-livre { display: inline; }
 
 /* --- crescer até a borda da tela --------------------------------------- */
 .cena-cresce { --g: var(--p, 0); border-radius: calc(32px * (1 - var(--g))); margin-inline: calc((100% - 100vw) / 2 * var(--g)); }
@@ -1770,7 +1771,8 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .cena-painel .cena-sombra { opacity: 0; }
   .cena-cresce { margin-inline: 0; border-radius: 32px; }
   .cena-drift { height: auto; }
-  .cena-fixo { position: static; height: auto; overflow: visible; padding: 0; }
+  .cena-fixo { position: static; height: auto; min-height: 0; overflow: visible; padding: 0; }
+  .foto-recurso { max-height: none; }
   .trilho { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); width: 100%; max-width: 1120px; margin-inline: auto; padding: 0 20px; transform: none; will-change: auto; overflow: visible; }
   .trilho > article { width: auto; min-width: 0; }
   .trilho > [aria-hidden] { display: none; }
