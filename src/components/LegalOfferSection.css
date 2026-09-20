@@ -1,7 +1,8 @@
 .legal-offer {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 26px 18px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "photo" "body" "conditions";
+  gap: 24px;
   width: 100%;
   min-width: 0;
   margin-top: 48px;
@@ -10,9 +11,9 @@
   color: #171717;
   scroll-margin-top: 88px;
 }
-.legal-offer__intro { min-width: 0; align-self: center; }
+.legal-offer__intro { grid-area: intro; min-width: 0; }
 .legal-offer__eyebrow {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   color: #b91f44;
   font-size: 11px;
   line-height: 1.5;
@@ -25,41 +26,44 @@
 .legal-offer__title {
   max-width: 23ch;
   color: #171717;
-  font-size: clamp(28px, 4vw, 46px);
+  font-size: clamp(34px, 4vw, 46px);
   font-weight: 400;
   line-height: 1.07;
   letter-spacing: -.035em;
   text-wrap: balance;
 }
 .legal-offer__title em { color: #b91f44; font-family: "Instrument Serif", Georgia, serif; font-weight: 400; }
-.legal-offer__photo { grid-column: 2; grid-row: 1; min-width: 0; min-height: 230px; overflow: hidden; border-radius: 18px 52px 18px 18px; background: #f2f2f2; }
-.legal-offer__photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 61% 42%; }
-.legal-offer__body { grid-column: 1 / -1; min-width: 0; }
-.legal-offer__benefits { display: grid; gap: 16px; max-width: 58ch; }
-.legal-offer__benefits p { display: flex; align-items: baseline; gap: 14px; color: #555; font-size: 16px; line-height: 1.5; }
-.legal-offer__benefits p > span { flex: 0 0 auto; color: #b91f44; font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
-.legal-offer__decision { margin-top: 22px; }
+.legal-offer__photo { grid-area: photo; min-width: 0; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 22px 64px 22px 22px; background: #f2f2f2; }
+.legal-offer__photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 57% 40%; }
+.legal-offer__body { grid-area: body; min-width: 0; }
+.legal-offer__benefits { display: grid; gap: 22px; max-width: 58ch; list-style: none; }
+.legal-offer__benefits li { padding-left: 17px; border-left: 2px solid #f5a7b7; }
+.legal-offer__benefits h3 { margin-bottom: 7px; color: #b91f44; font-size: 11px; font-weight: 500; line-height: 1.4; letter-spacing: .06em; text-transform: uppercase; }
+.legal-offer__benefits p { color: #444; font-size: 16px; line-height: 1.5; }
+.legal-offer__decision { margin-top: 26px; }
 .legal-offer__action {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
   max-width: 100%;
-  min-height: 44px;
-  padding: 8px 0;
-  border-bottom: 1px solid #ff385c;
-  color: #171717;
+  min-height: 50px;
+  padding: 12px 18px;
+  border: 1px solid #f5bac7;
+  border-radius: 999px;
+  background: #fff3f6;
+  color: #851933;
   font-size: 15px;
   line-height: 1.4;
   text-align: left;
-  transition: color .2s ease;
+  transition: background-color .2s ease;
 }
 .legal-offer__action svg { flex-shrink: 0; color: #b91f44; }
-.legal-offer__action:hover { color: #b91f44; }
+.legal-offer__action:hover { background: #ffe4eb; }
 .legal-offer__action:focus-visible { outline: 2px solid #b91f44; outline-offset: 4px; }
 .legal-offer__note { max-width: 70ch; margin-top: 16px; color: #666; font-size: 12px; line-height: 1.5; scroll-margin-top: 88px; }
 .legal-offer__status { margin-top: 8px; color: #666; font-size: 12px; line-height: 1.5; }
-.legal-offer__conditions { grid-column: 1 / -1; min-width: 0; border-top: 1px solid #e5e5e5; scroll-margin-top: 88px; }
+.legal-offer__conditions { grid-area: conditions; min-width: 0; border-top: 1px solid #e5e5e5; scroll-margin-top: 88px; }
 .legal-offer__conditions summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; color: #444; font-size: 14px; line-height: 1.4; cursor: pointer; list-style: none; }
 .legal-offer__conditions summary::-webkit-details-marker { display: none; }
 .legal-offer__conditions summary svg { flex-shrink: 0; }
@@ -70,10 +74,8 @@
 .legal-offer__consult svg { flex-shrink: 0; }
 .legal-offer__consult:focus-visible { outline: 2px solid #b91f44; outline-offset: 4px; }
 @media (min-width: 768px) {
-  .legal-offer { grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); align-items: start; gap: 24px 44px; margin-top: 64px; padding-top: 44px; }
-  .legal-offer__photo { grid-column: 1; grid-row: 1 / 3; height: 100%; min-height: 380px; border-radius: 24px 90px 24px 24px; }
-  .legal-offer__intro { grid-column: 2; }
-  .legal-offer__body { grid-column: 2; }
+  .legal-offer { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-areas: "photo intro" "photo body" "conditions conditions"; align-items: start; gap: 24px 44px; margin-top: 64px; padding-top: 44px; }
+  .legal-offer__photo { height: 100%; min-height: 420px; aspect-ratio: auto; border-radius: 24px 90px 24px 24px; }
   .legal-offer__conditions { margin-top: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .legal-offer__action { transition: none; } }

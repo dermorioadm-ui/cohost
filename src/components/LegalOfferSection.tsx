@@ -30,10 +30,16 @@ export function LegalOfferSection({ onConsult }: { onConsult?: () => void }) {
       </figure>
 
       <div className="legal-offer__body" data-reveal="up">
-        <div className="legal-offer__benefits">
-          <p><span aria-hidden>01</span>Documento, identificação facial e contrato assinado ajudam a proteger antes da estadia.</p>
-          <p><span aria-hidden>02</span>A assistência jurídica acrescenta apoio para buscar reparação quando o dano já aconteceu.*</p>
-        </div>
+        <ol className="legal-offer__benefits">
+          <li>
+            <h3>Antes da estadia</h3>
+            <p>Documento, identificação facial e contrato assinado ajudam a proteger antes da estadia.</p>
+          </li>
+          <li>
+            <h3>Se houver dano</h3>
+            <p>A assistência jurídica acrescenta apoio para buscar reparação quando o dano já aconteceu.*</p>
+          </li>
+        </ol>
         <div className="legal-offer__decision">
           {onConsult ? (
             <button type="button" className="legal-offer__action" onClick={onConsult} aria-describedby="legal-offer-note legal-offer-status">
