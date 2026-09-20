@@ -1243,104 +1243,108 @@ export default function Landing() {
 
       {/* ---------------------------------------------- gestora × hospedepay */}
       <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="md:grid md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-7">
-            <Rotulo className="mb-5 block text-[#666666]">Gestora × HospedePay</Rotulo>
-            <Titulo
-              texto="Seu aluguel não precisa sustentar a *gestora*."
-              className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
-            />
-            <Traco className="mt-6" />
-            <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-              Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
-            </p>
-          </div>
-          <div className="mt-7 grid grid-cols-2 gap-5 md:col-span-5 md:mt-0 md:self-end">
-            <div data-reveal="up" className="flex min-w-0 flex-col gap-2 py-4">
-              <Rotulo className="text-[#666666]">Gestora (exemplo)</Rotulo>
-              <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">20%</span>
-              <span className="text-sm leading-[1.45] tracking-corpo text-[#666666]">do faturamento. Quanto mais entra, maior a taxa.</span>
-            </div>
-            <div data-reveal="up" style={delay(80)} className="flex min-w-0 flex-col gap-2 border-l border-[#e6e6e6] py-4 pl-5">
-              <Rotulo className="text-black">HospedePay</Rotulo>
-              <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">R$97</span>
-              <span className="text-sm leading-[1.45] tracking-corpo text-black">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
-          <div data-reveal="up" className="min-w-0 text-black md:col-span-7">
-            <div className="grid grid-cols-[minmax(0,1fr)_52px_72px] items-end gap-2 border-b border-[#e6e6e6] pb-3.5 pt-[18px]">
-              <Rotulo className="text-[#666666]">O que faz</Rotulo>
-              <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
-              <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
-            </div>
-            {COMPARACAO.map((g) => (
-              <div key={g.grupo}>
-                <div className="border-b border-t border-[#e6e6e6] pb-2 pt-3">
-                  <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
+        <div className="comparacao-card overflow-hidden rounded-[28px] bg-[#f6f6f7] text-black md:rounded-[40px]">
+          <div className="mx-auto max-w-[1120px] px-4 py-7 sm:px-5 md:p-10">
+            <div className="md:grid md:grid-cols-12 md:gap-8">
+              <div className="md:col-span-7">
+                <Rotulo className="mb-5 block text-[#666666]">Gestora × HospedePay</Rotulo>
+                <Titulo
+                  texto="Seu aluguel não precisa sustentar a *gestora*."
+                  className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
+                />
+                <Traco className="mt-6" />
+                <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
+                  Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
+                </p>
+              </div>
+              <div className="mt-10 grid grid-cols-2 gap-3 md:col-span-5 md:mt-0 md:self-end">
+                <div data-reveal="up" className="flex min-w-0 flex-col gap-2 rounded-[22px] border border-[#e9e9eb] bg-white px-3 py-5 sm:px-4">
+                  <Rotulo className="text-[#666666]">Gestora (exemplo)</Rotulo>
+                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">20%</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-[#666666]">do faturamento. Quanto mais entra, maior a taxa.</span>
                 </div>
-                {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
-                  <div
-                    key={nome}
-                    className={cn(
-                      "grid grid-cols-[minmax(0,1fr)_52px_72px] items-center gap-2 py-3.5",
-                      i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
-                    )}
-                  >
-                    <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
-                      <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
-                      {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
-                    </span>
-                    {[gestora, nos].map((sim, k) => (
-                      <span key={k} className="flex justify-center">
-                        <span
-                          aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
-                          aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
-                          className={cn(
-                            "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
-                            sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
-                          )}
-                        >
-                          {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
+                <div data-reveal="up" style={delay(80)} className="flex min-w-0 flex-col gap-2 rounded-[22px] border border-[#f5dce2] bg-[#fff0f3] px-3 py-5 sm:px-4">
+                  <Rotulo className="text-black">HospedePay</Rotulo>
+                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-black">R$97</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-black">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
+              <div data-reveal="up" className="overflow-hidden rounded-3xl border border-[#e9e9eb] bg-white text-black md:col-span-7">
+                <div className="grid grid-cols-[minmax(0,1fr)_48px_72px] items-end gap-1 border-b border-[#f0f0f0] px-3 pb-3.5 pt-[18px] md:px-5">
+                  <Rotulo className="text-[#666666]">O que faz</Rotulo>
+                  <span className="text-center text-xs tracking-corpo text-black">Gestora</span>
+                  <span className="text-center text-xs tracking-corpo text-primary">HospedePay</span>
+                </div>
+                {COMPARACAO.map((g) => (
+                  <div key={g.grupo}>
+                    <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-3 pb-1.5 md:px-5 pt-2.5">
+                      <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
+                    </div>
+                    {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
+                      <div
+                        key={nome}
+                        className={cn(
+                          "grid grid-cols-[minmax(0,1fr)_48px_72px] items-center gap-1 px-3 py-3.5 md:px-5",
+                          i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
+                        )}
+                      >
+                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
+                          <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
+                          {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
                         </span>
-                      </span>
+                        {[gestora, nos].map((sim, k) => (
+                          <span key={k} className="flex justify-center">
+                            <span
+                              aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
+                              aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
+                              className={cn(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
+                                sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
+                              )}
+                            >
+                              {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 ))}
-              </div>
-            ))}
-            <div className="border-t border-[#e6e6e6] py-4 text-xs leading-relaxed text-[#666666]">
-              <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
-              <p id="comparacao-juridico-note" className="mt-2">
-                <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                  * Suporte jurídico: consulte disponibilidade e condições.
-                </a>
-              </p>
-            </div>
-          </div>
-
-          <div data-reveal="up" style={delay(120)} className="mt-8 flex min-w-0 flex-col gap-[18px] border-t border-[#e6e6e6] pt-6 md:col-span-5 md:mt-0 md:self-start md:border-l md:border-t-0 md:pl-8 md:pt-0">
-            <p className="text-[24px] leading-[1.15] tracking-titulo text-black">Faça essa conta antes da próxima reserva.</p>
-            <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
-            <div className="flex flex-col">
-              {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
-                <div key={q} className="flex items-baseline justify-between gap-4 border-t border-[#e6e6e6] py-3">
-                  <span className="text-base tracking-[-0.014em] text-black">{q}</span>
-                  <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-black tabular-nums">
-                    {v}<span className="text-sm text-[#666666]"> / ano</span>
-                  </span>
+                <div className="border-t border-[#e6e6e6] px-3 py-4 text-xs leading-relaxed text-[#666666] md:px-5">
+                  <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
+                  <p id="comparacao-juridico-note" className="mt-2">
+                    <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                      * Suporte jurídico: consulte disponibilidade e condições.
+                    </a>
+                  </p>
                 </div>
-              ))}
-            </div>
-            <div className="flex flex-col gap-1 border-t border-[#e6e6e6] pt-[18px]">
-              <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
-              <div className="flex flex-wrap items-baseline gap-2.5">
-                <span className="numero-grande text-[clamp(36px,4vw,48px)] text-primary">R$8.630</span>
-                <span className="text-base tracking-[-0.014em] text-[#666666]">a mais por ano, neste exemplo.</span>
               </div>
-              <p className="mt-3 text-sm leading-[1.4] text-[#666666]">Seu patrimônio trabalha para você. A operação também deveria.</p>
+
+              <div data-reveal="up" style={delay(120)} className="mt-6 flex flex-col gap-[18px] rounded-[24px] border border-[#e9e9eb] bg-white px-5 py-6 md:col-span-5 md:mt-0 md:self-start">
+                <p className="text-[24px] leading-[1.15] tracking-titulo text-black">Faça essa conta antes da próxima reserva.</p>
+                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-[#666666] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
+                <div className="flex flex-col">
+                  {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
+                    <div key={q} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-[#e6e6e6] py-3">
+                      <span className="text-base tracking-[-0.014em] text-black">{q}</span>
+                      <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-black tabular-nums">
+                        {v}<span className="text-sm text-[#666666]"> / ano</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1 border-t border-[#e6e6e6] pt-[18px]">
+                  <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
+                  <div className="flex flex-wrap items-baseline gap-2.5">
+                    <span className="numero-grande text-[clamp(36px,4vw,48px)] text-primary">R$8.630</span>
+                    <span className="text-base tracking-[-0.014em] text-[#666666]">a mais por ano, neste exemplo.</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-[1.4] text-[#666666]">Seu patrimônio trabalha para você. A operação também deveria.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1496,39 +1500,38 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------- fechamento */}
-      <section id="fechamento" data-oculta-fab className="relative overflow-hidden bg-black text-white">
-        <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%] opacity-80" />
-        <Faixa itens={FAIXA} escuro />
+      <section id="fechamento" data-oculta-fab className="relative overflow-hidden bg-[#f7f7f7] text-black">
+        <Faixa itens={FAIXA} />
         <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-8 px-5 pb-[130px] pt-16 md:pt-24">
           <Titulo
             texto="Ninguém dorme no seu apartamento sem ter *assinado*."
-            className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-primary"
+            className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-black [&_.acento]:text-primary"
           />
           <div data-reveal="up" style={delay(300)} className="flex flex-col gap-2.5 md:max-w-[520px]">
             <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-            <p className="text-center text-sm leading-normal tracking-titulo text-white/70">{textos.linha}</p>
+            <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
           </div>
-          <footer className="mt-10 flex flex-col gap-[22px] border-t border-white/[0.14] pt-7">
+          <footer className="mt-10 flex flex-col gap-[22px] border-t border-[#e5e5e5] pt-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Marca size={22} tom="tinta" />
+              <Marca size={22} tom="papel" />
               <Link
                 to="/entrar"
-                className="inline-flex h-9 items-center whitespace-nowrap rounded-[20px] border border-white/[0.28] px-3.5 text-[13px] tracking-corpo text-white transition-colors hover:bg-white/10"
+                className="inline-flex h-9 items-center whitespace-nowrap rounded-[20px] border border-[#d7d7d7] px-3.5 text-[13px] tracking-corpo text-black transition-colors hover:bg-white"
               >
                 Entrar na plataforma
               </Link>
             </div>
             <nav aria-label="Links do rodapé" className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] leading-normal tracking-corpo md:flex md:flex-wrap md:gap-x-8">
-              <button type="button" onClick={abrir} className="text-left text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">
+              <button type="button" onClick={abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">
                 Devolução da ferramenta (30 dias)
               </button>
-              <a href="#planos" className="text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">Planos</a>
-              <button type="button" onClick={abrir} className="text-left text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">
+              <a href="#planos" className="text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Planos</a>
+              <button type="button" onClick={abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">
                 Contato
               </button>
-              <a href="#perguntas" className="text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">Perguntas</a>
+              <a href="#perguntas" className="text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Perguntas</a>
             </nav>
-            <div className="flex flex-col gap-2 border-t border-white/10 pt-[18px] text-xs leading-[1.55] tracking-[-0.015em] text-white/[0.55]">
+            <div className="flex flex-col gap-2 border-t border-[#e5e5e5] pt-[18px] text-xs leading-[1.55] tracking-[-0.015em] text-[#666666]">
               <p>HospedePay é um produto de RICC Mens Health LLC · Albuquerque, Novo México, EUA.</p>
               <p>Documentos e selfies dos hóspedes ficam guardados com criptografia e são apagados 180 dias depois do checkout.</p>
               <p>© 2026 RICC Mens Health LLC. Todos os direitos reservados.</p>
