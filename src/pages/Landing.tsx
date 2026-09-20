@@ -5,6 +5,7 @@ import {
 import { Link, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Marca } from "@/components/Marca";
+import { LegalOfferSection } from "@/components/LegalOfferSection";
 import { cn } from "@/lib/utils";
 import { api, ApiError, supabase } from "@/lib/api";
 
@@ -19,7 +20,7 @@ import { api, ApiError, supabase } from "@/lib/api";
  *
  * A página é montada como uma sessão de cinema, não como um anúncio: o
  * herói é a capa, e daí para baixo cada seção é uma CENA que puxa a próxima.
- * As três travas são três telas cheias que se empilham (a de cima encolhe e
+ * Os quatro benefícios são telas cheias que se empilham (a de cima encolhe e
  * escurece enquanto a próxima desliza por cima); o "e ainda" corre na
  * horizontal enquanto a página desce; a comparação escura cresce até tomar a
  * largura toda; a garantia cresce até a borda. Todo movimento é ligado à
@@ -87,11 +88,23 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
  * Sem JS o conteúdo aparece igual — a classe `lp-js` só esconde o que vai
  * ser revelado depois que o observador existe.
  * ---------------------------------------------------------------------- */
-function useReveal(root: React.RefObject<HTMLElement>) {
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
+function useReveal(root: React.RefObject<HTMLElement>, reduz: boolean) {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const reduz = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     el.classList.add("lp-js");
     if (reduz) {
       el.querySelectorAll<HTMLElement>("[data-reveal],[data-fill]").forEach((n) => n.classList.add("is-in"));
@@ -112,7 +125,7 @@ function useReveal(root: React.RefObject<HTMLElement>) {
     );
     el.querySelectorAll("[data-reveal],[data-fill],[data-count]").forEach((n) => io.observe(n));
     return () => io.disconnect();
-  }, [root]);
+  }, [root, reduz]);
 }
 
 function contar(el: HTMLElement, alvo: number) {
@@ -137,11 +150,10 @@ function contar(el: HTMLElement, alvo: number) {
  * Quem tem um `data-trilho` dentro também recebe `--dx`: quantos pixels o
  * trilho precisa andar para mostrar o último cartão.
  */
-function useCenas(root: React.RefObject<HTMLElement>) {
+function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
   useEffect(() => {
     const raiz = root.current;
-    if (!raiz) return;
-    const reduz = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!raiz || reduz) return;
     type Item = { el: HTMLElement; modo: string; cur: number; alvo: number; trilho: HTMLElement | null };
     let itens: Item[] = [];
     let raf = 0;
@@ -200,18 +212,24 @@ function useCenas(root: React.RefObject<HTMLElement>) {
       window.clearTimeout(t);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [root]);
+  }, [root, reduz]);
 }
 
 /**
  * O herói encolhe e escurece conforme sai de cena, e o título some antes do
  * resto: a página "fecha" a capa e abre o papel branco por baixo.
  */
-function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefObject<HTMLElement>) {
+function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefObject<HTMLElement>, reduz: boolean) {
   useEffect(() => {
     const el = hero.current;
     if (!el) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    if (reduz) {
+      el.style.transform = "";
+      el.style.borderRadius = "";
+      el.style.filter = "";
+      if (titulo.current) titulo.current.style.opacity = "";
+      return;
+    }
     let raf = 0;
     const tick = () => {
       raf = 0;
@@ -235,7 +253,7 @@ function useEncolherHero(hero: React.RefObject<HTMLElement>, titulo: React.RefOb
       window.removeEventListener("resize", on);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [hero, titulo]);
+  }, [hero, titulo, reduz]);
 }
 
 const delay = (ms: number): CSSProperties => ({ transitionDelay: `${ms}ms` });
@@ -420,6 +438,15 @@ const TRAVAS = [
     texto: "O porteiro já sabe quem chega, com nome, documento e horário.",
     posicao: "50% 40%",
   },
+  {
+    rotulo: "Assistência jurídica",
+    titulo: "Seu prejuízo merece mais que um *‘não’*.",
+    foto: "/lp/assistencia-juridica.png",
+    alt: "Cena ilustrativa de um advogado revisando contrato e registros de um imóvel danificado",
+    texto: "Assistência Jurídica HospedePay para agir e buscar reparação quando o hóspede ou a plataforma não assumirem o dano.*",
+    posicao: "65% 45%",
+    juridico: true,
+  },
 ];
 
 /** Os cinco passos que o hóspede vê no celular, na ordem em que acontecem. */
@@ -509,8 +536,11 @@ const PERGUNTAS = [
   ["Tenho 2 apartamentos. Pago o dobro?", "Profissional: R$197 pros dois. R$98,50 cada. Uma gestora cobra de 15% a 25% do que cada apartamento fatura."],
   ["É reconhecimento facial?", "Não. Documento, selfie e assinatura na mesma folha, com IP e hora. É prova — e é o que vale numa discussão."],
   ["E o hóspede, quem responde?", "A IA do seu apartamento, no link que ele recebe no fim do cadastro. O que ela não sabe, chega pra você."],
-  ["Quem faz a implementação?", "Eu, com você, numa chamada de 15 minutos. Você preenche a ficha, o sistema cadastra tudo. Calendário ligado no mesmo dia."],
-  ["E se eu não gostar?", "30 dias. Devolvo tudo."],
+  ["Quem faz a implementação?", "Na compra direta, você configura a ferramenta. Na contratação pelo WhatsApp, a implementação faz parte da condição combinada."],
+  ["E se eu não gostar da ferramenta?", "A garantia de 30 dias é da ferramenta. As condições da assistência jurídica são próprias e devem ser consultadas antes da contratação."],
+  ["A assistência jurídica já está incluída na ferramenta?", "Não. A assistência jurídica é um adicional opcional, com contratação separada. Confira a disponibilidade e as condições na seção de assistência jurídica."],
+  ["Como é a contratação da assistência jurídica?", "A contratação é anual. Quando informado, o equivalente mensal serve para comparar o valor; ele não transforma o contrato em uma assinatura mensal. Consulte o escopo e as condições de pagamento antes de contratar."],
+  ["Se eu cancelar a ferramenta, perco a assistência jurídica?", "Quando contratada, a assistência jurídica permanece pelo período do seu contrato, mesmo se você cancelar a ferramenta. São contratações independentes."],
 ];
 
 /* -------------------------------------------------------------- página */
@@ -521,25 +551,30 @@ const IMOVEIS_LABEL = (n: number | null) =>
   n === null ? "sem limite de imóveis" : n === 1 ? "1 imóvel" : n === 3 ? "2 ou 3 imóveis" : n === 5 ? "4 ou 5 imóveis" : `até ${n} imóveis`;
 
 /** Vídeo do cadastro no celular: começa no segundo certo e volta para lá no fim. */
-function VideoProva() {
+function VideoProva({ reduz }: { reduz: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (reduz) ref.current?.pause();
+  }, [reduz]);
   const inicio = useCallback(() => {
     const v = ref.current;
     if (v && v.currentTime < VIDEO_PROVA_INICIO - 0.05) v.currentTime = VIDEO_PROVA_INICIO;
   }, []);
   const reiniciar = useCallback(() => {
     const v = ref.current;
-    if (!v) return;
+    if (!v || reduz) return;
     v.currentTime = VIDEO_PROVA_INICIO;
     v.play().catch(() => undefined);
-  }, []);
+  }, [reduz]);
   return (
     <video
       ref={ref}
       src={VIDEO_PROVA}
-      autoPlay
+      autoPlay={!reduz}
       muted
       playsInline
+      controls
+      aria-label="Demonstração do cadastro do hóspede"
       preload="metadata"
       onLoadedMetadata={inicio}
       onEnded={reiniciar}
@@ -549,7 +584,7 @@ function VideoProva() {
 }
 
 /** O celular, com o vídeo dentro. Compacto no celular (ao lado dos passos), cheio no desktop. */
-function Celular() {
+function Celular({ reduz }: { reduz: boolean }) {
   return (
     <div
       className="relative h-[320px] w-[148px] rounded-[34px] bg-[#0b0b0d] p-2 lg:h-[620px] lg:w-[286px] lg:rounded-[48px] lg:p-2.5"
@@ -559,7 +594,7 @@ function Celular() {
       <div aria-hidden className="absolute -left-0.5 top-[29%] h-[8%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
       <div aria-hidden className="absolute -right-0.5 top-[23%] h-[13%] w-[3px] rounded-[2px] bg-[#1a1a1d]" />
       <div className="relative h-full w-full overflow-hidden rounded-[27px] bg-black lg:rounded-[39px]">
-        <VideoProva />
+        <VideoProva reduz={reduz} />
         <div aria-hidden className="absolute left-1/2 top-[6px] h-[14px] w-[34%] -translate-x-1/2 rounded-[20px] bg-black lg:top-[9px] lg:h-[22px]" />
         <div aria-hidden className="absolute bottom-[5px] left-1/2 h-[3px] w-[36%] -translate-x-1/2 rounded-[2px] bg-white/85 lg:bottom-[7px] lg:h-1" />
       </div>
@@ -569,8 +604,20 @@ function Celular() {
 
 export default function Landing() {
   const raiz = useRef<HTMLDivElement>(null);
-  useReveal(raiz);
-  useCenas(raiz);
+  const reduz = useReducedMotion();
+  useReveal(raiz, reduz);
+  useCenas(raiz, reduz);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const [videoPausado, setVideoPausado] = useState(reduz);
+  useEffect(() => {
+    if (reduz) setVideoPausado(true);
+  }, [reduz]);
+  useEffect(() => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+    if (videoPausado) video.pause();
+    else video.play().catch(() => undefined);
+  }, [videoPausado]);
 
   // O app é escuro; a página é clara. Sem isto o corpo do documento fica
   // preto e aparece atrás dos cantos do herói e no "puxa" da rolagem.
@@ -581,6 +628,19 @@ export default function Landing() {
       document.documentElement.classList.remove("tema-claro");
       document.body.classList.remove("tema-claro");
     };
+  }, []);
+
+  // A rota chega por lazy import: o destino da âncora pode não existir
+  // quando o navegador tenta posicionar a página pela primeira vez.
+  useEffect(() => {
+    if (!window.location.hash) return;
+    let id: string;
+    try { id = decodeURIComponent(window.location.hash.slice(1)); }
+    catch { return; }
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Preços da tabela `plans` (leitura pública). Se a rede falhar, a reserva
@@ -713,7 +773,7 @@ export default function Landing() {
   const heroRef = useRef<HTMLElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
   const planosRef = useRef<HTMLElement>(null);
-  useEncolherHero(heroRef, tituloRef);
+  useEncolherHero(heroRef, tituloRef, reduz);
   const [sobreHero, setSobreHero] = useState(true);
   const [sobrePlanos, setSobrePlanos] = useState(false);
   useEffect(() => {
@@ -777,9 +837,10 @@ export default function Landing() {
         <div className="absolute inset-0 z-0">
           <div className="absolute -inset-[6%] overflow-hidden">
             <video
+              ref={heroVideoRef}
               src="/lp/hero.mp4"
               poster="/lp/hero-poster.webp"
-              autoPlay
+              autoPlay={!videoPausado}
               muted
               loop
               playsInline
@@ -794,6 +855,14 @@ export default function Landing() {
             style={{ background: "linear-gradient(180deg, #000 0%, rgba(0,0,0,0.75) 8%, rgba(0,0,0,0.28) 20%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.30) 46%, rgba(0,0,0,0.62) 70%, rgba(0,0,0,0.86) 88%, #000 100%)" }}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={() => setVideoPausado((paused) => !paused)}
+          className="absolute bottom-3 right-5 z-[2] inline-flex min-h-10 items-center rounded-full border border-white/30 bg-black/70 px-4 text-xs text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+        >
+          {videoPausado ? "Reproduzir cena" : "Pausar cena"}
+        </button>
 
         <div className="relative z-[1] mx-auto flex min-h-[calc(100svh-72px)] max-w-[720px] flex-col justify-between gap-[38px] px-5 pb-16 pt-24 md:min-h-[100svh] md:pb-[76px]">
           <div data-reveal="up" className="flex flex-wrap items-center justify-center gap-2.5">
@@ -853,18 +922,18 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* --------------------------------------------------- três travas */}
+      {/* --------------------------------------------- quatro benefícios */}
       <section id="como-funciona" className="scroll-mt-20 pt-24 md:pt-36">
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
           <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
           <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
         </div>
 
-        {/* Três telas cheias que se empilham: a de cima encolhe e escurece
+        {/* Quatro telas cheias que se empilham: a de cima encolhe e escurece
             enquanto a próxima desliza por cima. */}
         <div data-cena="pin" className="cena-pilha" style={cssVar({ "--n": TRAVAS.length })}>
           {TRAVAS.map((t, i) => (
-            <article key={t.rotulo} className="cena-painel bg-black text-white" style={cssVar({ "--i": i })}>
+            <article key={t.rotulo} id={t.juridico ? "beneficio-juridico" : undefined} className="cena-painel bg-black text-white" style={cssVar({ "--i": i })}>
               <img
                 src={t.foto}
                 alt={t.alt}
@@ -903,6 +972,16 @@ export default function Landing() {
                   <p data-reveal="up" style={delay(350)} className="mt-5 max-w-[42ch] text-[17px] leading-[1.4] tracking-corpo text-white/80 md:text-lg">
                     {t.texto}
                   </p>
+                  {t.juridico && (
+                    <div data-reveal="up" style={delay(450)} className="mt-6 flex max-w-[46ch] flex-col items-start gap-3">
+                      <a href="#assistencia-juridica" className="inline-flex min-h-12 items-center gap-5 rounded-pill bg-white px-5 py-3 text-sm leading-snug tracking-corpo text-black transition-colors hover:bg-[#ededed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                        Conhecer a assistência jurídica <span aria-hidden>↗</span>
+                      </a>
+                      <p className="text-xs leading-[1.5] text-white/80">
+                        * Contratação opcional e separada. Consulte a disponibilidade nos planos.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </article>
@@ -938,7 +1017,7 @@ export default function Landing() {
 
           <div data-reveal="scale" className="mt-8 flex justify-end self-center lg:col-span-6 lg:col-start-7 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-stretch">
             <div className="lg:sticky lg:top-24">
-              <Celular />
+              <Celular reduz={reduz} />
             </div>
           </div>
         </div>
@@ -1007,7 +1086,7 @@ export default function Landing() {
             <Rotulo className="mb-5 block text-primary">A rotina</Rotulo>
             <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[14ch]")} />
             <p data-reveal="up" style={delay(200)} className="mt-6 hidden max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:block md:text-xl">
-              Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
+              Com o HospedePay, além de reunir os registros da hospedagem, você ganha
               automatização completa — e esquece por dias que tem um Airbnb.
             </p>
           </div>
@@ -1020,7 +1099,7 @@ export default function Landing() {
             />
           </figure>
           <p data-reveal="up" style={delay(200)} className="mx-auto mt-6 w-full max-w-[1120px] px-5 text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:hidden">
-            Com o HospedePay, além de mais segurança patrimonial e jurídica, você ganha
+            Com o HospedePay, além de reunir os registros da hospedagem, você ganha
             automatização completa — e esquece por dias que tem um Airbnb.
           </p>
         </div>
@@ -1067,7 +1146,7 @@ export default function Landing() {
               Quatro coisas que passam a acontecer sozinhas depois que o calendário liga.
             </p>
           </div>
-          <div data-trilho className="trilho">
+          <div data-trilho className="trilho" tabIndex={0} role="region" aria-label="Outros recursos da ferramenta">
             {E_AINDA.map((a, i) => (
               <article key={a.rotulo} className="flex w-[min(74vw,360px)] shrink-0 flex-col gap-4">
                 <div className={cn("relative overflow-hidden rounded-[22px]", a.canais ? "bg-[#fafafa]" : "bg-[#f0f0f0]")} style={{ aspectRatio: "4 / 3" }}>
@@ -1225,12 +1304,12 @@ export default function Landing() {
         <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
           <div className="md:col-span-7">
             <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
-            <Titulo texto="Escolha o plano. Eu ligo seu calendário *hoje*." className={h2} />
+            <Titulo texto="Escolha o plano para o seu *imóvel*." className={h2} />
             <Traco className="mt-6" />
           </div>
           <p data-reveal="up" style={delay(200)} className="mt-6 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty] md:col-span-4 md:col-start-9 md:mt-0">
-            Anual: paga 10 meses, usa 12. Em 10x no cartão dá o mesmo valor do mensal, com
-            implementação e suporte inclusos.
+            Na compra direta, você configura a ferramenta. Na contratação pelo WhatsApp,
+            a implementação faz parte da condição combinada.
           </p>
         </div>
         {checkoutCancelado && (
@@ -1268,11 +1347,11 @@ export default function Landing() {
                   <span className="text-[15px] tracking-[-0.014em] text-[#666666]">por ano</span>
                 </div>
                 <div className="text-base tracking-corpo text-black tabular-nums">
-                  ou <span className="text-primary">10x de {brl(p.mensal)}</span> no cartão
+                  Confira as condições de pagamento no checkout.
                 </div>
               </div>
               <ul className="flex flex-col gap-2.5">
-                {["Implementação incluída", "Suporte incluído", "Garantia de 30 dias"].map((l) => (
+                {["Configuração por sua conta na compra direta", "Suporte incluído", "Garantia de 30 dias da ferramenta"].map((l) => (
                   <li key={l} className="flex items-center gap-2.5 text-[15px] leading-[1.4] tracking-corpo text-black">
                     <Check />
                     <span>{l}</span>
@@ -1297,6 +1376,9 @@ export default function Landing() {
                 >
                   {abrindo === `${p.tier}:monthly` ? "Abrindo o pagamento…" : `Mensal: ${brl(p.mensal)}/mês`}
                 </button>
+                <a href="#assistencia-juridica" aria-describedby="legal-offer-note" className="mt-2 text-center text-sm leading-relaxed text-black underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                  Conheça a Assistência Jurídica Hospedepay*
+                </a>
               </div>
             </article>
           ))}
@@ -1306,6 +1388,12 @@ export default function Landing() {
             Mais de 5 imóveis? Toca no botão que a conversa é outra.
           </button>
         </p>
+        <LegalOfferSection
+          onConsult={WHATSAPP ? () => {
+            const message = "Olá. Quero conhecer a Assistência Jurídica HospedePay e as condições para o meu imóvel.";
+            window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+          } : undefined}
+        />
       </section>
 
       {/* ------------------------------------------------------ garantia */}
@@ -1321,13 +1409,14 @@ export default function Landing() {
           </div>
           <div className="flex flex-col justify-center gap-7 bg-primary px-6 py-8 text-white md:col-span-6 md:px-12 md:py-16">
             <div className="flex flex-col gap-2">
-              <Titulo as="p" texto="Garantia incondicional de 30 dias." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" />
-              <p data-reveal="up" style={delay(300)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Não gostou, devolvo. Sem asterisco.</p>
+              <Rotulo className="text-white">Garantia da ferramenta</Rotulo>
+              <Titulo as="p" texto="30 dias para usar a ferramenta." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" />
+              <p data-reveal="up" style={delay(300)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Não gostou da ferramenta, devolvo o valor dela.</p>
             </div>
             <div className="h-px bg-white/[0.3]" />
             <div className="flex flex-col gap-2">
-              <Titulo as="p" texto="Ativação em menos de 24 horas." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" atraso={200} />
-              <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Escolha o anual e eu resolvo o resto.</p>
+              <Titulo as="p" texto="Da contratação ao calendário." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" atraso={200} />
+              <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Configure na compra direta ou combine a implementação na contratação pelo WhatsApp.</p>
             </div>
           </div>
         </div>
@@ -1353,8 +1442,8 @@ export default function Landing() {
               className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
             />
             <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-              Quem te atende sou eu. A implementação eu faço com você, numa chamada de 15 minutos.
-              Seu calendário fica ligado no mesmo dia.
+              Quem te atende sou eu. Na contratação pelo WhatsApp, combinamos a implementação
+              para colocar seu imóvel na ferramenta.
             </p>
             <div data-reveal="up" style={delay(400)} className="flex flex-col gap-2.5">
               <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
@@ -1413,7 +1502,7 @@ export default function Landing() {
             </div>
             <nav aria-label="Links do rodapé" className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] leading-normal tracking-corpo md:flex md:flex-wrap md:gap-x-8">
               <button type="button" onClick={abrir} className="text-left text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">
-                Pedir devolução (30 dias)
+                Devolução da ferramenta (30 dias)
               </button>
               <a href="#planos" className="text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">Planos</a>
               <button type="button" onClick={abrir} className="text-left text-white/[0.72] hover:text-white hover:underline hover:underline-offset-[3px]">
@@ -1560,7 +1649,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 /* --- vidro -------------------------------------------------------------- */
 .vidro { background: rgba(200,200,200,0.14); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4); box-shadow: rgba(0,0,0,0.25) 0 10px 30px, inset 0 1px 0 rgba(255,255,255,0.12); }
 
-/* --- as três telas que se empilham ---------------------------------- */
+/* --- as quatro telas que se empilham -------------------------------- */
 .cena-pilha { position: relative; height: calc(var(--n) * 100svh); background: #000; }
 .cena-painel {
   position: sticky; top: 0; height: 100svh; overflow: hidden;
@@ -1582,6 +1671,13 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 @media (min-width: 768px) { .cena-fixo { gap: 40px; padding-top: 48px; } }
 .trilho { display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-left: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 @media (min-width: 768px) { .trilho { gap: 28px; padding-left: max(20px, calc((100vw - 1120px) / 2 + 20px)); } }
+.trilho:focus-visible { outline: 2px solid #000; outline-offset: -2px; }
+@media (max-width: 767px) {
+  .cena-drift { height: auto; }
+  .cena-fixo { position: static; height: auto; overflow: visible; padding-top: 0; }
+  .trilho { width: 100%; overflow-x: auto; padding: 0 20px 18px; transform: none; will-change: auto; scroll-snap-type: x proximity; scroll-padding-inline: 20px; }
+  .trilho > article { scroll-snap-align: start; }
+}
 
 /* --- crescer até a borda da tela --------------------------------------- */
 .cena-cresce { --g: var(--p, 0); border-radius: calc(32px * (1 - var(--g))); margin-inline: calc((100% - 100vw) / 2 * var(--g)); }
@@ -1614,9 +1710,18 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 @media (prefers-reduced-motion: reduce) {
   .lp-js [data-reveal], .lp-js .lp-fill-y, .lp-js .mask .w { transition: none !important; opacity: 1; transform: none !important; }
   .faixa-trilho { animation: none; }
-  .cena-painel { transform: none; border-radius: 0; }
+  .cena-pilha { height: auto; }
+  .cena-painel { position: relative; transform: none; border-radius: 0; will-change: auto; }
   .cena-painel .cena-foto, .cena-parallax { transform: none; }
   .cena-painel .cena-sombra { opacity: 0; }
+  .cena-cresce { margin-inline: 0; border-radius: 32px; }
+  .cena-drift { height: auto; }
+  .cena-fixo { position: static; height: auto; overflow: visible; padding-top: 0; }
+  .trilho { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); width: 100%; max-width: 1120px; margin-inline: auto; padding: 0 20px; transform: none; will-change: auto; overflow: visible; }
+  .trilho > article { width: auto; min-width: 0; }
+  .trilho > [aria-hidden] { display: none; }
+  .passos-trilho::after, .passo-icone { transform: none; }
   .passo { opacity: 1; }
+  .fab, .pergunta .pergunta-v, .pergunta .pergunta-mais { transition: none; }
 }
 `;
