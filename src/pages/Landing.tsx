@@ -431,22 +431,6 @@ function Faixa({ itens, escuro = false }: { itens: string[]; escuro?: boolean })
 
 const FAIXA = ["Reserva confirmada", "Documento com foto", "Selfie", "Assinatura digital", "Contrato antes da chave", "Portaria avisada", "Checkout da diarista", "IA 24 horas"];
 
-const DORES: ReactNode[] = [
-  <>
-    A portaria liga: “tem um hóspede aqui dizendo que tem reserva pra hoje, mas não tem acesso.”{" "}
-    <span className="text-primary">Você esqueceu de cadastrar.</span>
-  </>,
-  <>
-    A diarista diz que o sofá está manchado.{" "}
-    <span className="text-primary">Sem contrato, sem compromisso</span> — e você não tem
-    nome, documento nem assinatura pra cobrar de ninguém.
-  </>,
-  <>
-    <span className="text-primary">Você não sabe se o AirCover vai te ressarcir.</span>{" "}
-    Dependendo da quebra, ficam dias com a reserva fechada pra reparo.
-  </>,
-];
-
 const TRAVAS = [
   {
     rotulo: "Reserva",
@@ -955,27 +939,6 @@ export default function Landing() {
 
       <Faixa itens={FAIXA} />
 
-      {/* -------------------------------------------------------- a cena */}
-      <section className="mx-auto max-w-[1120px] px-5 pt-24 md:pt-32">
-        <div className="md:grid md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-5">
-            <Titulo texto="Você sabe *como é*." className={h2} />
-            <Traco className="mt-6" />
-          </div>
-          <div className="relative mt-10 flex flex-col gap-9 pl-8 md:col-span-6 md:col-start-7 md:mt-2 md:pl-10">
-            <div className="absolute bottom-2 left-0 top-2 w-[2px] overflow-hidden rounded-[2px] bg-[#e6e6e6]">
-              <div data-fill className="lp-fill-y absolute inset-0 origin-top bg-primary" />
-            </div>
-            {DORES.map((d, i) => (
-              <p key={i} data-reveal="left" style={delay(i * 110)} className="text-[clamp(19px,2.2vw,24px)] leading-[1.3] tracking-[-0.015em] text-black [text-wrap:pretty]">
-                <Rotulo className="mb-2 block text-[#8f8f8f]">Dor 0{i + 1}</Rotulo>
-                {d}
-              </p>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* --------------------------------------------- quatro benefícios */}
       <section id="como-funciona" className="scroll-mt-20 pt-24 md:pt-36">
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
@@ -1125,35 +1088,32 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ------------------------------- a rotina e o tempo livre, juntos */}
-      <section id="rotina" className="lp-secao mx-auto max-w-[1120px] scroll-mt-20 px-5">
-        <div className="grid gap-7 md:grid-cols-12 md:items-center md:gap-10">
-          <div className="md:col-span-5">
-            <Rotulo className="mb-4 block text-primary">Seu tempo de volta</Rotulo>
-            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[19ch] md:text-[48px]")} />
-            <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
-              Com o HospedePay, além de reunir os registros da hospedagem, você ganha
-              automatização completa — e esquece por dias que tem um Airbnb.
+      {/* ------------------------------------------------- quem responde */}
+      <section id="quem-responde" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-10">
+          <figure className="foto-recorte foto-recorte--inverso relative aspect-[5/6] w-[70%] max-w-[280px] overflow-hidden bg-[#f0f0f0] md:col-span-5 md:aspect-square md:w-full md:max-w-none">
+            <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="block h-full w-full object-cover [object-position:50%_30%]" />
+            <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
+            <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
+              <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
+                <Ponto on={on} />
+                {on ? "Online agora" : "Te ligo em até 1 hora"}
+              </span>
+            </figcaption>
+          </figure>
+          <div className="mt-7 flex flex-col gap-5 md:col-span-7 md:mt-0">
+            <Titulo
+              as="p"
+              texto="Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu *próprio* apartamento."
+              className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
+            />
+            <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
+              Quem te atende sou eu. Na contratação pelo WhatsApp, combinamos a implementação
+              para colocar seu imóvel na ferramenta.
             </p>
-          </div>
-          <div className="md:col-span-7">
-            <div className="grid grid-cols-[0.8fr_1.2fr] items-start gap-3 md:gap-5">
-              <figure>
-                <div className="foto-recorte foto-recorte--baixo aspect-[4/5] overflow-hidden bg-[#1a1a1a]">
-                  <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" className="h-full w-full object-cover [object-position:48%_65%]" />
-                </div>
-                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Preso à operação.</figcaption>
-              </figure>
-              <figure id="tempo-livre" className="foto-recorte foto-recorte--inverso mt-8 overflow-hidden bg-[#f5f5f5] md:mt-10">
-                <div className="aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
-                  <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" className="h-full w-full object-cover [object-position:54%_45%]" />
-                </div>
-                <figcaption className="px-4 pb-5 pt-4 md:px-5 md:pb-6 md:pt-5">
-                  <p className="mb-3 text-xs leading-[1.4] tracking-corpo text-primary">Sexta, 18h40. Tempo livre.</p>
-                  <h3 className="text-[20px] leading-[1.2] tracking-titulo md:text-[24px]">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
-                  <p className="mt-3 text-[15px] leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
-                </figcaption>
-              </figure>
+            <div data-reveal="up" style={delay(400)} className="flex flex-col gap-2.5">
+              <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
+              <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
             </div>
           </div>
         </div>
@@ -1203,6 +1163,40 @@ export default function Landing() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------- a rotina e o tempo livre, juntos */}
+      <section id="rotina" className="lp-secao mx-auto max-w-[1120px] scroll-mt-20 px-5">
+        <div className="grid gap-7 md:grid-cols-12 md:items-center md:gap-10">
+          <div className="md:col-span-5">
+            <Rotulo className="mb-4 block text-primary">Seu tempo de volta</Rotulo>
+            <Titulo texto="Você não comprou um apartamento. Você comprou um *emprego*." className={cn(h2, "max-w-[19ch] md:text-[48px]")} />
+            <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[40ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
+              Com o HospedePay, além de reunir os registros da hospedagem, você ganha
+              automatização completa — e esquece por dias que tem um Airbnb.
+            </p>
+          </div>
+          <div className="md:col-span-7">
+            <div className="grid grid-cols-[0.8fr_1.2fr] items-start gap-3 md:gap-5">
+              <figure>
+                <div className="foto-recorte foto-recorte--baixo aspect-[4/5] overflow-hidden bg-[#1a1a1a]">
+                  <img src="/lp/emprego.webp" alt="Anfitrião cansado à mesa da cozinha, de noite, com o celular na mão" loading="lazy" className="h-full w-full object-cover [object-position:48%_65%]" />
+                </div>
+                <figcaption className="mt-3 text-sm tracking-corpo text-[#666666]">Preso à operação.</figcaption>
+              </figure>
+              <figure id="tempo-livre" className="foto-recorte foto-recorte--inverso mt-8 overflow-hidden bg-[#f5f5f5] md:mt-10">
+                <div className="aspect-[4/5] overflow-hidden bg-[#f0f0f0]">
+                  <img src="/lp/orla.webp" alt="Anfitrião caminhando na orla de Niterói ao entardecer, com o celular no bolso" loading="lazy" className="h-full w-full object-cover [object-position:54%_45%]" />
+                </div>
+                <figcaption className="px-4 pb-5 pt-4 md:px-5 md:pb-6 md:pt-5">
+                  <p className="mb-3 text-xs leading-[1.4] tracking-corpo text-primary">Sexta, 18h40. Tempo livre.</p>
+                  <h3 className="text-[20px] leading-[1.2] tracking-titulo md:text-[24px]">Hóspede chega amanhã. Você nem sabe. E não precisa.</h3>
+                  <p className="mt-3 text-[15px] leading-[1.4] tracking-corpo text-[#666666]">O contrato já chegou no seu e-mail. A portaria já foi avisada. A diarista já sabe.</p>
+                </figcaption>
+              </figure>
             </div>
           </div>
         </div>
@@ -1460,37 +1454,6 @@ export default function Landing() {
             <div className="flex flex-col gap-2">
               <Titulo as="p" texto="Da contratação ao calendário." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" atraso={200} />
               <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Configure na compra direta ou combine a implementação na contratação pelo WhatsApp.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------- quem responde */}
-      <section id="quem-responde" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="md:grid md:grid-cols-12 md:items-center md:gap-10">
-          <figure className="foto-recorte foto-recorte--inverso relative aspect-[5/6] w-[70%] max-w-[280px] overflow-hidden bg-[#f0f0f0] md:col-span-5 md:aspect-square md:w-full md:max-w-none">
-            <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="block h-full w-full object-cover [object-position:50%_30%]" />
-            <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
-            <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
-              <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
-                <Ponto on={on} />
-                {on ? "Online agora" : "Te ligo em até 1 hora"}
-              </span>
-            </figcaption>
-          </figure>
-          <div className="mt-7 flex flex-col gap-5 md:col-span-7 md:mt-0">
-            <Titulo
-              as="p"
-              texto="Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu *próprio* apartamento."
-              className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
-            />
-            <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-              Quem te atende sou eu. Na contratação pelo WhatsApp, combinamos a implementação
-              para colocar seu imóvel na ferramenta.
-            </p>
-            <div data-reveal="up" style={delay(400)} className="flex flex-col gap-2.5">
-              <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-              <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
             </div>
           </div>
         </div>
