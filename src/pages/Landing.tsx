@@ -347,11 +347,12 @@ function Ponto({ on }: { on: boolean }) {
  * vai responder.
  */
 function BotaoFalar({
-  on, label, onClick, className,
-}: { on: boolean; label: string; onClick: () => void; className?: string }) {
+  on, label, onClick, className, flutuante = false,
+}: { on: boolean; label: string; onClick: () => void; className?: string; flutuante?: boolean }) {
   return (
     <button
       type="button"
+      data-oculta-fab={flutuante ? undefined : ""}
       onClick={onClick}
       className={cn(
         "flex h-14 w-full items-center justify-center gap-2.5 rounded-pill border border-primary bg-primary px-6 text-base tracking-corpo text-white transition-[background-color,transform] duration-200 ease-page hover:bg-primary-hover active:scale-[0.985]",
@@ -789,32 +790,36 @@ export default function Landing() {
     setImoveis(""); setPortaria(""); setTentou(false);
   };
 
-  // O herói encolhe ao sair; o botão fixo aparece quando nem o herói nem os
-  // planos (que já têm os seus botões) estão na tela.
+  // O contato flutuante apoia a leitura sem cobrir cenas ou duplicar uma ação.
   const heroRef = useRef<HTMLElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
-  const planosRef = useRef<HTMLElement>(null);
   useEncolherHero(heroRef, tituloRef, reduz);
-  const [sobreHero, setSobreHero] = useState(true);
-  const [sobrePlanos, setSobrePlanos] = useState(false);
+  const [fab, setFab] = useState(false);
   useEffect(() => {
-    const h = heroRef.current;
-    const p = planosRef.current;
-    if (!h || !p) return;
+    const pagina = raiz.current;
+    if (!pagina) return;
+    const visiveis = new Set<Element>();
+    let liberar: number | undefined;
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.target === h) setSobreHero(e.isIntersecting);
-          if (e.target === p) setSobrePlanos(e.isIntersecting);
+          if (e.isIntersecting) visiveis.add(e.target);
+          else visiveis.delete(e.target);
         }
+        window.clearTimeout(liberar);
+        if (visiveis.size > 0) setFab(false);
+        // Evita reaparecer por um instante entre duas áreas protegidas.
+        else liberar = window.setTimeout(() => setFab(true), 220);
       },
-      { threshold: 0.05 },
+      // Oculta antes que o próximo botão chegue à faixa ocupada pelo flutuante.
+      { threshold: 0, rootMargin: "0px 0px 96px 0px" },
     );
-    io.observe(h);
-    io.observe(p);
-    return () => io.disconnect();
+    pagina.querySelectorAll("[data-oculta-fab]").forEach((el) => io.observe(el));
+    return () => {
+      io.disconnect();
+      window.clearTimeout(liberar);
+    };
   }, []);
-  const fab = !sobreHero && !sobrePlanos;
 
   const pilula = (label: string, val: string, sel: string, set: (v: string) => void) => {
     const ativo = sel === val;
@@ -870,7 +875,7 @@ export default function Landing() {
       </nav>
 
       {/* ----------------------------------------------------------- herói */}
-      <section ref={heroRef} className="relative origin-top overflow-hidden rounded-b-[28px] bg-black text-white">
+      <section ref={heroRef} data-oculta-fab className="relative origin-top overflow-hidden rounded-b-[28px] bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%]" />
         <div className="absolute inset-0 z-0">
           <div className="absolute -inset-[6%] overflow-hidden">
@@ -940,7 +945,7 @@ export default function Landing() {
       <Faixa itens={FAIXA} />
 
       {/* --------------------------------------------- quatro benefícios */}
-      <section id="como-funciona" className="scroll-mt-20 pt-24 md:pt-36">
+      <section id="como-funciona" data-oculta-fab className="scroll-mt-20 pt-24 md:pt-36">
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
           <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
           <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
@@ -1121,7 +1126,7 @@ export default function Landing() {
 
       {/* ------------------------------------------------------- e ainda */}
       {/* A cena fica fixa até a rolagem percorrer os quatro cards. */}
-      <section id="e-ainda" data-cena="pin" className="cena-drift scroll-mt-0 mt-16 md:mt-24">
+      <section id="e-ainda" data-cena="pin" data-oculta-fab className="cena-drift scroll-mt-0 mt-16 md:mt-24">
         <div className="cena-fixo">
           <div className="drift-conteudo">
             <div className="mx-auto w-full max-w-[1120px] px-5">
@@ -1337,7 +1342,7 @@ export default function Landing() {
       {/* -------------------------------------------------------- planos */}
       {/* Sem caixas: três colunas separadas por um fio, o preço grande e um
           botão por plano. No celular, três blocos separados por fio. */}
-      <section id="planos" ref={planosRef} className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+      <section id="planos" data-oculta-fab className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="md:grid md:grid-cols-12 md:items-end md:gap-8">
           <div className="md:col-span-7">
             <Rotulo className="mb-5 block text-primary">Planos</Rotulo>
@@ -1484,7 +1489,7 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------- fechamento */}
-      <section className="relative overflow-hidden bg-black text-white">
+      <section id="fechamento" data-oculta-fab className="relative overflow-hidden bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%] opacity-80" />
         <Faixa itens={FAIXA} escuro />
         <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-8 px-5 pb-[130px] pt-16 md:pt-24">
@@ -1526,15 +1531,16 @@ export default function Landing() {
       </section>
 
       {/* -------------------------------------------------------------- fab */}
-      <div
-        className={cn(
-          "fab fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl transition-[transform,opacity] duration-500 ease-page",
-          "md:inset-x-auto md:bottom-6 md:right-6 md:w-[360px] md:border-0 md:bg-transparent md:px-0 md:pt-0 md:backdrop-blur-0",
-          fab && !formAberto ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-full opacity-0",
-        )}
-      >
-        <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mx-auto max-w-[720px] md:shadow-[0_12px_40px_rgba(0,0,0,0.28)]" />
-      </div>
+      {fab && !formAberto && (
+        <div
+          className={cn(
+            "fab fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl animate-in fade-in-0 duration-200 motion-reduce:animate-none",
+            "md:inset-x-auto md:bottom-6 md:right-6 md:w-[360px] md:border-0 md:bg-transparent md:px-0 md:pt-0 md:backdrop-blur-0",
+          )}
+        >
+          <BotaoFalar flutuante on={on} label={textos.btn} onClick={abrir} className="mx-auto max-w-[720px] md:shadow-[0_12px_40px_rgba(0,0,0,0.28)]" />
+        </div>
+      )}
 
       {/* ------------------------------------------------------- formulário */}
       {formAberto && (
