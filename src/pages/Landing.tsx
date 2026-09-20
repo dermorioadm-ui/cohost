@@ -532,9 +532,12 @@ const E_AINDA = [
   },
 ];
 
-const COMPARACAO: { grupo: string; linhas: [string, boolean, boolean][] }[] = [
+const COMPARACAO: {
+  grupo: string;
+  linhas: [titulo: string, gestora: boolean, nos: boolean, detalhe?: string, juridico?: boolean][];
+}[] = [
   {
-    grupo: "Os dois fazem",
+    grupo: "O básico da operação",
     linhas: [
       ["Responde o hóspede", true, true],
       ["Coordena a limpeza", true, true],
@@ -542,12 +545,12 @@ const COMPARACAO: { grupo: string; linhas: [string, boolean, boolean][] }[] = [
     ],
   },
   {
-    grupo: "Onde muda",
+    grupo: "Agora compare o que protege seu imóvel e seu tempo",
     linhas: [
-      ["Check-in com documento e assinatura", false, true],
-      ["Contrato em PDF com IP e hora", false, true],
-      ["Repõe os insumos por taxa combinada", false, true],
-      ["Conexão por API com portarias digitais", false, true],
+      ["Check-in blindado", false, true, "Identidade, rubrica digital e facial antes da chave."],
+      ["Contrato na sua mão", false, true, "Assinado e enviado por e-mail, em PDF."],
+      ["Deu prejuízo?", false, true, "Suporte jurídico para buscar reparação.*", true],
+      ["A operação não te prende", false, true, "Limpeza e reposição de insumos no automático. Atendimento com IA pelo WhatsApp."],
     ],
   },
 ];
@@ -1228,28 +1231,31 @@ export default function Landing() {
               <div className="md:col-span-7">
                 <Rotulo className="mb-5 block text-white/60">Gestora × HospedePay</Rotulo>
                 <Titulo
-                  texto="A gestora leva uma fatia do que você fatura. O HospedePay custa R$97 por mês. *Fixo.*"
+                  texto="Seu aluguel não precisa sustentar a *gestora*."
                   className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-white"
                 />
                 <Traco className="mt-6" />
+                <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-white/70">
+                  Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
+                </p>
               </div>
               <div className="mt-10 grid grid-cols-2 gap-3 md:col-span-5 md:mt-0 md:self-end">
                 <div data-reveal="up" className="flex flex-col gap-2 rounded-[22px] border border-white/[0.12] bg-[#141416] px-5 py-6">
-                  <Rotulo className="text-white/[0.6]">Gestora</Rotulo>
-                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">15–25%</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-white/[0.6]">do que o apartamento fatura, todo mês, por imóvel.</span>
+                  <Rotulo className="text-white/[0.6]">Gestora (exemplo)</Rotulo>
+                  <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">20%</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-white/[0.6]">do faturamento. Quanto mais entra, maior a taxa.</span>
                 </div>
                 <div data-reveal="up" style={delay(80)} className="flex flex-col gap-2 rounded-[22px] bg-primary px-5 py-6">
                   <Rotulo className="text-white">HospedePay</Rotulo>
                   <span className="numero-grande whitespace-nowrap text-[clamp(24px,6.5vw,48px)] text-white">R$97</span>
-                  <span className="text-sm leading-[1.45] tracking-corpo text-white">por mês. Fature R$2.000 ou R$10.000, é R$97.</span>
+                  <span className="text-sm leading-[1.45] tracking-corpo text-white">por mês, para 1 imóvel. Sem uma fatia de cada reserva.</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-8 md:grid md:grid-cols-12 md:gap-8">
               <div data-reveal="up" className="overflow-hidden rounded-3xl bg-white text-black md:col-span-7">
-                <div className="grid grid-cols-[1fr_64px_84px] items-end gap-2 border-b border-[#f0f0f0] px-5 pb-3.5 pt-[18px]">
+                <div className="grid grid-cols-[minmax(0,1fr)_52px_72px] items-end gap-2 border-b border-[#f0f0f0] px-4 pb-3.5 pt-[18px] md:px-5">
                   <Rotulo className="text-[#666666]">O que faz</Rotulo>
                   <span className="text-center text-[13px] tracking-corpo text-black">Gestora</span>
                   <span className="text-center text-[13px] tracking-corpo text-primary">HospedePay</span>
@@ -1259,25 +1265,29 @@ export default function Landing() {
                     <div className="border-b border-t border-[#f0f0f0] bg-[#fafafa] px-5 pb-1.5 pt-2.5">
                       <Rotulo className="text-[#666666]">{g.grupo}</Rotulo>
                     </div>
-                    {g.linhas.map(([nome, gestora, nos], i) => (
+                    {g.linhas.map(([nome, gestora, nos, detalhe, juridico], i) => (
                       <div
                         key={nome}
                         className={cn(
-                          "grid grid-cols-[1fr_64px_84px] items-center gap-2 px-5 py-3.5",
+                          "grid grid-cols-[minmax(0,1fr)_52px_72px] items-center gap-2 px-4 py-3.5 md:px-5",
                           i < g.linhas.length - 1 && "border-b border-[#f0f0f0]",
                         )}
                       >
-                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">{nome}</span>
+                        <span className="text-[15px] leading-[1.4] tracking-corpo text-black">
+                          <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
+                          {detalhe && <span className="mt-1 block text-sm leading-[1.4] text-[#666666]">{detalhe}</span>}
+                        </span>
                         {[gestora, nos].map((sim, k) => (
                           <span key={k} className="flex justify-center">
                             <span
-                              aria-label={sim ? "sim" : "não"}
+                              aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
+                              aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
                               className={cn(
                                 "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm leading-none",
                                 sim ? "bg-primary text-white" : "bg-[#f0f0f0] text-[#666666]",
                               )}
                             >
-                              {sim ? "✓" : "–"}
+                              {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
                             </span>
                           </span>
                         ))}
@@ -1285,16 +1295,23 @@ export default function Landing() {
                     ))}
                   </div>
                 ))}
+                <div className="border-t border-[#e6e6e6] px-4 py-4 text-xs leading-relaxed text-[#666666] md:px-5">
+                  <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
+                  <p id="comparacao-juridico-note" className="mt-2">
+                    <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                      * Suporte jurídico: consulte disponibilidade e condições.
+                    </a>
+                  </p>
+                </div>
               </div>
 
               <div data-reveal="up" style={delay(120)} className="mt-6 flex flex-col gap-[18px] rounded-[28px] border border-white/[0.12] bg-[#141416] px-6 py-7 md:col-span-5 md:mt-0 md:self-start">
-                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-white/[0.7] [text-wrap:pretty]">
-                  Faça a conta no seu. Um apartamento que fatura R$4.000 por mês:
-                </p>
+                <p className="text-[24px] leading-[1.15] tracking-titulo text-white">Faça essa conta antes da próxima reserva.</p>
+                <p className="max-w-[52ch] text-base leading-[1.49] tracking-[-0.014em] text-white/[0.7] [text-wrap:pretty]">Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
                 <div className="flex flex-col">
-                  {[["Gestora", "R$9.600"], ["HospedePay", "R$970"]].map(([q, v]) => (
+                  {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
                     <div key={q} className="flex items-baseline justify-between gap-4 border-t border-white/[0.14] py-3">
-                      <span className="text-[20px] tracking-[-0.014em] text-white">{q}</span>
+                      <span className="text-base tracking-[-0.014em] text-white">{q}</span>
                       <span className="whitespace-nowrap text-[20px] tracking-[-0.02em] text-white tabular-nums">
                         {v}<span className="text-sm text-white/[0.6]"> / ano</span>
                       </span>
@@ -1302,11 +1319,12 @@ export default function Landing() {
                   ))}
                 </div>
                 <div className="flex flex-col gap-1 border-t border-white/[0.3] pt-[18px]">
-                  <Rotulo className="text-white/[0.6]">A diferença</Rotulo>
+                  <Rotulo className="text-white/[0.6]">O que pode continuar com você</Rotulo>
                   <div className="flex flex-wrap items-baseline gap-2.5">
                     <span className="numero-grande text-[clamp(48px,6vw,72px)] text-[#FF8095]">R$8.630</span>
-                    <span className="text-base tracking-[-0.014em] text-white/[0.7]">por ano, no seu bolso</span>
+                    <span className="text-base tracking-[-0.014em] text-white/[0.7]">a mais por ano, neste exemplo.</span>
                   </div>
+                  <p className="mt-3 text-sm leading-[1.4] text-white/60">Seu patrimônio trabalha para você. A operação também deveria.</p>
                 </div>
               </div>
             </div>
