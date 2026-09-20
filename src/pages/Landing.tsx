@@ -425,10 +425,10 @@ const TRAVAS = [
   {
     rotulo: "Contrato",
     titulo: "Ele cuida da sua casa como se fosse *dele*.",
-    foto: "/lp/trava-sofa.webp",
-    alt: "Anfitriã em descrença diante da mancha de vinho no sofá branco",
+    foto: "/lp/trava-sofa-vinho.webp",
+    alt: "Cena ilustrativa de uma grande mancha de vinho tinto no sofá branco, com a taça caída e a anfitriã tentando limpar com um pano",
     texto: "Com contrato na mão, os prejuízos tendem a não ter recorrência.",
-    posicao: "60% 50%",
+    posicao: "46% 50%",
   },
   {
     rotulo: "Regras da estadia",
