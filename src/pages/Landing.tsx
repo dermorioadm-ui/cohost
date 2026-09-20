@@ -1239,88 +1239,90 @@ export default function Landing() {
 
       {/* ---------------------------------------------- gestora × hospedepay */}
       <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="comparacao-abertura">
-          <div>
-            <Rotulo className="mb-5 block text-primary">Gestora × HospedePay</Rotulo>
-            <Titulo
-              texto="Seu aluguel não precisa sustentar a *gestora*."
-              className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
-            />
-            <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-              Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
-            </p>
-          </div>
-          <div className="comparacao-precos">
+        <div className="comparacao-card">
+          <div className="comparacao-abertura">
             <div>
-              <span className="comparacao-precos__nome">Gestora (exemplo)</span>
-              <strong>20%</strong>
-              <p>do faturamento. Quanto mais entra, maior a taxa.</p>
-            </div>
-            <div>
-              <span className="comparacao-precos__nome">HospedePay</span>
-              <strong>R$97</strong>
-              <p>por mês, para 1 imóvel. Sem uma fatia de cada reserva.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="comparacao-corpo">
-          <div className="comparacao-tabela-wrap">
-            <table className="comparacao-tabela">
-              <caption className="sr-only">Recursos de uma gestora e do HospedePay. Os itens da gestora dependem do contrato.</caption>
-              <colgroup><col /><col className="comparacao-col-gestora" /><col className="comparacao-col-hospedepay" /></colgroup>
-              <thead>
-                <tr><th scope="col">O que faz</th><th scope="col">Gestora</th><th scope="col">HospedePay</th></tr>
-              </thead>
-              {COMPARACAO.map((g) => (
-                <tbody key={g.grupo}>
-                  <tr className="comparacao-grupo"><th colSpan={3} scope="rowgroup">{g.grupo}</th></tr>
-                  {g.linhas.map(([nome, gestora, nos, detalhe, juridico]) => (
-                    <tr key={nome}>
-                      <th scope="row">
-                        <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
-                        {detalhe && <span className="comparacao-detalhe">{detalhe}</span>}
-                      </th>
-                      {[gestora, nos].map((sim, k) => (
-                        <td key={k}>
-                          <span
-                            aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
-                            aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
-                            className={cn("comparacao-marca", sim && k === 1 && "comparacao-marca--sim")}
-                          >
-                            {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
-            <div className="comparacao-notas">
-              <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
-              <p id="comparacao-juridico-note">
-                <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                  * Suporte jurídico: consulte disponibilidade e condições.
-                </a>
+              <Rotulo className="mb-5 block text-[#34131b]">Gestora × HospedePay</Rotulo>
+              <Titulo
+                texto="Seu aluguel não precisa sustentar a *gestora*."
+                className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
+              />
+              <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#34131b]">
+                Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
               </p>
             </div>
+            <div className="comparacao-precos">
+              <div>
+                <span className="comparacao-precos__nome">Gestora (exemplo)</span>
+                <strong>20%</strong>
+                <p>do faturamento. Quanto mais entra, maior a taxa.</p>
+              </div>
+              <div>
+                <span className="comparacao-precos__nome">HospedePay</span>
+                <strong>R$97</strong>
+                <p>por mês, para 1 imóvel. Sem uma fatia de cada reserva.</p>
+              </div>
+            </div>
           </div>
 
-          <aside className="comparacao-conta" aria-label="Exemplo de custo anual">
-            <h3>Faça essa conta antes da próxima reserva.</h3>
-            <p>Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
-            <dl className="comparacao-conta__valores">
-              {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
-                <div key={q}><dt>{q}</dt><dd>{v}<span> / ano</span></dd></div>
-              ))}
-            </dl>
-            <div className="comparacao-economia">
-              <Rotulo className="text-[#666666]">O que pode continuar com você</Rotulo>
-              <p><strong>R$8.630</strong><span>a mais por ano, neste exemplo.</span></p>
-              <p>Seu patrimônio trabalha para você. A operação também deveria.</p>
+          <div className="comparacao-corpo">
+            <div className="comparacao-tabela-wrap">
+              <table className="comparacao-tabela">
+                <caption className="sr-only">Recursos de uma gestora e do HospedePay. Os itens da gestora dependem do contrato.</caption>
+                <colgroup><col /><col className="comparacao-col-gestora" /><col className="comparacao-col-hospedepay" /></colgroup>
+                <thead>
+                  <tr><th scope="col">O que faz</th><th scope="col">Gestora</th><th scope="col">HospedePay</th></tr>
+                </thead>
+                {COMPARACAO.map((g) => (
+                  <tbody key={g.grupo}>
+                    <tr className="comparacao-grupo"><th colSpan={3} scope="rowgroup">{g.grupo}</th></tr>
+                    {g.linhas.map(([nome, gestora, nos, detalhe, juridico]) => (
+                      <tr key={nome}>
+                        <th scope="row">
+                          <span className={cn("block", detalhe && "font-medium")}>{nome}</span>
+                          {detalhe && <span className="comparacao-detalhe">{detalhe}</span>}
+                        </th>
+                        {[gestora, nos].map((sim, k) => (
+                          <td key={k}>
+                            <span
+                              aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
+                              aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
+                              className={cn("comparacao-marca", sim && k === 1 && "comparacao-marca--sim")}
+                            >
+                              {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
+              </table>
+              <div className="comparacao-notas">
+                <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
+                <p id="comparacao-juridico-note">
+                  <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                    * Suporte jurídico: consulte disponibilidade e condições.
+                  </a>
+                </p>
+              </div>
             </div>
-          </aside>
+
+            <aside className="comparacao-conta" aria-label="Exemplo de custo anual">
+              <h3>Faça essa conta antes da próxima reserva.</h3>
+              <p>Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
+              <dl className="comparacao-conta__valores">
+                {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
+                  <div key={q}><dt>{q}</dt><dd>{v}<span> / ano</span></dd></div>
+                ))}
+              </dl>
+              <div className="comparacao-economia">
+                <Rotulo className="text-[#34131b]">O que pode continuar com você</Rotulo>
+                <p><strong>R$8.630</strong><span>a mais por ano, neste exemplo.</span></p>
+                <p>Seu patrimônio trabalha para você. A operação também deveria.</p>
+              </div>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -1652,25 +1654,26 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .rotina-mensagem h3 { max-width: 31ch; font-size: clamp(23px, 2.7vw, 30px); line-height: 1.16; letter-spacing: -.025em; }
 .rotina-mensagem > p { margin-top: 12px; max-width: 48ch; color: #666; font-size: 16px; line-height: 1.45; letter-spacing: -.012em; }
 
-/* --- comparação: tabela marcada, sem caixas sobrepostas ----------------- */
+/* --- comparação: card coral, distinto da oferta preta ------------------ */
+.comparacao-card { min-width: 0; padding: 30px 16px; border-radius: 28px; background: #ff385c; color: #171717; }
 .comparacao-abertura { display: grid; gap: 28px; }
 .comparacao-precos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: end; }
 .comparacao-precos > div { min-width: 0; padding: 5px 16px 5px 0; }
-.comparacao-precos > div + div { padding: 5px 0 5px 20px; border-left: 2px solid #ff385c; }
+.comparacao-precos > div + div { padding: 5px 0 5px 20px; border-left: 1px solid rgba(63, 10, 23, .3); }
 .comparacao-precos__nome { display: block; font-size: 11px; line-height: 1.4; letter-spacing: .035em; text-transform: uppercase; }
 .comparacao-precos strong { display: block; margin-top: 8px; font-size: clamp(36px, 6vw, 52px); font-weight: 400; line-height: 1.1; letter-spacing: -.045em; }
-.comparacao-precos > div + div strong { color: #e5234a; }
-.comparacao-precos p { margin-top: 9px; max-width: 21ch; color: #666; font-size: 14px; line-height: 1.4; }
+.comparacao-precos > div + div strong { color: #171717; }
+.comparacao-precos p { margin-top: 9px; max-width: 21ch; color: #34131b; font-size: 14px; line-height: 1.4; }
 .comparacao-corpo { display: grid; gap: 32px; margin-top: 28px; }
-.comparacao-tabela-wrap { min-width: 0; overflow: hidden; border: 1px solid #f3bac6; border-radius: 22px; background: #fff; }
+.comparacao-tabela-wrap { min-width: 0; overflow: hidden; border-radius: 18px; background: #fff; }
 .comparacao-tabela { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
 .comparacao-col-gestora { width: 54px; }
 .comparacao-col-hospedepay { width: 80px; }
-.comparacao-tabela thead { background: #ff385c; color: #080808; }
+.comparacao-tabela thead { background: #ffe1e7; color: #080808; }
 .comparacao-tabela thead th { padding: 19px 4px; font-size: 12px; font-weight: 500; line-height: 1.3; text-align: center; }
-.comparacao-tabela thead th:first-child { padding-left: 14px; text-align: left; }
+.comparacao-tabela thead th:first-child { padding-left: 12px; text-align: left; }
 .comparacao-tabela tbody th, .comparacao-tabela tbody td { border-top: 1px solid #f1e5e8; }
-.comparacao-tabela tbody th { padding: 15px 12px 15px 14px; font-size: 15px; font-weight: 400; line-height: 1.4; }
+.comparacao-tabela tbody th { padding: 15px 10px 15px 12px; font-size: 15px; font-weight: 400; line-height: 1.4; overflow-wrap: anywhere; }
 .comparacao-tabela td { text-align: center; }
 .comparacao-tabela td:last-child { background: #fff0f4; }
 .comparacao-tabela .comparacao-grupo th { padding: 11px 14px; background: #fff8fa; color: #765b63; font-size: 10px; font-weight: 500; letter-spacing: .055em; line-height: 1.5; text-transform: uppercase; }
@@ -1679,26 +1682,34 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .comparacao-marca--sim { background: #ff385c; color: #fff; }
 .comparacao-notas { padding: 15px 14px; border-top: 1px solid #f1e5e8; color: #666; font-size: 12px; line-height: 1.5; }
 .comparacao-notas p + p { margin-top: 8px; }
-.comparacao-conta { align-self: start; min-width: 0; padding-top: 22px; border-top: 2px solid #ff385c; }
+.comparacao-conta { align-self: start; min-width: 0; padding-top: 22px; border-top: 1px solid rgba(63, 10, 23, .3); }
 .comparacao-conta h3 { max-width: 24ch; font-size: 25px; font-weight: 400; line-height: 1.16; letter-spacing: -.025em; }
-.comparacao-conta > p { margin-top: 14px; color: #666; font-size: 16px; line-height: 1.45; }
+.comparacao-conta > p { margin-top: 14px; color: #34131b; font-size: 16px; line-height: 1.45; }
 .comparacao-conta__valores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
-.comparacao-conta__valores dt { color: #666; font-size: 13px; line-height: 1.4; }
+.comparacao-conta__valores dt { color: #34131b; font-size: 13px; line-height: 1.4; }
 .comparacao-conta__valores dd { margin-top: 5px; font-size: clamp(22px, 4.8vw, 30px); line-height: 1.3; letter-spacing: -.03em; }
-.comparacao-conta__valores dd span { white-space: nowrap; color: #666; font-size: 12px; letter-spacing: 0; }
-.comparacao-economia { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e6e6e6; }
+.comparacao-conta__valores dd span { white-space: nowrap; color: #34131b; font-size: 12px; letter-spacing: 0; }
+.comparacao-economia { margin-top: 24px; padding-top: 22px; border-top: 1px solid rgba(63, 10, 23, .3); }
 .comparacao-economia > p:first-of-type { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-top: 8px; }
-.comparacao-economia strong { color: #e5234a; font-size: clamp(42px, 5vw, 56px); font-weight: 400; letter-spacing: -.045em; line-height: 1.1; }
-.comparacao-economia > p:first-of-type span { max-width: 21ch; color: #666; font-size: 14px; line-height: 1.4; }
-.comparacao-economia > p:last-child { margin-top: 14px; color: #666; font-size: 14px; line-height: 1.45; }
+.comparacao-economia strong { color: #171717; font-size: clamp(42px, 5vw, 56px); font-weight: 400; letter-spacing: -.045em; line-height: 1.1; }
+.comparacao-economia > p:first-of-type span { max-width: 21ch; color: #34131b; font-size: 14px; line-height: 1.4; }
+.comparacao-economia > p:last-child { margin-top: 14px; color: #34131b; font-size: 14px; line-height: 1.45; }
+@media (max-width: 359px) {
+  .comparacao-card { padding-inline: 12px; }
+  .comparacao-col-gestora { width: 48px; }
+  .comparacao-col-hospedepay { width: 80px; }
+  .comparacao-tabela tbody th { font-size: 14px; }
+  .comparacao-detalhe { font-size: 13px; }
+}
 @media (min-width: 768px) {
   .rotina-fotos { gap: 14px; height: 350px; }
   .rotina-foto--antes { border-top-left-radius: 64px; }
   .rotina-foto--depois { border-top-right-radius: 90px; }
   .rotina-foto p { left: 18px; bottom: 20px; font-size: 14px; }
   .rotina-mensagem { margin-top: 22px; padding-left: 22px; }
-  .comparacao-abertura { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; }
-  .comparacao-corpo { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; margin-top: 36px; }
+  .comparacao-card { padding: 42px 32px; border-radius: 32px; }
+  .comparacao-abertura { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 36px; }
+  .comparacao-corpo { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 36px; margin-top: 36px; }
   .comparacao-col-gestora { width: 76px; }
   .comparacao-col-hospedepay { width: 100px; }
   .comparacao-tabela thead th { font-size: 13px; }
