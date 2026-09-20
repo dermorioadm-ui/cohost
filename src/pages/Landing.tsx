@@ -1242,12 +1242,12 @@ export default function Landing() {
         <div className="comparacao-card">
           <div className="comparacao-abertura">
             <div>
-              <Rotulo className="mb-5 block text-[#34131b]">Gestora × HospedePay</Rotulo>
+              <Rotulo className="mb-5 block text-white">Gestora × HospedePay</Rotulo>
               <Titulo
                 texto="Seu aluguel não precisa sustentar a *gestora*."
-                className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-black"
+                className="max-w-[18ch] text-[clamp(32px,4.6vw,56px)] font-normal leading-[1.02] tracking-titulo text-white"
               />
-              <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-[#34131b]">
+              <p className="mt-5 max-w-[42ch] text-lg leading-[1.4] tracking-corpo text-white">
                 Você investiu no imóvel. Compare quanto custa cuidar da operação — e quanto sobra para você.
               </p>
             </div>
@@ -1287,7 +1287,7 @@ export default function Landing() {
                             <span
                               aria-label={juridico && k === 1 ? "Consulte a disponibilidade da assistência jurídica" : sim ? "sim" : "Confira no contrato com a gestora"}
                               aria-describedby={juridico && k === 1 ? "comparacao-juridico-note" : undefined}
-                              className={cn("comparacao-marca", sim && k === 1 && "comparacao-marca--sim")}
+                              className={cn("comparacao-marca", sim && "comparacao-marca--sim")}
                             >
                               {sim ? juridico && k === 1 ? "✓*" : "✓" : "?"}
                             </span>
@@ -1317,7 +1317,7 @@ export default function Landing() {
                 ))}
               </dl>
               <div className="comparacao-economia">
-                <Rotulo className="text-[#34131b]">O que pode continuar com você</Rotulo>
+                <Rotulo className="text-white">O que pode continuar com você</Rotulo>
                 <p><strong>R$8.630</strong><span>a mais por ano, neste exemplo.</span></p>
                 <p>Seu patrimônio trabalha para você. A operação também deveria.</p>
               </div>
@@ -1655,17 +1655,17 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .rotina-mensagem > p { margin-top: 12px; max-width: 48ch; color: #666; font-size: 16px; line-height: 1.45; letter-spacing: -.012em; }
 
 /* --- comparação: card coral, distinto da oferta preta ------------------ */
-.comparacao-card { min-width: 0; padding: 30px 16px; border-radius: 28px; background: #ff385c; color: #171717; }
+.comparacao-card { min-width: 0; padding: 30px 16px; border-radius: 28px; background: #ff385c; color: #fff; }
 .comparacao-abertura { display: grid; gap: 28px; }
-.comparacao-precos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-self: end; }
-.comparacao-precos > div { min-width: 0; padding: 5px 16px 5px 0; }
-.comparacao-precos > div + div { padding: 5px 0 5px 20px; border-left: 1px solid rgba(63, 10, 23, .3); }
-.comparacao-precos__nome { display: block; font-size: 11px; line-height: 1.4; letter-spacing: .035em; text-transform: uppercase; }
+.comparacao-precos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-self: end; }
+.comparacao-precos > div { min-width: 0; padding: 20px 14px; border-radius: 18px; background: #fff; color: #171717; }
+.comparacao-precos > div + div { background: #171717; color: #fff; }
+.comparacao-precos__nome { display: block; min-height: 2.8em; font-size: 11px; line-height: 1.4; letter-spacing: .035em; text-transform: uppercase; }
 .comparacao-precos strong { display: block; margin-top: 8px; font-size: clamp(36px, 6vw, 52px); font-weight: 400; line-height: 1.1; letter-spacing: -.045em; }
-.comparacao-precos > div + div strong { color: #171717; }
-.comparacao-precos p { margin-top: 9px; max-width: 21ch; color: #34131b; font-size: 14px; line-height: 1.4; }
+.comparacao-precos p { margin-top: 9px; max-width: 21ch; color: #555; font-size: 14px; line-height: 1.4; }
+.comparacao-precos > div + div p { color: #f1f1f1; }
 .comparacao-corpo { display: grid; gap: 32px; margin-top: 28px; }
-.comparacao-tabela-wrap { min-width: 0; overflow: hidden; border-radius: 18px; background: #fff; }
+.comparacao-tabela-wrap { min-width: 0; overflow: hidden; border-radius: 18px; background: #fff; color: #171717; }
 .comparacao-tabela { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
 .comparacao-col-gestora { width: 54px; }
 .comparacao-col-hospedepay { width: 80px; }
@@ -1682,20 +1682,21 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .comparacao-marca--sim { background: #ff385c; color: #fff; }
 .comparacao-notas { padding: 15px 14px; border-top: 1px solid #f1e5e8; color: #666; font-size: 12px; line-height: 1.5; }
 .comparacao-notas p + p { margin-top: 8px; }
-.comparacao-conta { align-self: start; min-width: 0; padding-top: 22px; border-top: 1px solid rgba(63, 10, 23, .3); }
+.comparacao-conta { align-self: start; min-width: 0; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .4); }
 .comparacao-conta h3 { max-width: 24ch; font-size: 25px; font-weight: 400; line-height: 1.16; letter-spacing: -.025em; }
-.comparacao-conta > p { margin-top: 14px; color: #34131b; font-size: 16px; line-height: 1.45; }
+.comparacao-conta > p { margin-top: 14px; color: #fff; font-size: 16px; line-height: 1.45; }
 .comparacao-conta__valores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
-.comparacao-conta__valores dt { color: #34131b; font-size: 13px; line-height: 1.4; }
+.comparacao-conta__valores dt { color: #fff; font-size: 13px; line-height: 1.4; }
 .comparacao-conta__valores dd { margin-top: 5px; font-size: clamp(22px, 4.8vw, 30px); line-height: 1.3; letter-spacing: -.03em; }
-.comparacao-conta__valores dd span { white-space: nowrap; color: #34131b; font-size: 12px; letter-spacing: 0; }
-.comparacao-economia { margin-top: 24px; padding-top: 22px; border-top: 1px solid rgba(63, 10, 23, .3); }
+.comparacao-conta__valores dd span { white-space: nowrap; color: #fff; font-size: 12px; letter-spacing: 0; }
+.comparacao-economia { margin-top: 24px; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .4); }
 .comparacao-economia > p:first-of-type { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-top: 8px; }
-.comparacao-economia strong { color: #171717; font-size: clamp(42px, 5vw, 56px); font-weight: 400; letter-spacing: -.045em; line-height: 1.1; }
-.comparacao-economia > p:first-of-type span { max-width: 21ch; color: #34131b; font-size: 14px; line-height: 1.4; }
-.comparacao-economia > p:last-child { margin-top: 14px; color: #34131b; font-size: 14px; line-height: 1.45; }
+.comparacao-economia strong { color: #fff; font-size: clamp(42px, 5vw, 56px); font-weight: 400; letter-spacing: -.045em; line-height: 1.1; }
+.comparacao-economia > p:first-of-type span { max-width: 21ch; color: #fff; font-size: 14px; line-height: 1.4; }
+.comparacao-economia > p:last-child { margin-top: 14px; color: #fff; font-size: 14px; line-height: 1.45; }
 @media (max-width: 359px) {
   .comparacao-card { padding-inline: 12px; }
+  .comparacao-precos > div { padding-inline: 10px; }
   .comparacao-col-gestora { width: 48px; }
   .comparacao-col-hospedepay { width: 80px; }
   .comparacao-tabela tbody th { font-size: 14px; }
@@ -1708,7 +1709,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .rotina-foto p { left: 18px; bottom: 20px; font-size: 14px; }
   .rotina-mensagem { margin-top: 22px; padding-left: 22px; }
   .comparacao-card { padding: 42px 32px; border-radius: 32px; }
-  .comparacao-abertura { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 36px; }
   .comparacao-corpo { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 36px; margin-top: 36px; }
   .comparacao-col-gestora { width: 76px; }
   .comparacao-col-hospedepay { width: 100px; }
@@ -1717,6 +1717,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .comparacao-tabela .comparacao-grupo th, .comparacao-notas { padding-left: 20px; padding-right: 20px; }
   .comparacao-conta { padding-top: 24px; }
 }
+@media (min-width: 1024px) { .comparacao-abertura { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 36px; } }
 @media (min-width: 1100px) { .rotina-fotos { height: 390px; } }
 
 /* --- escolha compacta da oferta --------------------------------------- */
