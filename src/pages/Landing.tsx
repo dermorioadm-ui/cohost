@@ -343,16 +343,15 @@ function Ponto({ on }: { on: boolean }) {
 
 /**
  * O botão coral com o rosto de quem atende, o ponto de status e a frase.
- * Aparece quatro vezes na página e é sempre o mesmo: quem clica já viu quem
+ * Aparece nos pontos de contato da página: quem clica já viu quem
  * vai responder.
  */
 function BotaoFalar({
-  on, label, onClick, className, flutuante = false,
-}: { on: boolean; label: string; onClick: () => void; className?: string; flutuante?: boolean }) {
+  on, label, onClick, className,
+}: { on: boolean; label: string; onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
-      data-oculta-fab={flutuante ? undefined : ""}
       onClick={onClick}
       className={cn(
         "flex h-14 w-full items-center justify-center gap-2.5 rounded-pill border border-primary bg-primary px-6 text-base tracking-corpo text-white transition-[background-color,transform] duration-200 ease-page hover:bg-primary-hover active:scale-[0.985]",
@@ -801,36 +800,10 @@ export default function Landing() {
     setImoveis(""); setPortaria(""); setTentou(false);
   };
 
-  // O contato flutuante apoia a leitura sem cobrir cenas ou duplicar uma ação.
+  // A capa acompanha a rolagem; os contatos ficam no fluxo da página.
   const heroRef = useRef<HTMLElement>(null);
   const tituloRef = useRef<HTMLHeadingElement>(null);
   useEncolherHero(heroRef, tituloRef, reduz);
-  const [fab, setFab] = useState(false);
-  useEffect(() => {
-    const pagina = raiz.current;
-    if (!pagina) return;
-    const visiveis = new Set<Element>();
-    let liberar: number | undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) visiveis.add(e.target);
-          else visiveis.delete(e.target);
-        }
-        window.clearTimeout(liberar);
-        if (visiveis.size > 0) setFab(false);
-        // Evita reaparecer por um instante entre duas áreas protegidas.
-        else liberar = window.setTimeout(() => setFab(true), 220);
-      },
-      // Oculta antes que o próximo botão chegue à faixa ocupada pelo flutuante.
-      { threshold: 0, rootMargin: "0px 0px 96px 0px" },
-    );
-    pagina.querySelectorAll("[data-oculta-fab]").forEach((el) => io.observe(el));
-    return () => {
-      io.disconnect();
-      window.clearTimeout(liberar);
-    };
-  }, []);
 
   const pilula = (label: string, val: string, sel: string, set: (v: string) => void) => {
     const ativo = sel === val;
@@ -871,7 +844,7 @@ export default function Landing() {
   };
 
   return (
-    <div ref={raiz} className="tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
+    <div ref={raiz} className="landing-page tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
       <style>{LP_CSS}</style>
 
       {/* ------------------------------------------------------------ nav */}
@@ -886,7 +859,7 @@ export default function Landing() {
       </nav>
 
       {/* ----------------------------------------------------------- herói */}
-      <section ref={heroRef} data-oculta-fab className="relative origin-top overflow-hidden rounded-b-[28px] bg-black text-white">
+      <section ref={heroRef} className="relative origin-top overflow-hidden rounded-b-[28px] bg-black text-white">
         <div aria-hidden className="lp-glow absolute -left-[8%] -top-[8%] h-[116%] w-[116%]" />
         <div className="absolute inset-0 z-0">
           <div className="absolute -inset-[6%] overflow-hidden">
@@ -956,7 +929,7 @@ export default function Landing() {
       <Faixa itens={FAIXA} />
 
       {/* --------------------------------------------- quatro benefícios */}
-      <section id="como-funciona" data-oculta-fab className="scroll-mt-20 pt-24 md:pt-36">
+      <section id="como-funciona" className="lp-secao scroll-mt-20">
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
           <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
           <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
@@ -1137,7 +1110,7 @@ export default function Landing() {
 
       {/* ------------------------------------------------------- e ainda */}
       {/* A cena fica fixa até a rolagem percorrer os quatro cards. */}
-      <section id="e-ainda" data-cena="pin" data-oculta-fab className="cena-drift scroll-mt-0 mt-16 md:mt-24">
+      <section id="e-ainda" data-cena="pin" className="cena-drift lp-cena-espacada scroll-mt-0">
         <div className="cena-fixo">
           <div className="drift-conteudo">
             <div className="mx-auto w-full max-w-[1120px] px-5">
@@ -1238,7 +1211,7 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------- gestora × hospedepay */}
-      <section id="comparacao" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+      <section id="comparacao" className="lp-secao lp-secao--destaque scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="comparacao-card">
           <div className="comparacao-abertura">
             <div>
@@ -1328,7 +1301,7 @@ export default function Landing() {
 
       {/* -------------------------------------------------------- planos */}
       {/* Os valores ficam juntos; os benefícios e a contratação são compartilhados. */}
-      <section id="planos" data-oculta-fab className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
+      <section id="planos" className="lp-secao lp-secao--destaque scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="oferta-principal">
           <Rotulo className="mb-4 block text-[#ff91a5]">Seu próximo check-in começa aqui</Rotulo>
           <Titulo texto="Escolha o plano para o seu *imóvel*." className="oferta-titulo" />
@@ -1452,7 +1425,7 @@ export default function Landing() {
       </section>
 
       {/* ----------------------------------------------------- perguntas */}
-      <section id="perguntas" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5 pb-16 md:pb-24">
+      <section id="perguntas" className="lp-secao lp-secao--final scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-5">
             <Titulo texto="Perguntas que *todo mundo* faz" className={h2} />
@@ -1476,9 +1449,9 @@ export default function Landing() {
       </section>
 
       {/* ---------------------------------------------------------- fechamento */}
-      <section id="fechamento" data-oculta-fab className="relative overflow-hidden bg-[#f7f7f7] text-black">
+      <section id="fechamento" className="relative overflow-hidden bg-[#f7f7f7] text-black">
         <Faixa itens={FAIXA} />
-        <div className="relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-8 px-5 pb-[130px] pt-16 md:pt-24">
+        <div className="lp-fechamento-conteudo relative z-[1] mx-auto flex max-w-[1120px] flex-col gap-8 px-5">
           <Titulo
             texto="Ninguém dorme no seu apartamento sem ter *assinado*."
             className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-black [&_.acento]:text-primary"
@@ -1515,18 +1488,6 @@ export default function Landing() {
           </footer>
         </div>
       </section>
-
-      {/* -------------------------------------------------------------- fab */}
-      {fab && !formAberto && (
-        <div
-          className={cn(
-            "fab fixed inset-x-0 bottom-0 z-50 border-t border-[#f0f0f0] bg-white/90 px-5 pt-2.5 backdrop-blur-xl animate-in fade-in-0 duration-200 motion-reduce:animate-none",
-            "md:inset-x-auto md:bottom-6 md:right-6 md:w-[360px] md:border-0 md:bg-transparent md:px-0 md:pt-0 md:backdrop-blur-0",
-          )}
-        >
-          <BotaoFalar flutuante on={on} label={textos.btn} onClick={abrir} className="mx-auto max-w-[720px] md:shadow-[0_12px_40px_rgba(0,0,0,0.28)]" />
-        </div>
-      )}
 
       {/* ------------------------------------------------------- formulário */}
       {formAberto && (
@@ -1786,8 +1747,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 
 /* --- faixa que corre ---------------------------------------------------- */
 .faixa-trilho { animation: faixa 42s linear infinite; }
-.fab { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-@media (min-width: 768px) { .fab { padding-bottom: 0; } }
 @keyframes faixa { to { transform: translate3d(-50%, 0, 0); } }
 
 /* --- vidro -------------------------------------------------------------- */
@@ -1809,15 +1768,25 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
 
 /* --- ritmo e molduras das seções de apoio ------------------------------ */
-.lp-secao { padding-top: 64px; }
+.landing-page { --lp-section-gap: 112px; --lp-section-gap-major: 144px; }
+.lp-secao { padding-top: var(--lp-section-gap); }
+.lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
+/* Margem fora da cena: o respiro não altera o percurso horizontal fixado. */
+.lp-cena-espacada { margin-top: var(--lp-section-gap); }
+.lp-secao--final { padding-bottom: var(--lp-section-gap); }
+.lp-fechamento-conteudo { padding-top: var(--lp-section-gap); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 .foto-recorte { border-radius: 24px 72px 24px 24px; }
 .foto-recorte--inverso { border-radius: 72px 24px 24px 24px; }
 .foto-recorte--baixo { border-radius: 24px 24px 72px 24px; }
 @media (min-width: 768px) {
-  .lp-secao { padding-top: 96px; }
+  .landing-page { --lp-section-gap: 160px; --lp-section-gap-major: 192px; }
+  .lp-fechamento-conteudo { padding-bottom: 96px; }
   .foto-recorte { border-radius: 28px 100px 28px 28px; }
   .foto-recorte--inverso { border-radius: 100px 28px 28px 28px; }
   .foto-recorte--baixo { border-radius: 28px 28px 100px 28px; }
+}
+@media (min-width: 1200px) {
+  .landing-page { --lp-section-gap: 176px; --lp-section-gap-major: 224px; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
@@ -1880,6 +1849,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .drift-navegacao { display: none; }
   .passos-trilho::after, .passo-icone { transform: none; }
   .passo { opacity: 1; }
-  .fab, .pergunta .pergunta-v, .pergunta .pergunta-mais { transition: none; }
+  .pergunta .pergunta-v, .pergunta .pergunta-mais { transition: none; }
 }
 `;
