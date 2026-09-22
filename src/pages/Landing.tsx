@@ -1122,17 +1122,20 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
             </div>
             <figcaption className="mt-6 md:col-span-5 md:mt-0">
               <Rotulo className="mb-4 block text-primary md:mb-5">Últimos 30 dias</Rotulo>
-              <div className="grid grid-cols-2">
+              {/* No celular os quatro números viram uma faixa de uma linha só: em
+                  2x2 eles comiam 200px de tela. No desktop, onde a legenda fica na
+                  coluna ao lado da foto, o 2x2 continua. */}
+              <div className="grid grid-cols-4 md:grid-cols-2">
                 {[
-                  [PROVA.reservas, "reservas", "border-b border-r pb-4 pr-5 md:pb-5"],
-                  [PROVA.hospedes, "hóspedes", "border-b pb-4 pl-5 md:pb-5"],
-                  [PROVA.termos, "contratos assinados", "border-r pr-5 pt-4 md:pt-5"],
-                  [PROVA.cadastros, "cadastros na portaria", "pl-5 pt-4 md:pt-5"],
+                  [PROVA.reservas, "reservas", "border-r pr-3 md:border-b md:pb-5 md:pr-5"],
+                  [PROVA.hospedes, "hóspedes", "border-r px-3 md:border-b md:border-r-0 md:px-0 md:pb-5 md:pl-5"],
+                  [PROVA.termos, "contratos assinados", "border-r px-3 md:px-0 md:pr-5 md:pt-5"],
+                  [PROVA.cadastros, "cadastros na portaria", "pl-3 md:pl-5 md:pt-5"],
                 ].map(([n, r, cls], i) => (
-                  <div key={r} data-reveal="up" style={delay(i * 80)} className={cn("flex min-w-0 flex-col gap-1.5 border-black/10", cls as string)}>
-                    <span aria-hidden className="mb-0.5 block h-0.5 w-[22px] rounded-[1px] bg-primary" />
-                    <div data-count={n} className="numero-grande text-[clamp(33px,4.5vw,56px)] text-black">{n}</div>
-                    <div className="text-sm leading-[1.35] tracking-[-0.02em] text-[#666666]">{r}</div>
+                  <div key={r} data-reveal="up" style={delay(i * 80)} className={cn("flex min-w-0 flex-col gap-1 border-black/10 md:gap-1.5", cls as string)}>
+                    <span aria-hidden className="mb-0.5 block h-0.5 w-[16px] rounded-[1px] bg-primary md:w-[22px]" />
+                    <div data-count={n} className="numero-grande text-[27px] text-black md:text-[clamp(33px,4.5vw,56px)]">{n}</div>
+                    <div className="text-[11px] leading-[1.3] tracking-[-0.01em] text-[#666666] md:text-sm md:leading-[1.35] md:tracking-[-0.02em]">{r}</div>
                   </div>
                 ))}
               </div>
