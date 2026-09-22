@@ -758,7 +758,7 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
   const textos = useMemo(
     () => ({
       btn: on ? "Estou online — falar agora" : "Me chama — te ligo em até 1 hora",
-      linha: on ? "Quem responde sou eu, o Renato. Não é robô." : "Quem liga sou eu, o Renato. Não é robô.",
+      linha: "Eu sou o Renato, sou o seu gerente de contas e vou te atender. Não é robô.",
       submit: on ? "Me liga agora" : "Pode me ligar",
       feito: on
         ? "Fechado. Te ligo no WhatsApp em até 2 minutos. Deixa o celular perto."
@@ -1946,7 +1946,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
 
 /* --- ritmo e molduras das seções de apoio ------------------------------ */
-.landing-page { --lp-section-gap: 112px; --lp-section-gap-major: 144px; }
+.landing-page { --lp-section-gap: 78px; --lp-section-gap-major: 101px; }
 .lp-secao { padding-top: var(--lp-section-gap); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
 /* Margem fora da cena: o respiro não altera o percurso horizontal fixado. */
@@ -1957,14 +1957,14 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .foto-recorte--inverso { border-radius: 72px 24px 24px 24px; }
 .foto-recorte--baixo { border-radius: 24px 24px 72px 24px; }
 @media (min-width: 768px) {
-  .landing-page { --lp-section-gap: 160px; --lp-section-gap-major: 192px; }
+  .landing-page { --lp-section-gap: 112px; --lp-section-gap-major: 134px; }
   .lp-fechamento-conteudo { padding-bottom: 96px; }
   .foto-recorte { border-radius: 28px 100px 28px 28px; }
   .foto-recorte--inverso { border-radius: 100px 28px 28px 28px; }
   .foto-recorte--baixo { border-radius: 28px 28px 100px 28px; }
 }
 @media (min-width: 1200px) {
-  .landing-page { --lp-section-gap: 176px; --lp-section-gap-major: 224px; }
+  .landing-page { --lp-section-gap: 123px; --lp-section-gap-major: 157px; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
