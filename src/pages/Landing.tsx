@@ -228,7 +228,7 @@ function useCenas(root: React.RefObject<HTMLElement>, reduz: boolean) {
         it.el.style.setProperty("--topo-fixo", `${Math.min(0, alturaTela - alturaFixa)}px`);
         const distancia = Math.max(0, it.trilho.scrollWidth - it.el.clientWidth);
         // O percurso acompanha a largura real dos cards, não várias telas vazias.
-        it.el.style.setProperty("--percurso", `${distancia > 0 ? Math.max(280, Math.round(distancia * 0.85)) : 0}px`);
+        it.el.style.setProperty("--percurso", `${distancia > 0 ? Math.max(220, Math.round(distancia * 0.62)) : 0}px`);
       }
       rolar();
     };
@@ -1950,7 +1950,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .lp-secao { padding-top: var(--lp-section-gap); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
 /* Margem fora da cena: o respiro não altera o percurso horizontal fixado. */
-.lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .7); }
+.lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .35); }
 .lp-secao--final { padding-bottom: var(--lp-section-gap); }
 .lp-fechamento-conteudo { padding-top: var(--lp-section-gap); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 .foto-recorte { border-radius: 24px 72px 24px 24px; }
@@ -1968,15 +1968,15 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
-.cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 800px)); }
-.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 59px 0 calc(64px + env(safe-area-inset-bottom, 0px)); }
-.drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
+.cena-drift { position: relative; height: calc(var(--altura-fixa, 78svh) + var(--percurso, 600px)); }
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: clamp(560px, 78svh, 760px); display: flex; align-items: center; overflow: hidden; padding: 32px 0 calc(36px + env(safe-area-inset-bottom, 0px)); }
+.drift-conteudo { display: flex; flex-direction: column; gap: 8px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 .foto-recurso { aspect-ratio: 5 / 3; max-height: var(--foto-recurso-max, none); flex-shrink: 0; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
 @media (min-width: 768px) {
-  .cena-fixo { padding-bottom: 70px; }
-  .drift-conteudo { gap: 28px; }
+  .cena-fixo { min-height: clamp(620px, 78svh, 760px); padding-block: 40px 48px; }
+  .drift-conteudo { gap: 20px; }
   .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
   .foto-recurso { aspect-ratio: 3 / 2; }
 }
@@ -2030,3 +2030,4 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .pergunta .pergunta-v, .pergunta .pergunta-mais { transition: none; }
 }
 `;
+
