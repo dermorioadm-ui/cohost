@@ -66,7 +66,7 @@ export async function contaDoCheckout(
       user_metadata: {
         full_name: s.customer_details?.name ?? "",
         whatsapp: s.customer_details?.phone ?? null,
-        origem: "checkout",
+        origem: s.metadata?.origem ?? "checkout",
       },
     });
 

@@ -469,7 +469,7 @@ export const api = {
    * de checkout por uma sessão do Supabase, uma única vez.
    */
   billingPublico: {
-    checkout: (body: { tier: string; cycle: string }) =>
+    checkout: (body: { tier: string; cycle: string; origem?: "pagina" | "compra-direta" }) =>
       request<{ url: string }>("billing-checkout-public", { body, auth: false }),
     complete: (session_id: string) =>
       request<{
@@ -478,6 +478,7 @@ export const api = {
         email?: string;
         conta_nova?: boolean;
         ja_entrou?: boolean;
+        origem?: "pagina" | "compra-direta";
         session?: { access_token: string; refresh_token: string };
       }>("billing-checkout-complete", { body: { session_id }, auth: false }),
   },

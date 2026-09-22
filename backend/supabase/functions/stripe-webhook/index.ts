@@ -236,7 +236,18 @@ Deno.serve(async (req) => {
   });
 
   if (dupError?.code === "23505") {
-    return json({ ok: true, duplicate: true });
+    const { data: anterior } = await db
+      .from("billing_events")
+      .select("status")
+      .eq("stripe_event_id", event.id)
+      .maybeSingle();
+    // Um evento gravado mas ainda sem status pode ser a sobra de uma falha
+    // entre a reserva idempotente e o efeito. Nesse caso o retry precisa
+    // concluir o processamento; eventos já marcados encerram aqui.
+    if (anterior?.status) return json({ ok: true, duplicate: true });
+  } else if (dupError) {
+    console.error("Falha ao reservar evento Stripe:", dupError.message);
+    return json({ error: "erro ao registrar evento" }, 500);
   }
 
   if (!RELEVANT.has(event.type)) {
@@ -286,6 +297,10 @@ Deno.serve(async (req) => {
             });
           }
 
+          await db.from("billing_events")
+            .update({ status: "paid" })
+            .eq("stripe_event_id", event.id);
+
           // Pagamento avulso não mexe em assinatura. Sair aqui evita que o
           // fluxo abaixo tente casar este checkout com um plano.
           break;
@@ -315,6 +330,18 @@ Deno.serve(async (req) => {
             })
             .eq("user_id", userId);
         }
+
+        // O retorno público da compra direta só avança depois desta marca.
+        // Ela nasce de um evento assinado e é idempotente pelo stripe_event_id.
+        await db.from("billing_events")
+          .update({
+            user_id: userId,
+            status: "paid",
+            stripe_customer_id: customerId,
+            stripe_subscription_id:
+              typeof s.subscription === "string" ? s.subscription : null,
+          })
+          .eq("stripe_event_id", event.id);
         break;
       }
 

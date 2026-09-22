@@ -53,9 +53,11 @@ type Estado =
   | "senha"
   | "ativo"
   | "cancelado"
+  | "confirmacao"
   | "entrar";
 
 const MIN_SENHA = 8;
+const MAX_TENTATIVAS_CONFIRMACAO = 5;
 
 export default function Assinatura() {
   const { user, loading } = useAuth();
@@ -76,6 +78,7 @@ export default function Assinatura() {
   const [email, setEmail] = useState<string>("");
   const [senha, setSenha] = useState("");
   const [salvandoSenha, setSalvandoSenha] = useState(false);
+  const [tentativaConfirmacao, setTentativaConfirmacao] = useState(0);
   // A troca do checkout por sessão acontece uma vez, mesmo que o React rode
   // o efeito duas vezes ou a sessão chegue no meio.
   const trocando = useRef(false);
@@ -89,16 +92,28 @@ export default function Assinatura() {
       try {
         const r = await api.billingPublico.complete(sessaoCheckout);
         if (!r.ok) {
-          // Pagamento ainda processando (boleto, 3DS pendente): dá o benefício
-          // da dúvida por alguns segundos e tenta de novo.
+          if (r.origem === "compra-direta" && tentativaConfirmacao >= MAX_TENTATIVAS_CONFIRMACAO - 1) {
+            trocando.current = false;
+            setErro("A confirmação está demorando mais que o normal. Sua compra não será repetida.");
+            setEstado("confirmacao");
+            return;
+          }
+          // Pagamento ainda processando: espera alguns segundos. A compra
+          // direta tem teto para não manter esta tela consultando sem fim.
           setEstado("esperando");
           setTimeout(() => {
             trocando.current = false;
+            if (r.origem === "compra-direta") setTentativaConfirmacao((n) => n + 1);
           }, 4000);
           return;
         }
         if (r.email) setEmail(r.email);
         if (r.session) {
+          if (r.origem === "compra-direta") {
+            try {
+              (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq?.("track", "Purchase");
+            } catch { /* telemetria não interfere no acesso adquirido */ }
+          }
           await supabase.auth.setSession(r.session);
           // A URL com o id de checkout não deve ficar no histórico: ele já
           // foi usado, e um refresh acusaria "já entrou".
@@ -114,7 +129,7 @@ export default function Assinatura() {
         setEstado("entrar");
       }
     })();
-  }, [loading, user, status, sessaoCheckout, estado]);
+  }, [loading, user, status, sessaoCheckout, estado, tentativaConfirmacao]);
 
   // ---- 2. Logado: planos e estado da assinatura ---------------------------
   useEffect(() => {
@@ -325,6 +340,39 @@ export default function Assinatura() {
             <Button asChild size="lg" className="mt-7 w-full">
               <Link to="/entrar">Entrar</Link>
             </Button>
+          </div>
+        )}
+
+        {/* ---------------- confirmação demorou: tentativa manual e segura */}
+        {estado === "confirmacao" && (
+          <div className="animate-rise-in text-center">
+            <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-8 w-8 text-primary" aria-hidden />
+            </span>
+            <p className="rotulo mt-5 text-primary">Pagamento em confirmação</p>
+            <h1 className="mt-2 text-[30px] font-normal leading-[1.05] tracking-titulo">
+              Estamos aguardando a Stripe.
+            </h1>
+            <p className="mt-2 text-[15px] leading-snug text-muted-foreground">
+              {erro} Você pode consultar novamente sem criar outra cobrança.
+            </p>
+            <div className="mt-7 space-y-3">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => {
+                  setErro(null);
+                  setTentativaConfirmacao(0);
+                  trocando.current = false;
+                  setEstado("carregando");
+                }}
+              >
+                Consultar pagamento novamente
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full">
+                <Link to="/compra-direta#oferta">Voltar para a oferta</Link>
+              </Button>
+            </div>
           </div>
         )}
 

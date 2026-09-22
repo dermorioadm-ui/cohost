@@ -12,6 +12,7 @@ const Auth = lazy(() => import("@/pages/Auth"));
 const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
 const Confirmar = lazy(() => import("@/pages/Confirmar"));
 const Landing = lazy(() => import("@/pages/Landing"));
+const CompraDireta = lazy(() => import("@/pages/CompraDireta"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Faturas = lazy(() => import("@/pages/Faturas"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -130,6 +131,7 @@ export default function App() {
                           o dono conferir o que o visitante vê sem sair da
                           conta. */}
                       <Route path="/pagina" element={<Landing />} />
+                      <Route path="/compra-direta" element={<CompraDireta />} />
                       <Route path="/entrar" element={<Auth />} />
 
                       {/* Sem Protected de propósito: quem volta do checkout da página ainda
