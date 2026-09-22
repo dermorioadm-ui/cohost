@@ -1946,33 +1946,33 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .cena-seg { transform: scaleX(clamp(0, calc(var(--p, 0) * (var(--n) - 1) - var(--i) + 1), 1)); }
 
 /* --- ritmo e molduras das seções de apoio ------------------------------ */
-.landing-page { --lp-section-gap: 100px; --lp-section-gap-major: 128px; }
+.landing-page { --lp-section-gap: 168px; --lp-section-gap-major: 208px; --lp-cena-topo: 88px; }
 .lp-secao { padding-top: var(--lp-section-gap); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
 /* No celular o respiro de cima é o padding da própria cena fixada; somar margem aqui
    dobraria o espaço. No desktop a cena ainda centraliza, e a margem continua valendo. */
-.lp-cena-espacada { margin-top: 0; }
+.lp-cena-espacada { margin-top: calc(var(--lp-section-gap) - var(--lp-cena-topo)); }
 .lp-secao--final { padding-bottom: var(--lp-section-gap); }
 .lp-fechamento-conteudo { padding-top: var(--lp-section-gap); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 .foto-recorte { border-radius: 24px 72px 24px 24px; }
 .foto-recorte--inverso { border-radius: 72px 24px 24px 24px; }
 .foto-recorte--baixo { border-radius: 24px 24px 72px 24px; }
 @media (min-width: 768px) {
-  .landing-page { --lp-section-gap: 136px; --lp-section-gap-major: 164px; }
+  .landing-page { --lp-section-gap: 192px; --lp-section-gap-major: 240px; --lp-cena-topo: 32px; }
   .lp-fechamento-conteudo { padding-bottom: 96px; }
   .foto-recorte { border-radius: 28px 100px 28px 28px; }
   .foto-recorte--inverso { border-radius: 100px 28px 28px 28px; }
   .foto-recorte--baixo { border-radius: 28px 28px 100px 28px; }
 }
 @media (min-width: 1200px) {
-  .landing-page { --lp-section-gap: 152px; --lp-section-gap-major: 188px; }
+  .landing-page { --lp-section-gap: 224px; --lp-section-gap-major: 272px; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
 .cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 600px)); }
 /* O topo respeita a pílula branca fixa (ela ocupa y=12..68): com a cena fixada, um padding
    menor esconderia o rótulo atrás dela. */
-.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: max(88px, var(--lp-section-gap)) 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: var(--lp-cena-topo, 88px) 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
 .drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 /* A foto CRESCE até a altura que o JS calcula, não só é cortada por ela.
@@ -1984,7 +1984,6 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
 @media (min-width: 768px) {
   .cena-fixo { padding-block: 32px; }
-  .lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .35); }
   .drift-conteudo { gap: 24px; }
   .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
   .foto-recurso { aspect-ratio: 3 / 2; height: auto; max-height: var(--foto-recurso-max, none); }
