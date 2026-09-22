@@ -370,6 +370,21 @@ function BotaoFalar({
   );
 }
 
+function BotaoOferta({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-14 w-full items-center justify-center gap-2.5 rounded-pill border border-primary bg-primary px-6 text-base tracking-corpo text-white transition-[background-color,transform] duration-200 ease-page hover:bg-primary-hover active:scale-[0.985]",
+        className,
+      )}
+    >
+      Ver a oferta de R$97/mês <span aria-hidden>↓</span>
+    </button>
+  );
+}
+
 /** O traço coral que sublinha cada título de seção. */
 function Traco({ className }: { className?: string }) {
   return (
@@ -564,6 +579,16 @@ const PERGUNTAS = [
   ["Se eu cancelar a ferramenta, perco a assistência jurídica?", "Quando contratada, a assistência jurídica permanece pelo período do seu contrato, mesmo se você cancelar a ferramenta. São contratações independentes."],
 ];
 
+const PERGUNTAS_COMPRA_DIRETA = [
+  ["Quanto custa?", "R$97 por mês para 1 imóvel."],
+  ["Tem taxa de implementação?", "Não. Na compra direta não há taxa de implementação: você configura a ferramenta pelo passo a passo depois do pagamento."],
+  ["Quem configura o imóvel?", "Você mesmo. Depois que o pagamento for confirmado, a HospedePay abre a criação da sua senha e conduz a configuração do primeiro imóvel."],
+  ["Meu prédio não tem portaria digital.", "A portaria recebe e-mail com nome, documento e horário a cada reserva. Com portaria digital, o acesso abre e fecha sozinho."],
+  ["É reconhecimento facial?", "Não. Documento, selfie e assinatura na mesma folha, com IP e hora. É prova — e é o que vale numa discussão."],
+  ["E o hóspede, quem responde?", "A IA do seu apartamento, no link que ele recebe no fim do cadastro. O que ela não sabe, chega pra você."],
+  ["E se eu não gostar da ferramenta?", "A ferramenta tem garantia de 30 dias. As condições aparecem antes da contratação e no checkout."],
+];
+
 /* -------------------------------------------------------------- página */
 
 type Plano = (typeof PLANOS_RESERVA)[number];
@@ -623,7 +648,8 @@ function Celular({ reduz }: { reduz: boolean }) {
   );
 }
 
-export default function Landing() {
+export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "compra-direta" }) {
+  const compraDireta = modo === "compra-direta";
   const raiz = useRef<HTMLDivElement>(null);
   const reduz = useReducedMotion();
   useReveal(raiz, reduz);
@@ -672,12 +698,12 @@ export default function Landing() {
   useEffect(() => {
     const escolherPeloLink = () => {
       const tier = window.location.hash.slice(1);
-      if (PLANOS.some((p) => p.tier === tier)) setPlanoEscolhido(tier);
+      if (!compraDireta && PLANOS.some((p) => p.tier === tier)) setPlanoEscolhido(tier);
     };
     escolherPeloLink();
     window.addEventListener("hashchange", escolherPeloLink);
     return () => window.removeEventListener("hashchange", escolherPeloLink);
-  }, [PLANOS]);
+  }, [PLANOS, compraDireta]);
   useEffect(() => {
     supabase
       .from("plans")
@@ -751,7 +777,20 @@ export default function Landing() {
     setErroPlano(null);
     setAbrindo(`${tier}:${cycle}`);
     try {
-      const { url } = await api.billingPublico.checkout({ tier, cycle });
+      const { url } = await api.billingPublico.checkout({
+        tier,
+        cycle,
+        origem: compraDireta ? "compra-direta" : "pagina",
+      });
+      if (compraDireta) {
+        try {
+          (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq?.(
+            "track",
+            "InitiateCheckout",
+            { value: 97, currency: "BRL", content_name: "Essencial mensal" },
+          );
+        } catch { /* telemetria não pode impedir o checkout */ }
+      }
       window.location.href = url;
     } catch (e) {
       setErroPlano(e instanceof ApiError ? e.message : "Não consegui abrir o pagamento agora. Tente de novo.");
@@ -843,6 +882,13 @@ export default function Landing() {
     });
   };
 
+  const irParaOferta = useCallback(() => {
+    document.getElementById("oferta")?.scrollIntoView({
+      block: "start",
+      behavior: reduz ? "auto" : "smooth",
+    });
+  }, [reduz]);
+
   return (
     <div ref={raiz} className="landing-page tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
       <style>{LP_CSS}</style>
@@ -919,8 +965,17 @@ export default function Landing() {
                 Reserva confirmada, documento com foto, selfie e assinatura digital. Contrato vem
                 antes da chave.
               </p>
-              <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mt-0.5" />
-              <p className="text-center text-sm leading-normal tracking-titulo text-white/70">{textos.linha}</p>
+              {compraDireta ? (
+                <>
+                  <BotaoOferta onClick={irParaOferta} className="mt-0.5" />
+                  <p className="text-center text-sm leading-normal tracking-titulo text-white/70">Compra mensal, configuração por sua conta e sem taxa de implementação.</p>
+                </>
+              ) : (
+                <>
+                  <BotaoFalar on={on} label={textos.btn} onClick={abrir} className="mt-0.5" />
+                  <p className="text-center text-sm leading-normal tracking-titulo text-white/70">{textos.linha}</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -980,12 +1035,20 @@ export default function Landing() {
                   </p>
                   {t.juridico && (
                     <div data-reveal="up" style={delay(450)} className="mt-6 flex max-w-[46ch] flex-col items-start gap-3">
-                      <a href="#assistencia-juridica" className="inline-flex min-h-12 items-center gap-5 rounded-pill bg-white px-5 py-3 text-sm leading-snug tracking-corpo text-black transition-colors hover:bg-[#ededed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                        Conhecer a assistência jurídica <span aria-hidden>↗</span>
-                      </a>
-                      <p className="text-xs leading-[1.5] text-white/80">
-                        * Contratação opcional e separada. Consulte a disponibilidade nos planos.
-                      </p>
+                      {compraDireta ? (
+                        <button type="button" onClick={irParaOferta} className="inline-flex min-h-12 items-center gap-5 rounded-pill bg-white px-5 py-3 text-sm leading-snug tracking-corpo text-black transition-colors hover:bg-[#ededed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                          Ver a oferta da ferramenta <span aria-hidden>↓</span>
+                        </button>
+                      ) : (
+                        <>
+                          <a href="#assistencia-juridica" className="inline-flex min-h-12 items-center gap-5 rounded-pill bg-white px-5 py-3 text-sm leading-snug tracking-corpo text-black transition-colors hover:bg-[#ededed] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                            Conhecer a assistência jurídica <span aria-hidden>↗</span>
+                          </a>
+                          <p className="text-xs leading-[1.5] text-white/80">
+                            * Contratação opcional e separada. Consulte a disponibilidade nos planos.
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1085,8 +1148,7 @@ export default function Landing() {
             <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
             <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
               <span className="vidro inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white">
-                <Ponto on={on} />
-                {on ? "Online agora" : "Te ligo em até 1 hora"}
+                {compraDireta ? "HospedePay em uso" : <><Ponto on={on} />{on ? "Online agora" : "Te ligo em até 1 hora"}</>}
               </span>
             </figcaption>
           </figure>
@@ -1097,12 +1159,22 @@ export default function Landing() {
               className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
             />
             <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
-              Quem te atende sou eu. Na contratação pelo WhatsApp, combinamos a implementação
-              para colocar seu imóvel na ferramenta.
+              {compraDireta
+                ? "Depois da compra, o passo a passo mostra como cadastrar o imóvel e ligar o calendário. Você faz a configuração, sem taxa de implementação."
+                : "Quem te atende sou eu. Na contratação pelo WhatsApp, combinamos a implementação para colocar seu imóvel na ferramenta."}
             </p>
             <div data-reveal="up" style={delay(400)} className="flex flex-col gap-2.5">
-              <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-              <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+              {compraDireta ? (
+                <>
+                  <BotaoOferta onClick={irParaOferta} />
+                  <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">1 imóvel · R$97/mês · você configura</p>
+                </>
+              ) : (
+                <>
+                  <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
+                  <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1274,24 +1346,31 @@ export default function Landing() {
               <div className="comparacao-notas">
                 <p>Na gestora, confirme os itens marcados com “?” no seu contrato.</p>
                 <p id="comparacao-juridico-note">
-                  <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                    * Suporte jurídico: consulte disponibilidade e condições.
-                  </a>
+                  {compraDireta ? (
+                    "* Suporte jurídico é opcional e não faz parte da assinatura de R$97/mês."
+                  ) : (
+                    <a href="#assistencia-juridica" className="underline decoration-primary underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                      * Suporte jurídico: consulte disponibilidade e condições.
+                    </a>
+                  )}
                 </p>
               </div>
             </div>
 
-            <aside className="comparacao-conta" aria-label="Exemplo de custo anual">
+            <aside className="comparacao-conta" aria-label={compraDireta ? "Exemplo de custo mensal" : "Exemplo de custo anual"}>
               <h3>Faça essa conta antes da próxima reserva.</h3>
               <p>Exemplo: imóvel que fatura R$4.000 por mês, com uma gestora cobrando 20%.</p>
               <dl className="comparacao-conta__valores">
-                {[["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]].map(([q, v]) => (
-                  <div key={q}><dt>{q}</dt><dd>{v}<span> / ano</span></dd></div>
+                {(compraDireta
+                  ? [["Gestora a 20%", "R$800"], ["HospedePay mensal", "R$97"]]
+                  : [["Gestora a 20%", "R$9.600"], ["HospedePay anual", "R$970"]]
+                ).map(([q, v]) => (
+                  <div key={q}><dt>{q}</dt><dd>{v}<span> / {compraDireta ? "mês" : "ano"}</span></dd></div>
                 ))}
               </dl>
               <div className="comparacao-economia">
                 <Rotulo className="text-white">O que pode continuar com você</Rotulo>
-                <p><strong>R$8.630</strong><span>a mais por ano, neste exemplo.</span></p>
+                <p><strong>{compraDireta ? "R$703" : "R$8.630"}</strong><span>a mais por {compraDireta ? "mês" : "ano"}, neste exemplo.</span></p>
                 <p>Seu patrimônio trabalha para você. A operação também deveria.</p>
               </div>
             </aside>
@@ -1301,7 +1380,54 @@ export default function Landing() {
 
       {/* -------------------------------------------------------- planos */}
       {/* Os valores ficam juntos; os benefícios e a contratação são compartilhados. */}
-      <section id="planos" className="lp-secao lp-secao--destaque scroll-mt-20 mx-auto max-w-[1120px] px-5">
+      <section id={compraDireta ? "oferta" : "planos"} className="lp-secao lp-secao--destaque scroll-mt-20 mx-auto max-w-[1120px] px-5">
+        {compraDireta ? (
+          <div className="oferta-principal pb-7 md:pb-10">
+            <Rotulo className="mb-4 block text-[#ff91a5]">Compra direta</Rotulo>
+            <Titulo texto="Seu imóvel protegido por *R$97/mês*." className="oferta-titulo" />
+            <p className="oferta-intro">Uma assinatura mensal para 1 imóvel. Você configura pelo passo a passo, sem taxa de implementação.</p>
+
+            {checkoutCancelado && (
+              <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-[15px] leading-snug text-white">
+                Checkout cancelado. Nenhuma cobrança foi feita; você pode tentar novamente.
+              </p>
+            )}
+            {erroPlano && (
+              <p role="alert" className="mt-5 rounded-2xl border border-[#ff91a5] bg-[#fff1f4] px-4 py-3 text-[15px] leading-snug text-[#8a1533]">
+                {erroPlano} Tente novamente pelo botão abaixo.
+              </p>
+            )}
+
+            <div className="oferta-resumo">
+              <div>
+                <div aria-live="polite" aria-atomic="true">
+                  <h3 className="oferta-plano-nome">Essencial <span>· 1 imóvel</span></h3>
+                  <p className="oferta-preco"><span>{brl(planoAtivo.mensal)}</span> <span>por mês</span></p>
+                </div>
+                <ul className="oferta-beneficios">
+                  {["Todos os recursos da ferramenta", "Configuração guiada por você", "Sem taxa de implementação", "Garantia de 30 dias da ferramenta"].map((l) => (
+                    <li key={l}><Check /><span>{l}</span></li>
+                  ))}
+                </ul>
+              </div>
+              <div className="oferta-contratacao">
+                <button
+                  type="button"
+                  onClick={() => assinar("essencial", "monthly")}
+                  disabled={abrindo !== null}
+                  className="oferta-assinar"
+                >
+                  {abrindo === "essencial:monthly" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  {abrindo === "essencial:monthly" ? "Criando checkout…" : "Assinar por R$97/mês"}
+                  <span aria-hidden>↗</span>
+                </button>
+                <p className="oferta-condicoes">O preço e o plano são conferidos no servidor antes de a Stripe abrir.</p>
+                <p className="oferta-implementacao">Depois da confirmação do pagamento, crie sua senha e comece a configurar o imóvel.</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="oferta-principal">
           <Rotulo className="mb-4 block text-[#ff91a5]">Seu próximo check-in começa aqui</Rotulo>
           <Titulo texto="Escolha o plano para o seu *imóvel*." className="oferta-titulo" />
@@ -1396,6 +1522,9 @@ export default function Landing() {
             window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
           } : undefined}
         />
+          </>
+        )}
+        {compraDireta && <LegalOfferSection />}
       </section>
 
       {/* ------------------------------------------------------ garantia */}
@@ -1418,7 +1547,11 @@ export default function Landing() {
             <div className="h-px bg-white/[0.3]" />
             <div className="flex flex-col gap-2">
               <Titulo as="p" texto="Da contratação ao calendário." className="text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.1] tracking-titulo text-white" atraso={200} />
-              <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">Configure na compra direta ou combine a implementação na contratação pelo WhatsApp.</p>
+              <p data-reveal="up" style={delay(500)} className="text-lg leading-[1.33] tracking-[-0.01em] text-white/90">
+                {compraDireta
+                  ? "Depois do pagamento, você configura seu imóvel pelo passo a passo. Sem taxa de implementação."
+                  : "Configure na compra direta ou combine a implementação na contratação pelo WhatsApp."}
+              </p>
             </div>
           </div>
         </div>
@@ -1432,7 +1565,7 @@ export default function Landing() {
             <Traco className="mt-6" />
           </div>
           <div className="mt-8 flex flex-col border-t border-[#e6e6e6] lg:col-span-7 lg:mt-0">
-            {PERGUNTAS.map(([q, a], i) => (
+            {(compraDireta ? PERGUNTAS_COMPRA_DIRETA : PERGUNTAS).map(([q, a], i) => (
               <details key={q} data-reveal="up" style={delay(i * 50)} className="pergunta group border-b border-[#e6e6e6]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 [&::-webkit-details-marker]:hidden">
                   <span className="text-[clamp(19px,2.2vw,24px)] font-normal leading-[1.25] tracking-[-0.02em] text-black">{q}</span>
@@ -1457,8 +1590,17 @@ export default function Landing() {
             className="max-w-[14ch] text-[clamp(40px,7vw,96px)] font-normal leading-[0.96] tracking-display text-black [&_.acento]:text-primary"
           />
           <div data-reveal="up" style={delay(300)} className="flex flex-col gap-2.5 md:max-w-[520px]">
-            <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-            <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+            {compraDireta ? (
+              <>
+                <BotaoOferta onClick={irParaOferta} />
+                <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">Compra mensal para 1 imóvel, sem taxa de implementação.</p>
+              </>
+            ) : (
+              <>
+                <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
+                <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+              </>
+            )}
           </div>
           <footer className="mt-10 flex flex-col gap-[22px] border-t border-[#e5e5e5] pt-7">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1471,13 +1613,15 @@ export default function Landing() {
               </Link>
             </div>
             <nav aria-label="Links do rodapé" className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] leading-normal tracking-corpo md:flex md:flex-wrap md:gap-x-8">
-              <button type="button" onClick={abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">
+              <button type="button" onClick={compraDireta ? irParaOferta : abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">
                 Devolução da ferramenta (30 dias)
               </button>
-              <a href="#planos" className="text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Planos</a>
-              <button type="button" onClick={abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">
-                Contato
-              </button>
+              <a href={compraDireta ? "#oferta" : "#planos"} className="text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">{compraDireta ? "Oferta" : "Planos"}</a>
+              {compraDireta ? (
+                <a href="#oferta" className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Assinar</a>
+              ) : (
+                <button type="button" onClick={abrir} className="text-left text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Contato</button>
+              )}
               <a href="#perguntas" className="text-[#666666] hover:text-black hover:underline hover:underline-offset-[3px]">Perguntas</a>
             </nav>
             <div className="flex flex-col gap-2 border-t border-[#e5e5e5] pt-[18px] text-xs leading-[1.55] tracking-[-0.015em] text-[#666666]">
@@ -1490,7 +1634,7 @@ export default function Landing() {
       </section>
 
       {/* ------------------------------------------------------- formulário */}
-      {formAberto && (
+      {!compraDireta && formAberto && (
         <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
           <button type="button" aria-label="Fechar" onClick={fechar} className="absolute inset-0 bg-black/45" />
           <div

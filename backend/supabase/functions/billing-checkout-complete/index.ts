@@ -38,13 +38,29 @@ export default handler(async (req) => {
   const db = admin();
 
   const s = await stripe.checkout.sessions.retrieve(session_id);
+  const origem = s.metadata?.origem === "compra-direta" ? "compra-direta" : "pagina";
 
   if (s.mode !== "subscription") throw errors.invalid("Esta sessão não é de assinatura");
   if (s.status !== "complete") {
-    return json({ ok: false, estado: "pendente" });
+    return json({ ok: false, estado: "pendente", origem });
   }
   if (s.payment_status !== "paid" && s.payment_status !== "no_payment_required") {
-    return json({ ok: false, estado: "pendente" });
+    return json({ ok: false, estado: "pendente", origem });
+  }
+
+  // Na compra direta, a volta do navegador não concede acesso. Além de
+  // consultar a Stripe no servidor, esperamos o webhook assinado terminar a
+  // conciliação e marcar este checkout como pago em billing_events.
+  if (origem === "compra-direta") {
+    const { data: conciliado } = await db
+      .from("billing_events")
+      .select("id")
+      .eq("type", "checkout.session.completed")
+      .eq("status", "paid")
+      .contains("raw", { id: s.id })
+      .limit(1)
+      .maybeSingle();
+    if (!conciliado) return json({ ok: false, estado: "pendente", origem });
   }
 
   const conta = await contaDoCheckout(db, s);
@@ -60,7 +76,7 @@ export default handler(async (req) => {
     .maybeSingle();
 
   if (usado) {
-    return json({ ok: true, estado: "ativo", ja_entrou: true, email: conta.email });
+    return json({ ok: true, estado: "ativo", ja_entrou: true, email: conta.email, origem });
   }
 
   await db.from("audit_log").insert({
@@ -69,7 +85,7 @@ export default handler(async (req) => {
     action: "billing.checkout_login",
     entity: "checkout",
     entity_id: s.id,
-    metadata: { criada: conta.criada },
+    metadata: { criada: conta.criada, origem },
   });
 
   const { data: link, error: linkError } = await db.auth.admin.generateLink({
@@ -95,6 +111,7 @@ export default handler(async (req) => {
     estado: "ativo",
     email: conta.email,
     conta_nova: conta.criada,
+    origem,
     session: {
       access_token: verified.session.access_token,
       refresh_token: verified.session.refresh_token,
