@@ -1144,7 +1144,7 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
       {/* ------------------------------------------------- quem responde */}
       <section id="quem-responde" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
         <div className="md:grid md:grid-cols-12 md:items-center md:gap-10">
-          <figure className="foto-recorte foto-recorte--inverso relative aspect-[5/6] w-[70%] max-w-[280px] overflow-hidden bg-[#f0f0f0] md:col-span-5 md:aspect-square md:w-full md:max-w-none">
+          <figure className="foto-recorte foto-recorte--inverso relative aspect-[5/6] w-[56%] max-w-[224px] overflow-hidden bg-[#f0f0f0] md:col-span-5 md:aspect-square md:w-[80%] md:max-w-none">
             <img src={FOTO} alt="Renato, anfitrião em Niterói" loading="lazy" className="block h-full w-full object-cover [object-position:50%_30%]" />
             <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%)" }} />
             <figcaption className="absolute inset-x-0 bottom-0 p-6 md:p-8">
@@ -1156,7 +1156,7 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
           <div className="mt-7 flex flex-col gap-5 md:col-span-7 md:mt-0">
             <Titulo
               as="p"
-              texto="Sou o Renato. Anfitrião em Niterói. Uso o HospedePay no meu *próprio* apartamento."
+              texto="Sou o Renato, seu gerente de contas. Também sou anfitrião e uso o HospedePay no meu *próprio* apartamento."
               className="text-[clamp(26px,3.6vw,44px)] font-normal leading-[1.08] tracking-titulo text-black"
             />
             <p data-reveal="up" style={delay(300)} className="max-w-[44ch] text-lg leading-[1.4] tracking-corpo text-[#666666]">
@@ -1950,7 +1950,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .lp-secao { padding-top: var(--lp-section-gap); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
 /* Margem fora da cena: o respiro não altera o percurso horizontal fixado. */
-.lp-cena-espacada { margin-top: var(--lp-section-gap); }
+.lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .7); }
 .lp-secao--final { padding-bottom: var(--lp-section-gap); }
 .lp-fechamento-conteudo { padding-top: var(--lp-section-gap); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 .foto-recorte { border-radius: 24px 72px 24px 24px; }
@@ -1969,13 +1969,13 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
 .cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 800px)); }
-.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 84px 0 calc(92px + env(safe-area-inset-bottom, 0px)); }
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 59px 0 calc(64px + env(safe-area-inset-bottom, 0px)); }
 .drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 .foto-recurso { aspect-ratio: 5 / 3; max-height: var(--foto-recurso-max, none); flex-shrink: 0; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
 @media (min-width: 768px) {
-  .cena-fixo { padding-bottom: 100px; }
+  .cena-fixo { padding-bottom: 70px; }
   .drift-conteudo { gap: 28px; }
   .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
   .foto-recurso { aspect-ratio: 3 / 2; }
