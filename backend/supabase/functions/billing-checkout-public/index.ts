@@ -34,19 +34,19 @@ export default handler(async (req) => {
   // A página de tráfego frio tem uma única oferta aprovada. Validar aqui
   // impede que alguém altere tier/ciclo no navegador e use esta origem para
   // abrir outra condição comercial.
-  if (origem === "compra-direta" && (tier !== "essencial" || cycle !== "monthly")) {
-    throw errors.invalid("A compra direta está disponível para 1 imóvel no plano mensal");
+  if (origem === "compra-direta" && cycle !== "monthly") {
+    throw errors.invalid("A compra direta usa planos mensais");
   }
 
   const db = admin();
   const { data: plan } = await db
     .from("plans")
-    .select("tier, name, monthly_cents, max_properties, stripe_price_monthly, stripe_price_annual, active")
+    .select("tier, name, monthly_cents, max_properties, currency, stripe_price_monthly, stripe_price_annual, active")
     .eq("tier", tier)
     .maybeSingle();
   if (!plan || !plan.active) throw errors.notFound("Plano não disponível");
-  if (origem === "compra-direta" && (plan.monthly_cents !== 9700 || plan.max_properties !== 1)) {
-    throw errors.upstream("A oferta de R$97 para 1 imóvel não está configurada. Revise o plano Essencial.");
+  if (origem === "compra-direta" && (!plan.max_properties || plan.max_properties > 5)) {
+    throw errors.invalid("Para mais de 5 imóveis, fale conosco pelo WhatsApp.");
   }
 
   const priceId = cycle === "annual" ? plan.stripe_price_annual : plan.stripe_price_monthly;
@@ -64,14 +64,14 @@ export default handler(async (req) => {
     const price = await stripe.prices.retrieve(priceId);
     if (
       !price.active ||
-      price.unit_amount !== 9700 ||
-      price.currency.toLowerCase() !== "brl" ||
+      price.unit_amount !== plan.monthly_cents ||
+      price.currency.toLowerCase() !== String(plan.currency ?? "BRL").toLowerCase() ||
       price.type !== "recurring" ||
       price.recurring?.interval !== "month" ||
       price.recurring.interval_count !== 1
     ) {
       throw errors.upstream(
-        "O preço mensal de R$97 na Stripe não corresponde à oferta. Revise a sincronização antes de vender.",
+        "O preço mensal na Stripe não corresponde à oferta. Revise a sincronização antes de vender.",
       );
     }
   }
