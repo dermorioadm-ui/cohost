@@ -1949,8 +1949,9 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 .landing-page { --lp-section-gap: 78px; --lp-section-gap-major: 101px; }
 .lp-secao { padding-top: var(--lp-section-gap); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
-/* Margem fora da cena: o respiro não altera o percurso horizontal fixado. */
-.lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .35); }
+/* No celular o respiro de cima é o padding da própria cena fixada; somar margem aqui
+   dobraria o espaço. No desktop a cena ainda centraliza, e a margem continua valendo. */
+.lp-cena-espacada { margin-top: 0; }
 .lp-secao--final { padding-bottom: var(--lp-section-gap); }
 .lp-fechamento-conteudo { padding-top: var(--lp-section-gap); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 .foto-recorte { border-radius: 24px 72px 24px 24px; }
@@ -1969,16 +1970,24 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
 .cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 600px)); }
-.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 24px 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
+/* O topo respeita a pílula branca fixa (ela ocupa y=12..68): com a cena fixada, um padding
+   menor esconderia o rótulo atrás dela. */
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 88px 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
 .drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
-.foto-recurso { aspect-ratio: 5 / 3; max-height: var(--foto-recurso-max, none); flex-shrink: 0; }
+/* A foto CRESCE até a altura que o JS calcula, não só é cortada por ela.
+   Com aspect-ratio mais max-height a foto ficava em 183px num card de 304px e sobravam
+   333px de tela vazia, centralizados em 166px acima e 166px abaixo do conteúdo — o que
+   aparecia como um buraco entre esta dobra e as vizinhas. A largura do card não muda,
+   então --dx e --percurso continuam idênticos e a rolagem lateral é a mesma. */
+.foto-recurso { height: var(--foto-recurso-max, clamp(200px, 42svh, 400px)); flex-shrink: 0; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
 @media (min-width: 768px) {
   .cena-fixo { padding-block: 32px; }
+  .lp-cena-espacada { margin-top: calc(var(--lp-section-gap) * .35); }
   .drift-conteudo { gap: 24px; }
   .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
-  .foto-recurso { aspect-ratio: 3 / 2; }
+  .foto-recurso { aspect-ratio: 3 / 2; height: auto; max-height: var(--foto-recurso-max, none); }
 }
 .trilho:focus-visible { outline: 2px solid #000; outline-offset: -2px; }
 
@@ -2020,7 +2029,7 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .cena-cresce { margin-inline: 0; border-radius: 32px; }
   .cena-drift { height: auto; }
   .cena-fixo { position: static; height: auto; min-height: 0; overflow: visible; padding: 0; }
-  .foto-recurso { max-height: none; }
+  .foto-recurso { aspect-ratio: 5 / 3; height: auto; max-height: none; }
   .trilho { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); width: 100%; max-width: 1120px; margin-inline: auto; padding: 0 20px; transform: none; will-change: auto; overflow: visible; }
   .trilho > article { width: auto; min-width: 0; }
   .trilho > [aria-hidden] { display: none; }
