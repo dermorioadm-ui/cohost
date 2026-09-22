@@ -874,10 +874,6 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
     if (!secao || !trilho || !cards?.[indice] || !fixo) return;
     const deslocamento = cards[indice].offsetLeft - cards[0].offsetLeft;
     const behavior = reduz ? "auto" : "smooth";
-    if (window.matchMedia("(max-width: 767px)").matches) {
-      trilho.scrollTo({ left: deslocamento, behavior });
-      return;
-    }
     const total = Math.max(1, trilho.scrollWidth - secao.clientWidth);
     const progresso = Math.min(1, deslocamento / total);
     const topoFixo = parseFloat(getComputedStyle(fixo).top) || 0;
@@ -1972,26 +1968,15 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
-.cena-drift { position: relative; height: calc(var(--altura-fixa, 78svh) + var(--percurso, 600px)); }
-.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: clamp(560px, 78svh, 760px); display: flex; align-items: center; overflow: hidden; padding: 32px 0 calc(36px + env(safe-area-inset-bottom, 0px)); }
-.drift-conteudo { display: flex; flex-direction: column; gap: 8px; width: 100%; flex-shrink: 0; }
+.cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 600px)); }
+.cena-fixo { position: sticky; top: var(--topo-fixo, 0px); min-height: 100svh; display: flex; align-items: center; overflow: hidden; padding: 24px 0 calc(24px + env(safe-area-inset-bottom, 0px)); }
+.drift-conteudo { display: flex; flex-direction: column; gap: 12px; width: 100%; flex-shrink: 0; }
 .trilho { position: relative; display: flex; align-items: flex-start; gap: 20px; width: max-content; padding-inline: 20px; transform: translate3d(calc(var(--p, 0) * var(--dx, 0px)), 0, 0); will-change: transform; }
 .foto-recurso { aspect-ratio: 5 / 3; max-height: var(--foto-recurso-max, none); flex-shrink: 0; }
 .drift-progresso > span { transform: scaleX(var(--p, 0)); }
-@media (max-width: 767px) {
-  /* No celular, o trilho ocupa somente a própria altura. O arraste lateral
-     substitui o espaçador vertical que deixava uma grande área vazia abaixo. */
-  .cena-drift { height: auto; }
-  .cena-fixo { position: relative; top: auto; height: auto; min-height: 0; overflow: visible; padding: 28px 0 32px; }
-  .drift-conteudo { gap: 14px; }
-  .trilho { width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; transform: none !important; will-change: auto; overscroll-behavior-inline: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .trilho::-webkit-scrollbar { display: none; }
-  .trilho > article { scroll-snap-align: start; scroll-snap-stop: always; }
-  .drift-progresso > span { transform: scaleX(.25); }
-}
 @media (min-width: 768px) {
-  .cena-fixo { min-height: clamp(620px, 78svh, 760px); padding-block: 40px 48px; }
-  .drift-conteudo { gap: 20px; }
+  .cena-fixo { padding-block: 32px; }
+  .drift-conteudo { gap: 24px; }
   .trilho { gap: 24px; padding-inline: max(20px, calc((100vw - 1120px) / 2 + 20px)); }
   .foto-recurso { aspect-ratio: 3 / 2; }
 }
