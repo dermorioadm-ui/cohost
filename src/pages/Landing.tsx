@@ -51,6 +51,7 @@ const VIDEO_PROVA = (ENV.VITE_LP_VIDEO_PROVA ?? "").trim() || "/lp/prova.mp4";
 const VIDEO_PROVA_INICIO = 4;
 const FOTO = (ENV.VITE_LP_FOTO ?? "").trim() || "/lp/renato.webp";
 const ANUNCIO_AIRBNB = "https://www.airbnb.com.br/rooms/1497251231116164748";
+const WHATSAPP_COMPRA_DIRETA = "5521998234902";
 
 /** Números da seção "Prova": o apartamento de Niterói, de verdade. */
 const PROVA = { reservas: 14, hospedes: 27, termos: 14, cadastros: 26 };
@@ -1384,8 +1385,8 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
         {compraDireta ? (
           <div className="oferta-principal pb-7 md:pb-10">
             <Rotulo className="mb-4 block text-[#ff91a5]">Compra direta</Rotulo>
-            <Titulo texto="Seu imóvel protegido por *R$97/mês*." className="oferta-titulo" />
-            <p className="oferta-intro">Uma assinatura mensal para 1 imóvel. Você configura pelo passo a passo, sem taxa de implementação.</p>
+            <Titulo texto="Escolha quantos *imóveis* vão rodar." className="oferta-titulo" />
+            <p className="oferta-intro">Planos mensais, autoimplementação e nenhum custo de implementação.</p>
 
             {checkoutCancelado && (
               <p className="mt-5 rounded-2xl bg-white/10 px-4 py-3 text-[15px] leading-snug text-white">
@@ -1398,10 +1399,35 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
               </p>
             )}
 
+            <fieldset className="oferta-escolha" disabled={abrindo !== null}>
+              <legend>Quantos imóveis você tem?</legend>
+              <div className="oferta-opcoes">
+                {PLANOS.map((p) => (
+                  <label key={p.tier} id={`compra-direta-${p.tier}`} className="oferta-opcao">
+                    <input
+                      type="radio"
+                      name="plano-compra-direta"
+                      value={p.tier}
+                      checked={planoAtivo.tier === p.tier}
+                      onChange={() => { setPlanoEscolhido(p.tier); setErroPlano(null); }}
+                      aria-label={`${p.imoveis}, ${brl(p.mensal)} por mês`}
+                      className="sr-only"
+                    />
+                    <span className="oferta-opcao__conteudo">
+                      <span className="oferta-opcao__imoveis">{p.imoveis}</span>
+                      <span className="oferta-opcao__valor"><span>R$</span>{p.mensal.toLocaleString("pt-BR")}</span>
+                      <span className="oferta-opcao__periodo">por mês</span>
+                      <span className="oferta-opcao__mensal">configuração por sua conta</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
             <div className="oferta-resumo">
               <div>
                 <div aria-live="polite" aria-atomic="true">
-                  <h3 className="oferta-plano-nome">Essencial <span>· 1 imóvel</span></h3>
+                  <h3 className="oferta-plano-nome">{planoAtivo.nome} <span>· {planoAtivo.imoveis}</span></h3>
                   <p className="oferta-preco"><span>{brl(planoAtivo.mensal)}</span> <span>por mês</span></p>
                 </div>
                 <ul className="oferta-beneficios">
@@ -1413,18 +1439,26 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
               <div className="oferta-contratacao">
                 <button
                   type="button"
-                  onClick={() => assinar("essencial", "monthly")}
+                  onClick={() => assinar(planoAtivo.tier, "monthly")}
                   disabled={abrindo !== null}
                   className="oferta-assinar"
                 >
-                  {abrindo === "essencial:monthly" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                  {abrindo === "essencial:monthly" ? "Criando checkout…" : "Assinar por R$97/mês"}
+                  {abrindo === `${planoAtivo.tier}:monthly` && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  {abrindo === `${planoAtivo.tier}:monthly` ? "Criando checkout…" : `Assinar por ${brl(planoAtivo.mensal)}/mês`}
                   <span aria-hidden>↗</span>
                 </button>
                 <p className="oferta-condicoes">O preço e o plano são conferidos no servidor antes de a Stripe abrir.</p>
                 <p className="oferta-implementacao">Depois da confirmação do pagamento, crie sua senha e comece a configurar o imóvel.</p>
               </div>
             </div>
+            <a
+              href={`https://wa.me/${WHATSAPP_COMPRA_DIRETA}?text=${encodeURIComponent("Olá! Tenho mais de 5 imóveis e quero conhecer as condições da HospedePay.")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="oferta-juridico"
+            >
+              <span>Mais de 5 imóveis? Fale comigo no WhatsApp</span><span aria-hidden>↗</span>
+            </a>
           </div>
         ) : (
           <>
