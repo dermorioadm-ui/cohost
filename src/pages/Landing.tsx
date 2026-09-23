@@ -1265,7 +1265,7 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
 
       {/* ------------------------------------------------------ esquecer */}
       <section id="tranquilidade" className="lp-secao mx-auto max-w-[1120px] px-5">
-        <div className="grid grid-cols-[minmax(0,1fr)_104px] items-center gap-5 border-y border-[#e6e6e6] py-7 md:grid-cols-12 md:gap-8 md:py-10">
+        <div className="grid grid-cols-[minmax(0,1fr)_104px] items-center gap-5 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-8">
             <Titulo
               texto="Nossa meta é você *esquecer* que o HospedePay existe."
@@ -1950,7 +1950,18 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
 
 /* --- ritmo e molduras das seções de apoio ------------------------------ */
 .landing-page { --lp-section-gap: 168px; --lp-section-gap-major: 208px; --lp-cena-topo: 88px; }
-.lp-secao { padding-top: var(--lp-section-gap); }
+.lp-secao { position: relative; padding-top: var(--lp-section-gap); }
+/* O fio que separa uma dobra da outra. Fica no MEIO do respiro, não colado no
+   conteúdo, e alinha com a coluna de texto: min(100% - 40px, 1080px) dá a
+   mesma largura tanto na seção que já é o container de 1120px quanto na que
+   ocupa a tela inteira e tem o container por dentro. */
+.lp-secao::before, .lp-cena-espacada::before {
+  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+  width: min(100% - 40px, 1080px); height: 1px; background: #e6e6e6;
+  top: calc(var(--lp-section-gap) / 2);
+}
+/* Na cena fixada o respiro é margem, e a margem fica ACIMA do elemento. */
+.lp-cena-espacada::before { top: calc((var(--lp-cena-topo) - var(--lp-section-gap)) / 2); }
 .lp-secao--destaque { padding-top: var(--lp-section-gap-major); }
 /* No celular o respiro de cima é o padding da própria cena fixada; somar margem aqui
    dobraria o espaço. No desktop a cena ainda centraliza, e a margem continua valendo. */
