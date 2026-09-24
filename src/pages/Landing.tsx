@@ -49,9 +49,9 @@ const STATUS_URL = (ENV.VITE_LP_STATUS_URL ?? "").trim();
 const VIDEO_PROVA = (ENV.VITE_LP_VIDEO_PROVA ?? "").trim() || "/lp/prova.mp4";
 /** Segundo em que o vídeo do cadastro começa (corta a abertura parada). */
 const VIDEO_PROVA_INICIO = 4;
-/** O vídeo do Renato explicando a ferramenta inteira: 3min05, com fala e música. */
-const VIDEO_RENATO = (ENV.VITE_LP_VIDEO_RENATO ?? "").trim() || "/lp/video-renato.mp4";
-const VIDEO_RENATO_CAPA = "/lp/video-renato-capa.webp";
+/** Compilado de reportagens de furto e golpe em imóvel alugado: 1min45, vertical 4:5. */
+const VIDEO_IMPRENSA = (ENV.VITE_LP_VIDEO_IMPRENSA ?? "").trim() || "/lp/imprensa.mp4";
+const VIDEO_IMPRENSA_CAPA = "/lp/imprensa-capa.webp";
 const FOTO = (ENV.VITE_LP_FOTO ?? "").trim() || "/lp/renato.webp";
 const ANUNCIO_AIRBNB = "https://www.airbnb.com.br/rooms/1497251231116164748";
 const WHATSAPP_COMPRA_DIRETA = "5521998234902";
@@ -601,16 +601,13 @@ const IMOVEIS_LABEL = (n: number | null) =>
   n === null ? "sem limite de imóveis" : n === 1 ? "1 imóvel" : n === 3 ? "2 ou 3 imóveis" : n === 5 ? "4 ou 5 imóveis" : `até ${n} imóveis`;
 
 /**
- * O vídeo do Renato, com som.
+ * O compilado de reportagens, com som.
  *
- * Não toca sozinho: são 3 minutos e 30 MB de fala e música. A capa é o quadro de
- * 4,33s: olhar direto para a câmera, boca fechada e nenhuma legenda na tela (os
- * primeiros quadros pegam ele piscando). O arquivo só começa a baixar quando alguém
- * toca no play (`preload="none"`). A partir daí os controles nativos assumem.
- * Quando termina ele fica parado no card final, que diz "Fale comigo abaixo" e
- * aponta para o botão que vem logo embaixo do vídeo.
+ * Não toca sozinho: são 1min45 e 23 MB. A capa é a repórter do g1 aos 2s, que
+ * já diz "isto é notícia" antes do play. O arquivo só começa a baixar quando
+ * alguém toca no play (`preload="none"`); daí os controles nativos assumem.
  */
-function VideoRenato() {
+function VideoImprensa() {
   const ref = useRef<HTMLVideoElement>(null);
   const [tocando, setTocando] = useState(false);
   const tocar = useCallback(() => {
@@ -621,36 +618,35 @@ function VideoRenato() {
     v.play().catch(() => setTocando(false));
   }, []);
   return (
-    // O canto grande do recorte vai para baixo à direita, onde só tem o armário: em
-    // cima o vídeo já traz a marca (esquerda) e o capítulo (direita) gravados. Ao
-    // tocar, os cantos igualam, senão o arredondado corta o botão de tela cheia.
-    <div className={cn("video-renato relative aspect-[4/3] overflow-hidden bg-black", tocando ? "video-renato--tocando" : "foto-recorte foto-recorte--baixo")}>
+    // O canto grande do recorte fica embaixo à direita: em cima o vídeo traz a
+    // marca e o selo do capítulo gravados. Ao tocar, os cantos igualam, senão o
+    // arredondado corta o botão de tela cheia.
+    <div className={cn("video-dobra relative aspect-[4/5] overflow-hidden bg-primary", tocando ? "video-dobra--tocando" : "foto-recorte foto-recorte--baixo")}>
       <video
         ref={ref}
-        src={VIDEO_RENATO}
-        poster={VIDEO_RENATO_CAPA}
+        src={VIDEO_IMPRENSA}
+        poster={VIDEO_IMPRENSA_CAPA}
         preload="none"
         playsInline
         controls={tocando}
         onPlay={() => setTocando(true)}
-        aria-label="Renato explica o HospedePay em 3 minutos"
+        aria-label="Compilado de reportagens sobre furtos e golpes em imóveis alugados"
         className="block h-full w-full object-cover"
       />
       {!tocando && (
         <button
           type="button"
           onClick={tocar}
-          aria-label="Assistir ao vídeo com som, 3 minutos"
+          aria-label="Assistir às reportagens com som, 1 minuto e 45"
           className="group absolute inset-0 flex items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-white"
         >
           <span aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%)" }} />
-          {/* O play fica no peito, não no centro: o centro do quadro é o queixo, e
-              a capa foi escolhida justamente pelo olhar direto para a câmera. */}
-          <span aria-hidden className="video-renato-play absolute left-1/2 top-[70%] flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary transition-transform duration-300 ease-page group-hover:scale-[1.06] md:h-[88px] md:w-[88px]">
+          {/* O play fica abaixo do rosto da repórter, sobre a blusa. */}
+          <span aria-hidden className="video-dobra-play absolute left-1/2 top-[68%] flex h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary transition-transform duration-300 ease-page group-hover:scale-[1.06] md:h-[88px] md:w-[88px]">
             <svg viewBox="0 0 24 24" className="ml-1 h-6 w-6 md:h-8 md:w-8" fill="#fff"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.6-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" /></svg>
           </span>
           <span className="vidro absolute bottom-4 left-4 inline-flex h-8 items-center gap-2 rounded-pill px-3.5 text-[11px] uppercase tracking-[0.1em] text-white md:bottom-6 md:left-6">
-            <span className="tabular-nums">3:05</span>
+            <span className="tabular-nums">1:45</span>
             <span aria-hidden className="h-1 w-1 rounded-full bg-primary" />
             Com som
           </span>
@@ -953,6 +949,19 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
     });
   }, [reduz]);
 
+  // A ação que acompanha o vídeo da segunda dobra, uma por funil.
+  const acaoVideo = compraDireta ? (
+    <>
+      <BotaoOferta onClick={irParaOferta} />
+      <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">1 imóvel · R$97/mês · você configura</p>
+    </>
+  ) : (
+    <>
+      <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
+      <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
+    </>
+  );
+
   return (
     <div ref={raiz} className="landing-page tema-claro relative min-h-screen [overflow-x:clip] bg-white text-black">
       <style>{LP_CSS}</style>
@@ -1047,30 +1056,27 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
 
       <Faixa itens={FAIXA} />
 
-      {/* ------------------------------------------------ o vídeo do Renato */}
-      {/* A segunda dobra: a ferramenta inteira, do check-in ao checkout, na voz de
-          quem usa. O card final do vídeo diz "Fale comigo abaixo", então a ação
-          vem colada embaixo dele. No funil de compra direta a ação é a oferta,
-          como no resto daquela página. */}
+      {/* ------------------------------------------------ na imprensa */}
+      {/* A segunda dobra: o herói pergunta se você deixaria um estranho entrar, e
+          aqui vem a prova de que isso acontece, em reportagem. O vídeo é vertical,
+          então no desktop ele vai para a direita e o texto e a ação à esquerda. */}
       <section id="video" className="lp-secao scroll-mt-20 mx-auto max-w-[1120px] px-5">
-        <div className="video-renato-caixa">
-          <Rotulo className="mb-4 block text-primary">Do check‑in ao checkout</Rotulo>
-          <Titulo texto="O HospedePay inteiro em *3 minutos*." className={cn(h2, "max-w-[17ch]")} />
-          <div data-reveal="up" style={delay(150)} className="mt-8 md:mt-10">
-            <VideoRenato />
+        <div className="md:grid md:grid-cols-12 md:items-center md:gap-10">
+          <div className="md:col-span-6">
+            <Rotulo className="mb-4 block text-primary">Na imprensa</Rotulo>
+            <Titulo texto="Não é exagero. Saiu no *jornal*." className={cn(h2, "max-w-[14ch]")} />
+            <p data-reveal="up" style={delay(200)} className="mt-5 max-w-[38ch] text-lg leading-[1.4] tracking-corpo text-[#666666] [text-wrap:pretty]">
+              Alugou o imóvel e levou os móveis. Levou até o ar-condicionado. Cinco reportagens sobre quem recebeu a chave.
+            </p>
+            <div data-reveal="up" style={delay(300)} className="mt-8 hidden max-w-[420px] flex-col gap-2.5 md:flex">
+              {acaoVideo}
+            </div>
           </div>
-          <div data-reveal="up" style={delay(250)} className="mx-auto mt-6 flex max-w-[420px] flex-col gap-2.5 md:mt-8">
-            {compraDireta ? (
-              <>
-                <BotaoOferta onClick={irParaOferta} />
-                <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">1 imóvel · R$97/mês · você configura</p>
-              </>
-            ) : (
-              <>
-                <BotaoFalar on={on} label={textos.btn} onClick={abrir} />
-                <p className="text-center text-sm leading-normal tracking-titulo text-[#666666]">{textos.linha}</p>
-              </>
-            )}
+          <div data-reveal="up" style={delay(150)} className="video-dobra-caixa mt-8 md:col-span-5 md:col-start-8 md:mt-0">
+            <VideoImprensa />
+          </div>
+          <div data-reveal="up" style={delay(250)} className="mx-auto mt-6 flex max-w-[420px] flex-col gap-2.5 md:hidden">
+            {acaoVideo}
           </div>
         </div>
       </section>
@@ -2073,17 +2079,17 @@ html.tema-claro, body.tema-claro { background: #ffffff; }
   .landing-page { --lp-section-gap: 224px; --lp-section-gap-major: 272px; }
 }
 
-/* --- o vídeo do Renato --------------------------------------------------
-   No desktop a largura é limitada pela ALTURA da tela: 4:3 a 880px dá 660px de
-   altura, e numa tela de 720px isso não caberia com a barra fixa em cima. */
-.video-renato-caixa { width: 100%; margin-inline: auto; }
+/* --- o vídeo da imprensa -----------------------------------------------
+   Vertical 4:5. No celular ocupa a largura; no desktop a coluna é limitada
+   pela altura da tela, para o vídeo caber inteiro abaixo da barra fixa. */
+.video-dobra-caixa { width: 100%; }
 @media (min-width: 768px) {
-  .video-renato-caixa { max-width: min(880px, calc((100svh - 170px) * 4 / 3)); }
+  .video-dobra-caixa { max-width: min(100%, calc((100svh - 170px) * 4 / 5)); justify-self: end; }
 }
-.video-renato { transition: border-radius .5s cubic-bezier(.22, .61, .36, 1); }
-.video-renato--tocando { border-radius: 24px; }
-@media (min-width: 768px) { .video-renato--tocando { border-radius: 28px; } }
-.video-renato-play { box-shadow: 0 18px 50px rgba(255, 56, 92, 0.45); }
+.video-dobra { transition: border-radius .5s cubic-bezier(.22, .61, .36, 1); }
+.video-dobra--tocando { border-radius: 24px; }
+@media (min-width: 768px) { .video-dobra--tocando { border-radius: 28px; } }
+.video-dobra-play { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); }
 
 /* --- o trilho que corre na horizontal ---------------------------------- */
 .cena-drift { position: relative; height: calc(var(--altura-fixa, 100svh) + var(--percurso, 600px)); }
