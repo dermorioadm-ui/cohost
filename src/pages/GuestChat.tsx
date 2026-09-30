@@ -739,14 +739,15 @@ export default function GuestChat() {
 
                       {/* O campo de data vazio não desenha nada no Safari do
                           iPhone — fica uma caixa em branco, e a pessoa não
-                          sabe que aquilo se toca. A tampa cobre também o
-                          "dd/mm/aaaa" que o Android desenha, para o convite
-                          ser o mesmo nos dois. `pointer-events-none` deixa o
+                          sabe que aquilo se toca. A tampa precisa cobrir toda
+                          a área interna, inclusive o ano e o ícone nativos:
+                          uma tampa só à esquerda deixa "aaaa" aparecer ao
+                          lado de "Escolher". `pointer-events-none` deixa o
                           toque passar direto para o campo. */}
                       {!valor && (
                         <span
                           aria-hidden
-                          className="pointer-events-none absolute inset-y-px left-px flex items-center gap-1.5 rounded-l-md bg-background pl-3 pr-2 text-sm text-muted-foreground"
+                          className="pointer-events-none absolute inset-px flex min-w-0 items-center gap-1.5 overflow-hidden rounded-[13px] bg-background px-3 text-sm text-muted-foreground"
                         >
                           <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                           {t.datePick}
