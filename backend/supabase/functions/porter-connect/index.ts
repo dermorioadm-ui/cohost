@@ -175,7 +175,8 @@ async function statusOf(db: ReturnType<typeof admin>, propertyId: string) {
  *
  * A janela de acesso sai do horário do imóvel, igual ao `guest-register`, com
  * o offset de Brasília explícito: a Kiper interpreta data sem fuso como UTC e
- * o hóspede perderia as três primeiras horas da estadia.
+ * o hóspede perderia as três primeiras horas da estadia. Imóvel com
+ * `porter_access_*_time` preenchido tem a hora reescrita pelo trigger da 0062.
  */
 async function backfillQueue(
   db: ReturnType<typeof admin>,

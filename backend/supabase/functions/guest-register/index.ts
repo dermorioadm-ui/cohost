@@ -437,6 +437,8 @@ export default handler(async (req) => {
     .maybeSingle();
 
   if (porter && env.porterEnabled()) {
+    // A hora pode ser trocada no banco: imóvel com `porter_access_*_time`
+    // preenchido tem a janela reescrita pelo trigger da 0062.
     const rows = insertedPeople!.map((p) => ({
       property_id: property.id,
       registration_id: registration.id,
