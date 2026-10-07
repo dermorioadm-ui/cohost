@@ -273,6 +273,12 @@ export default function GuestChat() {
         const quem = `${t.guest} ${i + 1}`;
         if (g.full_name.trim().split(/\s+/).length < 2) return `${quem}: ${t.errName}`;
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(g.email.trim())) return `${quem}: ${t.errEmail}`;
+        // A portaria identifica cada morador pelo e-mail: repetido, o segundo
+        // hóspede fica sem acesso ao prédio.
+        const email = g.email.trim().toLowerCase();
+        if (guests.slice(0, i).some((o) => o.email.trim().toLowerCase() === email)) {
+          return `${quem}: ${t.errEmailRepeated}`;
+        }
         if (!telefoneCompleto(g.telefone)) return `${quem}: ${t.errPhone}`;
 
         if (g.estrangeiro) {

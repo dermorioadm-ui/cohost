@@ -51,7 +51,7 @@ interface Textos {
   okDownload: string; okMore: string; okAsk: string;
   leftBtn: string; leftHint: string; leftDone: string; leftError: string;
   errDates: string; errOrder: string; errTerm: string;
-  errName: string; errEmail: string; errPhone: string;
+  errName: string; errEmail: string; errEmailRepeated: string; errPhone: string;
   errCpf: string; errPassport: string; errNationality: string; errPhoto: string;
   errGeneric: string;
 }
@@ -142,6 +142,8 @@ export const T: Record<Idioma, Textos> = {
     errTerm: "É necessário aceitar o termo de responsabilidade",
     errName: "informe o nome completo",
     errEmail: "e-mail inválido",
+    errEmailRepeated:
+      "este e-mail já é de outro hóspede. Cada pessoa precisa do próprio e-mail para ter acesso ao prédio",
     errPhone: "telefone inválido",
     errCpf: "CPF inválido",
     errPassport: "número de passaporte inválido",
@@ -235,6 +237,8 @@ export const T: Record<Idioma, Textos> = {
     errTerm: "You must accept the statement of responsibility",
     errName: "enter the full name",
     errEmail: "invalid email",
+    errEmailRepeated:
+      "this email is already used by another guest. Each person needs their own email to access the building",
     errPhone: "invalid phone number",
     errCpf: "invalid CPF",
     errPassport: "invalid passport number",
@@ -328,6 +332,8 @@ export const T: Record<Idioma, Textos> = {
     errTerm: "Es necesario aceptar el término de responsabilidad",
     errName: "indica el nombre completo",
     errEmail: "correo inválido",
+    errEmailRepeated:
+      "este correo ya es de otro huésped. Cada persona necesita su propio correo para acceder al edificio",
     errPhone: "teléfono inválido",
     errCpf: "CPF inválido",
     errPassport: "número de pasaporte inválido",
