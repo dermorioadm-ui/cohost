@@ -44,6 +44,7 @@ interface PorterRow {
   attempts: number;
   access_from: string;
   access_until: string;
+  response_body: string | null;
 }
 
 interface PorterStatus {
@@ -104,7 +105,7 @@ export default function Portaria() {
           .select("property_id, active, last_ok_at, has_error, last_error"),
         supabase
           .from("porter_registrations")
-          .select("id, property_id, person_id, status, attempts, access_from, access_until")
+          .select("id, property_id, person_id, status, attempts, access_from, access_until, response_body")
           .gte("access_until", new Date().toISOString())
           .order("access_from")
           .limit(60),
@@ -343,6 +344,10 @@ export default function Portaria() {
                   {propById[row.property_id]?.name ?? "Imóvel"} · {fmtDate(row.access_from)} →{" "}
                   {fmtDate(row.access_until)}
                 </p>
+                {/* O motivo só quando é frase nossa; a resposta crua da Kiper é JSON. */}
+                {row.status === "failed" && row.response_body && !/^\s*[[{]/.test(row.response_body) && (
+                  <p className="mt-1 text-xs text-destructive">{row.response_body}</p>
+                )}
               </div>
 
               <span

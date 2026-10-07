@@ -21,6 +21,7 @@ const MAX_ATTEMPTS = 4;
 interface PendingRow {
   id: string;
   property_id: string;
+  registration_id: string;
   person_id: string;
   attempts: number;
   access_from: string;
@@ -116,7 +117,7 @@ export default handler(async (req) => {
 
   const { data: pending, error } = await db
     .from("porter_registrations")
-    .select("id, property_id, person_id, attempts, access_from, access_until")
+    .select("id, property_id, registration_id, person_id, attempts, access_from, access_until")
     .eq("status", "pending")
     .lt("attempts", MAX_ATTEMPTS)
     .order("created_at", { ascending: true })
@@ -266,11 +267,53 @@ export default handler(async (req) => {
         text = await res.text();
       }
 
-      // "Esse usuário possui cadastro nessa unidade": a pessoa já tem acesso
-      // (morador fixo ou hóspede que voltou). Não é falha — é liberado.
-      const alreadyRegistered = res.status === 400 && /possui cadastro/i.test(text);
+      // "Esse usuário possui cadastro nessa unidade": a Kiper já reconhece esta
+      // pessoa no apartamento (pelo e-mail, nos casos vistos) e NÃO grava nada
+      // — nem a pessoa, nem a janela desta estadia. Era tratado como liberado,
+      // e o sistema mostrava "Liberado" para quem a portaria não conhecia: o
+      // segundo hóspede de um grupo que repetiu o e-mail, ou quem voltou e
+      // ficou com o horário da estadia antiga. Agora é falha, com o motivo.
+      if (res.status === 400 && /possui cadastro/i.test(text)) {
+        const { data: mesmoEmail } = await db
+          .from("guest_people")
+          .select("full_name")
+          .eq("registration_id", row.registration_id)
+          .eq("email", person.email)
+          .neq("id", row.person_id)
+          .order("is_primary", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (res.ok || alreadyRegistered) {
+        const motivo = mesmoEmail
+          ? `Mesmo e-mail de ${mesmoEmail.full_name}: a portaria entende que é a mesma ` +
+            `pessoa e não criou o acesso de ${person.full_name}. Cadastre pelo app da ` +
+            "portaria com outro e-mail."
+          : "A portaria já tinha um cadastro desta pessoa no apartamento (estadia anterior " +
+            "ou morador) e não aplicou o horário desta estadia. Confira o acesso pelo app " +
+            "da portaria.";
+
+        await db
+          .from("porter_registrations")
+          .update({
+            status: "failed",
+            attempts: row.attempts + 1,
+            response_status: res.status,
+            response_body: motivo,
+          })
+          .eq("id", row.id);
+
+        // As credenciais funcionaram — a recusa é sobre a pessoa, não a conta.
+        await db
+          .from("porter_accounts")
+          .update({ last_ok_at: new Date().toISOString(), last_error: null })
+          .eq("id", account.id);
+
+        failed++;
+        console.warn(`Portaria já conhecia ${row.person_id}: ${motivo}`);
+        continue;
+      }
+
+      if (res.ok) {
         await db
           .from("porter_registrations")
           .update({

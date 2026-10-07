@@ -192,6 +192,20 @@ export default handler(async (req) => {
     }
   });
 
+  // Um e-mail por pessoa. É pelo e-mail que a portaria identifica o morador:
+  // o segundo hóspede com o mesmo endereço volta como "já possui cadastro" e
+  // fica sem acesso ao prédio — sem ninguém perceber até ele estar na guarita.
+  const emails = guests.map((g) => (g.email ?? "").trim().toLowerCase());
+  emails.forEach((email, i) => {
+    const primeiro = emails.indexOf(email);
+    if (primeiro < i) {
+      throw errors.invalid(
+        `Hóspede ${i + 1}: use um e-mail diferente do Hóspede ${primeiro + 1}. ` +
+          "Cada pessoa precisa do próprio e-mail para ter acesso ao prédio.",
+      );
+    }
+  });
+
   // ---- rate limit ----------------------------------------------------------
   if (ip) {
     const since = new Date(Date.now() - 3600_000).toISOString();
