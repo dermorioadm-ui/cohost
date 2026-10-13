@@ -1086,6 +1086,7 @@ export default function Landing({ modo = "whatsapp" }: { modo?: "whatsapp" | "co
         <div className="mx-auto max-w-[1120px] px-5 pb-12 md:pb-16">
           <Rotulo className="mb-5 block text-primary">Check‑in Blindado</Rotulo>
           <Titulo texto="Você sabe quem *dorme* na sua casa." className={cn(h2, "max-w-[16ch]")} />
+          <p className="mt-6 max-w-[54ch] text-lg leading-relaxed text-[#666666] md:text-xl">Documento, selfie e contrato assinado antes da estadia. Mais controle para você, mais responsabilidade para quem se hospeda.</p>
         </div>
 
         {/* Quatro telas cheias que se empilham: a de cima encolhe e escurece
