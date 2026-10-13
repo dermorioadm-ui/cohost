@@ -11,7 +11,7 @@ import { planoGuardado } from "@/lib/planoEscolhido";
 const Auth = lazy(() => import("@/pages/Auth"));
 const NovaSenha = lazy(() => import("@/pages/NovaSenha"));
 const Confirmar = lazy(() => import("@/pages/Confirmar"));
-const Landing = lazy(() => import("@/pages/Landing"));
+const LandingV2 = lazy(() => import("@/pages/LandingV2"));
 const CompraDireta = lazy(() => import("@/pages/CompraDireta"));
 const Onboarding = lazy(() => import("@/pages/Onboarding"));
 const Faturas = lazy(() => import("@/pages/Faturas"));
@@ -88,7 +88,7 @@ function Protected({
 function Home() {
   const { user, role, loading } = useAuth();
   if (loading) return <Splash />;
-  if (!user) return <Landing />;
+  if (!user) return <LandingV2 production />;
   // Quem escolheu um plano na página de vendas e ainda não pagou vai para o
   // pagamento antes do painel. A tela de assinatura apaga a escolha quando o
   // pagamento confirma ou quando a pessoa decide seguir sem assinar.
@@ -112,6 +112,7 @@ export default function App() {
           <Suspense fallback={<Splash />}>
             <Routes>
               {/* Públicas — fora do AuthProvider, carregam na hora */}
+              <Route path="/v2" element={<LandingV2 />} />
               <Route path="/c/:slug" element={<GuestChat />} />
               <Route path="/d/:token" element={<CleanerAccept />} />
               {/* Fora do AuthProvider: quem chega aqui está trocando a senha a
@@ -130,7 +131,7 @@ export default function App() {
                           atalho mostra a página de vendas mesmo assim — para
                           o dono conferir o que o visitante vê sem sair da
                           conta. */}
-                      <Route path="/pagina" element={<Landing />} />
+                      <Route path="/pagina" element={<LandingV2 production />} />
                       <Route path="/compra-direta" element={<CompraDireta />} />
                       <Route path="/entrar" element={<Auth />} />
 
